@@ -1,63 +1,48 @@
-ARG         NODE_VERSION=24.14
+# =============================================================================
+# CarbonThreat — Multi-stage Docker build
+#
+# Stage 1 (build): installs all deps, compiles React SPA + transpiles server
+# Stage 2 (runtime): prod-only deps + artefacts; ~half the image size
+# =============================================================================
 
-# The base image with updates applied
-FROM        node:$NODE_VERSION-alpine AS base-node
-RUN         apk -U upgrade
-WORKDIR     /app
-RUN         npm i -g npm@latest
-RUN         chown -R node:node /app
-USER        node
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM node:20-alpine AS build
+WORKDIR /app
 
+# Copy manifests first (better layer caching)
+COPY package.json package-lock.json* ./
+COPY td.server/package.json td.server/package-lock.json* ./td.server/
+COPY ct.client/package.json ct.client/package-lock.json* ./ct.client/
 
-# Build the front and back-end.  This needs devDependencies which do not
-# need to be included in the final image
-FROM        base-node AS build
-RUN         mkdir -p boms td.server td.vue td.vue/src/service/schema/api_json
+# Install all dependencies
+RUN npm install --ignore-scripts
+RUN cd td.server && npm install
+RUN cd ct.client && npm install
 
-COPY        package-lock.json package.json /app/
-COPY        ./td.server/package-lock.json ./td.server/package.json ./td.server/
-COPY        ./td.vue/package-lock.json ./td.vue/package.json ./td.vue/
+# Copy source trees
+COPY td.server/ ./td.server/
+COPY ct.client/ ./ct.client/
 
-COPY        ./td.server/.babelrc ./td.server/
-COPY        ./td.server/src/ ./td.server/src/
-COPY        ./td.vue/src/ ./td.vue/src/
-COPY        ./td.vue/public/ ./td.vue/public/
-COPY        ./td.vue/*.config.js ./td.vue/
+# Build React SPA → ct.client/dist
+RUN cd ct.client && npm run build
 
-RUN         npm clean-install --ignore-scripts
-RUN         cd td.server && npm clean-install
-RUN         cd td.vue && npm clean-install
-RUN         npm run build
-RUN         cd td.server && npm run make-sbom
-RUN         cp td.server/sbom.json        boms/threat-dragon-server-bom.json && \
-            cp td.server/sbom.xml         boms/threat-dragon-server-bom.xml  && \
-            cp td.vue/dist/.sbom/bom.json boms/threat-dragon-site-bom.json   && \
-            cp td.vue/dist/.sbom/bom.xml  boms/threat-dragon-site-bom.xml
+# Transpile Express server → td.server/dist
+RUN cd td.server && npm run build
 
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM node:20-alpine
+WORKDIR /app
 
-FROM        ruby:4.0-slim-bookworm AS build-docs
-RUN         apt-get update \
-            && apt-get install -y --no-install-recommends \
-            build-essential \
-            && rm -rf /var/lib/apt/lists/*
-WORKDIR     /td.docs
-COPY        docs/Gemfile Gemfile
-COPY        docs/Gemfile.lock Gemfile.lock
-RUN         bundle install
-COPY        docs/ .
-RUN         bundle exec jekyll build -b docs/
+# Production-only server deps
+COPY td.server/package.json td.server/package-lock.json* ./td.server/
+RUN cd td.server && npm install --omit=dev
 
+# Transpiled server + production entry point
+COPY td.server/server.js ./td.server/server.js
+COPY --from=build /app/td.server/dist ./td.server/dist
 
-# Build the final, production image.
-FROM        base-node
-COPY        --chown=node:node --from=build-docs /td.docs/_site /app/docs
-COPY        --chown=node:node --from=build /app/boms /app/boms
+# Built React SPA — served as static files from /app/dist
+COPY --from=build /app/ct.client/dist ./dist
 
-COPY        --chown=node:node ./td.server/package-lock.json ./td.server/package.json ./td.server/
-RUN         cd td.server && npm clean-install --omit dev --ignore-scripts
-COPY        --chown=node:node --from=build /app/td.server/dist ./td.server/dist
-COPY        --chown=node:node --from=build /app/td.vue/dist ./dist
-COPY        --chown=node:node ./td.server/index.js ./td.server/index.js
-
-HEALTHCHECK --interval=10s --timeout=2s --start-period=2s CMD ["/nodejs/bin/node", "./td.server/dist/healthcheck.js"]
-CMD         ["td.server/index.js"]
+EXPOSE 3001
+CMD ["node", "td.server/server.js"]

@@ -1,0 +1,356 @@
+name: CarbonThreat CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ct.client/**'
+      - 'td.server/**'
+      - 'Dockerfile'
+      - '.github/workflows/carbonthreat-ci.yaml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ct.client/**'
+      - 'td.server/**'
+      - 'Dockerfile'
+      - '.github/workflows/carbonthreat-ci.yaml'
+  workflow_dispatch:
+
+env:
+  NODE_ENV: test
+  # Test secrets (not production values)
+  ENCRYPTION_KEY:          ${{ secrets.CT_ENCRYPTION_KEY }}
+  JWT_SIGNING_KEY:         ${{ secrets.CT_JWT_SIGNING_KEY }}
+  JWT_REFRESH_SIGNING_KEY: ${{ secrets.CT_JWT_REFRESH_SIGNING_KEY }}
+  DATABASE_URL:            ${{ secrets.CT_DATABASE_URL }}
+
+# for security reasons the github actions are pinned to specific SHAs
+
+jobs:
+  # ─── 1. Backend unit tests ──────────────────────────────────────────────────
+
+  server_unit_tests:
+    name: Server unit tests (Mocha)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: td.server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node 24 LTS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: td.server/package-lock.json
+
+      - name: Install dependencies
+        run: npm clean-install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+        env:
+          # Override with deterministic test values (no real DB needed for unit tests)
+          ENCRYPTION_KEY: ${{ 'a'.repeat(64) || secrets.CT_ENCRYPTION_KEY }}
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: server-coverage
+          path: td.server/coverage/
+          if-no-files-found: ignore
+
+  # ─── 2. Frontend unit tests ─────────────────────────────────────────────────
+
+  client_unit_tests:
+    name: Client unit tests (Vitest)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ct.client
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node 24 LTS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: ct.client/package-lock.json
+
+      - name: Install dependencies
+        run: npm clean-install
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: client-coverage
+          path: ct.client/coverage/
+          if-no-files-found: ignore
+
+  # ─── 3. SAST — Semgrep ──────────────────────────────────────────────────────
+
+  semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-24.04
+    needs: [server_unit_tests, client_unit_tests]
+    permissions:
+      security-events: write
+    container:
+      image: returntocorp/semgrep:1.72.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Semgrep
+        run: >
+          semgrep
+          --config .github/semgrep.yml
+          --sarif
+          --output semgrep-results.sarif
+          --error
+          td.server/src
+          ct.client/src
+        continue-on-error: true
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
+        if: always()
+
+  # ─── 4. SAST — CodeQL ───────────────────────────────────────────────────────
+
+  codeql:
+    name: SAST (CodeQL)
+    runs-on: ubuntu-24.04
+    needs: [server_unit_tests, client_unit_tests]
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
+        with:
+          languages: javascript
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: CodeQL autobuild
+        uses: github/codeql-action/autobuild@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
+
+  # ─── 5. Dependency audit ────────────────────────────────────────────────────
+
+  npm_audit:
+    name: npm audit
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node 24 LTS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+
+      - name: Audit server dependencies
+        working-directory: td.server
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Audit client dependencies
+        working-directory: ct.client
+        run: npm audit --audit-level=high --omit=dev
+
+  # ─── 6. Build Docker image ──────────────────────────────────────────────────
+
+  build_image:
+    name: Build Docker image
+    runs-on: ubuntu-24.04
+    needs: [server_unit_tests, client_unit_tests]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          install: true
+
+      - name: Cache Docker layers
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-carbonthreat-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-carbonthreat-
+            ${{ runner.os }}-buildx-
+
+      - name: Build image (amd64)
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: ./
+          file: ./Dockerfile
+          tags: carbonthreat:ci-${{ github.sha }}
+          outputs: type=docker,dest=/tmp/carbonthreat-ci.tar
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          platforms: linux/amd64
+          load: true
+
+      - name: Move cache (avoid large cache bug)
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: carbonthreat-ci-image
+          path: /tmp/carbonthreat-ci.tar
+
+  # ─── 7. Container vulnerability scan ────────────────────────────────────────
+
+  trivy_scan:
+    name: Container scan (Trivy)
+    runs-on: ubuntu-24.04
+    needs: build_image
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: carbonthreat-ci-image
+          path: /tmp
+
+      - name: Load image
+        run: docker load --input /tmp/carbonthreat-ci.tar
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: carbonthreat:ci-${{ github.sha }}
+          format: table
+          exit-code: 1
+          trivyignores: .github/workflows/.trivyignore
+          ignore-unfixed: true
+
+  # ─── 8. E2E tests (Playwright) ──────────────────────────────────────────────
+
+  e2e_tests:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-24.04
+    needs: [server_unit_tests, client_unit_tests]
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-e2e')
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER:     carbonthreat
+          POSTGRES_PASSWORD: carbonthreat_test
+          POSTGRES_DB:       carbonthreat_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U carbonthreat"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node 24 LTS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: ct.client/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: td.server
+        run: npm clean-install
+
+      - name: Install client dependencies
+        working-directory: ct.client
+        run: npm clean-install
+
+      - name: Install Playwright browsers
+        working-directory: ct.client
+        run: npx playwright install --with-deps chromium
+
+      - name: Run database migrations
+        working-directory: td.server
+        run: node -e "import('./src/db/migrate.js').then(m => m.runMigrations())"
+        env:
+          DATABASE_URL: postgres://carbonthreat:carbonthreat_test@localhost:5432/carbonthreat_test
+
+      - name: Bootstrap admin account
+        working-directory: td.server
+        run: |
+          curl -s -X POST http://localhost:3001/api/auth/local/bootstrap \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"admin@ct.com","password":"SecurePass123!"}' || true
+        env:
+          DATABASE_URL: postgres://carbonthreat:carbonthreat_test@localhost:5432/carbonthreat_test
+          ENCRYPTION_KEY: ${{ secrets.CT_ENCRYPTION_KEY || 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }}
+          JWT_SIGNING_KEY: ${{ secrets.CT_JWT_SIGNING_KEY || 'test-jwt-key-for-ci-only-not-production' }}
+          JWT_REFRESH_SIGNING_KEY: ${{ secrets.CT_JWT_REFRESH_SIGNING_KEY || 'test-refresh-key-for-ci-only-not-production' }}
+          PORT: 3001
+
+      - name: Run Playwright E2E tests
+        working-directory: ct.client
+        run: npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+          E2E_EMAIL: admin@ct.com
+          E2E_PASSWORD: SecurePass123!
+          DATABASE_URL: postgres://carbonthreat:carbonthreat_test@localhost:5432/carbonthreat_test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: playwright-report
+          path: ct.client/playwright-report/
+          retention-days: 14
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: playwright-traces
+          path: ct.client/test-results/
+          if-no-files-found: ignore

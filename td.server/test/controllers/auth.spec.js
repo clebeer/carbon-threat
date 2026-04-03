@@ -65,10 +65,11 @@ describe('controllers/auth.js', () => {
         const refresh = 'asdf';
 
         describe('with refresh token', () => {
-            beforeEach(() => {
-                sinon.stub(tokenRepo, 'remove');
+            // auth.logout now uses sendResponseAsync (async) — await the call
+            beforeEach(async () => {
+                sinon.stub(tokenRepo, 'remove').resolves();
                 mockRequest.body.refreshToken = refresh;
-                auth.logout(mockRequest, mockResponse);
+                await auth.logout(mockRequest, mockResponse);
             });
 
             it('removes the refresh token', () => {
@@ -168,10 +169,11 @@ describe('controllers/auth.js', () => {
 
     describe('refresh', () => {
         describe('with an invalid token', () => {
-            beforeEach(() => {
-                sinon.stub(tokenRepo, 'verify').returns(false);
+            // auth.refresh is async — must be awaited so assertions run after resolution
+            beforeEach(async () => {
+                sinon.stub(tokenRepo, 'verify').resolves(false);
                 sinon.stub(errors, 'unauthorized');
-                auth.refresh(mockRequest, mockResponse);
+                await auth.refresh(mockRequest, mockResponse);
             });
 
             it('sends an unauthorized response', () => {
@@ -182,11 +184,11 @@ describe('controllers/auth.js', () => {
         describe('with a valid token', () => {
             const user = { name: 'foo' };
             const provider = { name: 'bar', bar: {} };
-            beforeEach(() => {
+            beforeEach(async () => {
                 mockRequest.body.refreshToken = 'foobar';
-                sinon.stub(tokenRepo, 'verify').returns({ provider, user });
+                sinon.stub(tokenRepo, 'verify').resolves({ provider, user });
                 sinon.stub(jwtHelper, 'createAsync').resolves({ accessToken: 'blah' });
-                auth.refresh(mockRequest, mockResponse);
+                await auth.refresh(mockRequest, mockResponse);
             });
 
             it('verifies the token', () => {

@@ -33,8 +33,8 @@
 !cupcake/icons/*.ico
 !cupcake/png/*.png
 !cupcake/png/*.gif
+# minimal.env intentionally excluded — contains real secrets, never commit
 !example.env
-!minimal.env
 !package.json
 !package-lock.json
 
@@ -85,6 +85,35 @@
 !td.server/src/providers/*.js
 !td.server/src/repositories/
 !td.server/src/repositories/*.js
+!td.server/src/security/
+!td.server/src/security/*.js
+!td.server/src/auth/
+!td.server/src/auth/*.js
+!td.server/src/ai/
+!td.server/src/ai/*.js
+!td.server/src/integrations/
+!td.server/src/integrations/*.js
+!td.server/src/utils/
+!td.server/src/utils/*.js
+!td.server/src/db/
+!td.server/src/db/*.js
+!td.server/src/db/migrations/
+!td.server/src/db/migrations/*.js
+
+# React frontend (CarbonThreat client)
+!ct.client/
+!ct.client/src/
+!ct.client/src/**
+!ct.client/public/
+!ct.client/public/**
+!ct.client/index.html
+!ct.client/vite.config.*
+!ct.client/tsconfig*
+!ct.client/package.json
+!ct.client/package-lock.json
+
+# Docker orchestration
+!docker-compose.yml
 !td.server/test/
 !td.server/test/*.spec.js
 !td.server/test/config/

@@ -39,7 +39,7 @@ const completeLogin = (req, res) => {
         return responseWrapper.sendResponseAsync(async () => {
             const { user, opts } = await provider.completeLoginAsync(req.query.code);
             const { accessToken, refreshToken } = await jwtHelper.createAsync(provider.name, opts, user);
-            tokenRepo.add(refreshToken);
+            await tokenRepo.add(refreshToken);
             return {
                 accessToken,
                 refreshToken
@@ -50,11 +50,11 @@ const completeLogin = (req, res) => {
     }
 };
 
-const logout = (req, res) => responseWrapper.sendResponse(() => {
+const logout = (req, res) => responseWrapper.sendResponseAsync(async () => {
     logger.debug(`API logout request: ${logger.transformToString(req)}`);
 
     try {
-        const refreshToken = req.body.refreshToken;
+        const { refreshToken } = req.body || {};
         if (!refreshToken) {
             logger.audit('Log out without a refresh token');
             // Return OK, it could be a client error or an expired token
@@ -62,7 +62,7 @@ const logout = (req, res) => responseWrapper.sendResponse(() => {
         }
 
         logger.debug('Remove refresh token');
-        tokenRepo.remove(refreshToken);
+        await tokenRepo.remove(refreshToken);
         return '';
     } catch (e) {
         logger.error(e);
@@ -70,10 +70,10 @@ const logout = (req, res) => responseWrapper.sendResponse(() => {
     }
 }, req, res, logger);
 
-const refresh = (req, res) => {
+const refresh = async (req, res) => {
     logger.debug(`API refresh request: ${logger.transformToString(req)}`);
 
-    const tokenBody = tokenRepo.verify(req.body.refreshToken);
+    const tokenBody = await tokenRepo.verify((req.body || {}).refreshToken);
     if (!tokenBody) {
         return errors.unauthorized(res, logger);
     }
@@ -82,7 +82,7 @@ const refresh = (req, res) => {
         const { accessToken } = await jwtHelper.createAsync(provider.name, provider, user);
 
         // Limit the time refresh tokens live, so do not provide a new one.
-        return { accessToken, refreshToken: req.body.refreshToken };
+        return { accessToken, refreshToken: (req.body || {}).refreshToken };
     }, req, res, logger);
 };
 
