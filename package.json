@@ -1,0 +1,59 @@
+{
+  "name": "carbon-threat",
+  "version": "1.0.0-enterprise",
+  "appBundleId": "org.owasp.carbonthreat",
+  "private": true,
+  "scripts": {
+    "audit": "npm-run-all -c audit:server audit:client",
+    "audit:server": "cd td.server && npm run audit",
+    "audit:client": "cd ct.client && npm run audit",
+    "build": "npm-run-all build:client build:server",
+    "build:client": "cd ct.client && npm run build",
+    "build:server": "cd td.server && npm run build",
+    "clean": "npm-run-all clean:server clean:client clean:root",
+    "clean:server": "cd td.server && npm run clean",
+    "clean:root": "rimraf node_modules/",
+    "clean:client": "cd ct.client && rimraf dist/",
+    "dev:client": "cd ct.client && npm run dev",
+    "dev:server": "cd td.server && npm run dev",
+    "postinstall": "cd td.server && npm install && cd ../ct.client && npm install",
+    "start": "npm-run-all build:client build:server start:server start:client",
+    "start:server": "cd td.server && npm run start:server",
+    "start:client": "cd ct.client && npm run preview",
+    "test:server": "cd td.server && npm run test:unit",
+    "test:client": "cd ct.client && npm run test"
+  },
+  "keywords": [
+    "carbon threat",
+    "enterprise threat modeling"
+  ],
+  "description": "CarbonThreat Enterprise - based on OWASP Threat Dragon",
+  "author": {
+    "name": "CarbonThreat Enterprise",
+    "email": "enterprise@carbonthreat.com"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://owasp.org/www-project-threat-dragon/",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/OWASP/threat-dragon.git"
+  },
+  "bugs": {
+    "email": "jon.gadsden@owasp.org",
+    "url": "https://github.com/OWASP/threat-dragon/issues"
+  },
+  "devDependencies": {
+    "@wdio/cli": "^9.24.0",
+    "baseline-browser-mapping": "^2.9.15",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^6.1.3"
+  },
+  "overrides": {
+    "ansi-regex@>2.1.1 <5.0.1": ">=5.0.1",
+    "glob-parent@<5.1.2": ">=5.1.2",
+    "micromatch": ">=4.0.8",
+    "minimatch@<3.0.5": ">=3.0.5",
+    "tar-fs": ">=3.0.8",
+    "ws": ">=8.18.0"
+  }
+}

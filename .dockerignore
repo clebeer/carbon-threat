@@ -1,0 +1,23 @@
+*/coverage
+dev-notes.md
+dist/
+*/dist/
+.env
+example.env
+.git*
+docs/.jekyll-cache
+log/
+*/node_modules
+node_modules/
+nyc_output/
+*/nyc_output/
+ThreatDragonModels/
+utils/
+.vscode/
+*/.vscode/
+*/dist-desktop/
+sbom.*
+*/sbom.*
+# Generated files, not relevent in CI but in local development,
+# theese files will break the docker build if included
+td.vue/src/service/schema/api_json/

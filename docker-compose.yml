@@ -1,0 +1,103 @@
+# =============================================================================
+# CarbonThreat — Docker Compose
+#
+# Quick start (local MVP):
+#   cp minimal.env .env        # edit DB_USER / DB_PASSWORD if desired
+#   docker compose up --build
+#
+# The app will be available at http://localhost:3001 (direct)
+# or https://localhost:443 (via Nginx — profile: tls)
+#
+# TLS/HTTPS (nginx profile):
+#   ./scripts/gen-local-certs.sh   # generate self-signed certs once
+#   docker compose --profile tls up --build
+#   App → https://localhost
+#
+# Development mode (Vite hot-reload):
+#   docker compose --profile dev up --build
+#   Frontend → http://localhost:3000  (Vite)
+#   API      → http://localhost:3001  (Express)
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${DB_USER:?DB_USER is required — see minimal.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required — see minimal.env}
+      POSTGRES_DB:       ${DB_NAME:-carbonthreat}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-carbonthreat} -d ${DB_NAME:-carbonthreat}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Express API + built React SPA ──────────────────────────────────────────
+  carbonthreat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Always connect to the Docker-internal db hostname, regardless of what .env says
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME:-carbonthreat}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Nginx reverse proxy with TLS (optional — docker compose --profile tls up) ─
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      carbonthreat:
+        condition: service_healthy
+    profiles:
+      - tls
+
+  # ── Vite dev server (development only — docker compose --profile dev up) ───
+  # Hot-reloads ct.client source; proxies /api/* to the Express backend.
+  client:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./ct.client:/app
+      - /app/node_modules          # isolate container node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://carbonthreat:3001
+    depends_on:
+      - carbonthreat
+    profiles:
+      - dev
+
+volumes:
+  pgdata:

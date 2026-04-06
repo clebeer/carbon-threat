@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap');
+
+:root {
+  /* Synthetic Sentinel Color System */
+  --surface-dim: #0a0d14;
+  --surface-container: #12161f;
+  --surface-container-low: rgba(21, 24, 30, 0.85);
+  --surface-container-high: #1c222e;
+  
+  --primary: #00f2ff;
+  --primary-glow: rgba(0, 242, 255, 0.4);
+  --secondary: #b366ff;
+  --secondary-glow: rgba(179, 102, 255, 0.4);
+  --error: #ff4d4f;
+  
+  --on-surface: #e2e8f0;
+  --on-surface-muted: #94a3b8;
+  
+  --font-display: 'Inter', sans-serif;
+  --font-tech: 'JetBrains Mono', monospace;
+  --font-label: 'Space Grotesk', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(circle at 50% 50%, #161b26 0%, var(--surface-dim) 100%);
+  color: var(--on-surface);
+  font-family: var(--font-display);
+  overflow: hidden;
+}
+
+.glass-panel {
+  background: rgba(16, 20, 26, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.glow-text-cyan {
+  color: var(--primary);
+  text-shadow: 0 0 10px var(--primary-glow);
+}
+
+.glow-text-purple {
+  color: var(--secondary);
+  text-shadow: 0 0 10px var(--secondary-glow);
+}
+
+.glow-text-error {
+  color: var(--error);
+  text-shadow: 0 0 10px rgba(255, 77, 79, 0.5);
+}
+
+/* React Flow custom node styles */
+.ct-node {
+  background: rgba(16, 20, 26, 0.8);
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  width: 65px;
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px var(--primary-glow), inset 0 0 10px var(--primary-glow);
+  color: var(--primary);
+}
+
+.ct-node-label {
+  position: absolute;
+  bottom: -28px;
+  width: 120px;
+  text-align: center;
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--on-surface);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
