@@ -22,6 +22,7 @@ import * as assetsController from '../controllers/assets.js';
 import * as threatsController from '../controllers/threats.pg.js';
 import * as domainPacksController from '../controllers/domainPacksController.js';
 import * as cloudStorageController from '../controllers/cloudStorageController.js';
+import * as vulnSyncController from '../controllers/vulnSync.js';
 import { requireRole } from '../auth/rbac.js';
 import { auditMiddleware } from '../security/audit.js';
 
@@ -58,6 +59,7 @@ const unauthRoutes = (router) => {
     router.get('/healthz', healthcheck.healthz);
     router.get('/api/healthz', healthcheck.healthz);
     router.get('/api/config', configController.config);
+    router.get('/api/config/setup-status', setupController.config);
     router.post('/api/config/test-db', setupController.testDbConnection);
     router.post('/api/config/setup', setupController.submitEnterpriseSetup);
     router.get('/api/threatmodel/organisation', threatmodelController.organisation);
@@ -138,12 +140,17 @@ const routes = (router) => {
     // Audit log (admin only)
     router.get('/api/audit', requireRole('admin'), auditController.listAuditLogs);
 
+    // Vulnerability feed sync (admin only)
+    router.get('/api/admin/vuln-feeds/status', requireRole('admin'), vulnSyncController.getVulnFeedStatus);
+    router.post('/api/admin/vuln-feeds/sync',  requireRole('admin'), auditMiddleware('VULN_FEED_SYNC'), vulnSyncController.syncVulnFeeds);
+
     // PostgreSQL-backed threat models (enterprise storage)
     router.get('/api/threatmodels', threatmodelsPg.listThreatModels);
     router.post('/api/threatmodels/import', requireRole('admin', 'analyst'), auditMiddleware('MODEL_IMPORT'), threatmodelsPg.importThreatModel);
     router.post('/api/threatmodels', requireRole('admin', 'analyst'), auditMiddleware('MODEL_CREATE'), threatmodelsPg.createThreatModel);
     router.get('/api/threatmodels/:id', threatmodelsPg.getThreatModel);
     router.put('/api/threatmodels/:id', requireRole('admin', 'analyst'), auditMiddleware('MODEL_UPDATE'), threatmodelsPg.updateThreatModel);
+    router.put('/api/threatmodels/:id/restore', requireRole('admin', 'analyst'), auditMiddleware('MODEL_RESTORE'), threatmodelsPg.restoreThreatModel);
     router.delete('/api/threatmodels/:id', requireRole('admin', 'analyst'), auditMiddleware('MODEL_ARCHIVE'), threatmodelsPg.archiveThreatModel);
 
     // Asset registry — derived from threat model nodes

@@ -27,7 +27,6 @@ const BASE_MENU = [
   { id: 'Projects',  icon: <IconFolder />    },
   { id: 'Assets',    icon: <IconFolder />    },
   { id: 'Threats',   icon: <IconShield />    },
-  { id: 'Modeling',  icon: <IconActivity />  },
   { id: 'Reports',   icon: <IconFolder />    },
 ];
 
@@ -68,15 +67,14 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Setup wizard gate — use GET /api/config (rate-limit-free) to check if server is configured
+  // Setup wizard gate — check /api/config/setup-status to see if wizard has been completed
   useEffect(() => {
     const done = localStorage.getItem('carbonthreat_setup_complete');
     if (done) { setIsSetup(true); return; }
-    // GET /api/config returns { status: 200, data: { localEnabled, ... } } when configured
-    fetch('/api/config')
+    fetch('/api/config/setup-status')
       .then(r => r.json())
       .then(data => {
-        if (data?.status === 200 && data?.data) {
+        if (data?.status === 'configured') {
           localStorage.setItem('carbonthreat_setup_complete', 'true');
           setIsSetup(true);
         } else {
@@ -209,8 +207,18 @@ export default function App() {
       {/* Main content */}
       <div style={{ flex: 1, position: 'relative' }}>
         <div className="glass-panel" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '64px', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}>
-          <div style={{ color: 'var(--on-surface-muted)', fontSize: '14px', letterSpacing: '0.5px' }}>
-            {activeMenu === 'Modeling' && activeModelTitle ? `Modeling — ${activeModelTitle}` : activeMenu}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {activeMenu === 'Modeling' && (
+              <button
+                onClick={() => setActiveMenu('Projects')}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-surface-muted)', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.2s' }}
+              >
+                ← Projects
+              </button>
+            )}
+            <span style={{ color: 'var(--on-surface-muted)', fontSize: '14px', letterSpacing: '0.5px' }}>
+              {activeMenu === 'Modeling' && activeModelTitle ? activeModelTitle : activeMenu}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', fontSize: '13px', color: 'var(--on-surface-muted)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

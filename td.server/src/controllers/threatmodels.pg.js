@@ -45,7 +45,18 @@ function scopedQuery(req) {
 
 export async function listThreatModels(req, res) {
   try {
-    const models = await scopedQuery(req)
+    const showArchived = req.query.archived === 'true';
+    const userId = req.user?.id;
+    const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+
+    let q = db('threat_models').where({ is_archived: showArchived });
+    if (orgId) {
+      q = q.where({ org_id: orgId });
+    } else {
+      q = q.where({ owner_id: userId });
+    }
+
+    const models = await q
       .select('id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id')
       .orderBy('updated_at', 'desc');
 
@@ -264,5 +275,34 @@ export async function archiveThreatModel(req, res) {
   } catch (err) {
     logger.error('archiveThreatModel failed', err);
     return res.status(500).json({ error: 'Failed to archive threat model' });
+  }
+}
+
+// ── restore (undo archive) ────────────────────────────────────────────────────
+
+export async function restoreThreatModel(req, res) {
+  try {
+    const userId = req.user?.id;
+    const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+
+    let q = db('threat_models').where({ id: req.params.id, is_archived: true });
+    if (orgId) {
+      q = q.where({ org_id: orgId });
+    } else {
+      q = q.where({ owner_id: userId });
+    }
+
+    const existing = await q.first();
+    if (!existing) return notFound(res);
+
+    await db('threat_models')
+      .where({ id: req.params.id })
+      .update({ is_archived: false, updated_at: db.fn.now() });
+
+    logger.info(`Threat model restored: ${req.params.id}`);
+    return res.json({ message: 'Threat model restored' });
+  } catch (err) {
+    logger.error('restoreThreatModel failed', err);
+    return res.status(500).json({ error: 'Failed to restore threat model' });
   }
 }

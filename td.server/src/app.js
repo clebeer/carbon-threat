@@ -12,6 +12,8 @@ import parsers from './config/parsers.config.js';
 import routes from './config/routes.config.js';
 import securityHeaders from './config/securityheaders.config.js';
 import { runMigrations } from './db/migrate.js';
+import db from './db/knex.js';
+import bcrypt from 'bcrypt';
 import { upDir } from './helpers/path.helper.js';
 import { openApiSpec } from './config/openapi.js';
 
@@ -56,6 +58,33 @@ function assertSecretEntropy() {
     }
 }
 
+/**
+ * Creates a default admin account on first startup if no users exist
+ * and DEFAULT_ADMIN_EMAIL / DEFAULT_ADMIN_PASSWORD are configured.
+ * Idempotent — does nothing if any user already exists.
+ */
+async function bootstrapDefaultAdmin(logger) {
+    const email    = process.env.DEFAULT_ADMIN_EMAIL;
+    const password = process.env.DEFAULT_ADMIN_PASSWORD;
+    if (!email || !password) return;
+
+    try {
+        const count = await db('users').count('id as n').first();
+        if (parseInt(count.n, 10) > 0) return;
+
+        const passwordHash = await bcrypt.hash(password, 12);
+        await db('users').insert({
+            email:         email.toLowerCase().trim(),
+            password_hash: passwordHash,
+            role:          'admin',
+            is_active:     true,
+        });
+        if (logger) logger.info(`Default admin bootstrapped: ${email}`);
+    } catch (err) {
+        if (logger) logger.warn(`Default admin bootstrap skipped: ${err.message}`);
+    }
+}
+
 const siteDir = path.join(__dirname, upDir, upDir, 'dist');
 const docsDir = path.join(__dirname, upDir, upDir, 'docs');
 
@@ -82,8 +111,12 @@ const create = async () => {
         // Run pending database migrations before accepting any requests
         await runMigrations();
 
+        // Auto-bootstrap default admin when no users exist and env vars are set
+        await bootstrapDefaultAdmin(logger);
+
         const app = expressHelper.getInstance();
-        app.set('trust proxy', true);
+        // Trust exactly one proxy hop (nginx) — avoids ERR_ERL_PERMISSIVE_TRUST_PROXY
+        app.set('trust proxy', 1);
         // rate limiting only for production environemnts, otherwise automated e2e tests fail
         if (process.env.NODE_ENV === 'production') {
             app.use(limiter);

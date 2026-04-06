@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listUsers, createUser, deactivateUser, type User, type UserRole } from '../api/users';
+import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';
 import { useAuthStore } from '../store/authStore';
 
 // ── RBAC helpers ────────────────────────────────────────────────────────────
@@ -41,14 +42,22 @@ interface InviteFormState {
 
 // ── Main AdminView ──────────────────────────────────────────────────────────
 
+const SEVERITY_COLOR: Record<string, string> = {
+  Critical: 'var(--error)',
+  High:     '#f97316',
+  Medium:   '#f59e0b',
+  Low:      'var(--on-surface-muted)',
+};
+
 export default function AdminView() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin     = currentUser?.role === 'admin';
   const qc          = useQueryClient();
 
-  const [showInvite, setShowInvite] = useState(false);
-  const [form, setForm]             = useState<InviteFormState>({ email: '', display_name: '', password: '', role: 'analyst' });
-  const [formError, setFormError]   = useState<string | null>(null);
+  const [showInvite, setShowInvite]   = useState(false);
+  const [form, setForm]               = useState<InviteFormState>({ email: '', display_name: '', password: '', role: 'analyst' });
+  const [formError, setFormError]     = useState<string | null>(null);
+  const [syncNotice, setSyncNotice]   = useState<string | null>(null);
 
   const { data: users = [], isLoading, error: usersError } = useQuery({
     queryKey: ['users'],
@@ -78,6 +87,25 @@ export default function AdminView() {
     (acc: Partial<Record<UserRole, number>>, u: User) => ({ ...acc, [u.role]: (acc[u.role] ?? 0) + 1 }), {}
   );
 
+  const { data: feedStatus, isLoading: feedLoading, refetch: refetchFeed } = useQuery({
+    queryKey: ['vuln-feed-status'],
+    queryFn:  getVulnFeedStatus,
+    enabled:  isAdmin,
+    refetchInterval: (query) => {
+      // Poll every 4 s while a sync run is in progress
+      return query.state.data?.lastRun?.status === 'running' ? 4000 : false;
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: triggerVulnFeedSync,
+    onSuccess: () => {
+      setSyncNotice('Sync started — the database will update in the background.');
+      setTimeout(() => { refetchFeed(); setSyncNotice(null); }, 5000);
+    },
+    onError: () => setSyncNotice('Sync request failed. Check server logs.'),
+  });
+
   async function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -100,6 +128,94 @@ export default function AdminView() {
       <p className="label-text" style={{ color: 'var(--on-surface-muted)', marginBottom: '32px' }}>
         Manage users and role-based access control. System config is in <strong style={{ color: 'var(--primary)' }}>Settings</strong>.
       </p>
+
+      {/* ── Threat Intelligence ── */}
+      <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px', borderTop: '2px solid rgba(0,242,255,0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+          <div>
+            <h3 className="label-text glow-text-cyan" style={{ fontSize: '14px', margin: '0 0 4px', letterSpacing: '1px' }}>
+              THREAT INTELLIGENCE
+            </h3>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--on-surface-muted)' }}>
+              Vulnerability advisories from OSV (Open Source Vulnerabilities). Mapped to STRIDE categories and used to enrich threat analysis.
+            </p>
+          </div>
+          <button
+            onClick={() => { setSyncNotice(null); syncMutation.mutate(); }}
+            disabled={syncMutation.isPending || feedStatus?.lastRun?.status === 'running'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '9px 20px', borderRadius: '6px', cursor: 'pointer',
+              fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.5px',
+              border: '1px solid var(--primary)', fontWeight: 600, transition: 'all 0.2s',
+              background: (syncMutation.isPending || feedStatus?.lastRun?.status === 'running')
+                ? 'rgba(0,242,255,0.05)'
+                : 'rgba(0,242,255,0.12)',
+              color: (syncMutation.isPending || feedStatus?.lastRun?.status === 'running')
+                ? 'rgba(0,242,255,0.4)'
+                : 'var(--primary)',
+            }}
+          >
+            {(syncMutation.isPending || feedStatus?.lastRun?.status === 'running') ? (
+              <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>↻</span> Syncing…</>
+            ) : (
+              <> ↻ Update Threat DB</>
+            )}
+          </button>
+        </div>
+
+        {syncNotice && (
+          <div style={{ padding: '10px 14px', background: 'rgba(0,242,255,0.06)', border: '1px solid rgba(0,242,255,0.2)', borderRadius: '6px', fontSize: '12px', color: 'var(--primary)', marginBottom: '16px' }}>
+            {syncNotice}
+          </div>
+        )}
+
+        {feedLoading && <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)', margin: 0 }}>Loading status…</p>}
+
+        {feedStatus && (
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            {/* Advisory counts by severity */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
+              {(['Critical', 'High', 'Medium', 'Low'] as const).map(sev => (
+                <div key={sev} style={{ padding: '14px 18px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${SEVERITY_COLOR[sev]}22`, minWidth: '80px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 700, color: SEVERITY_COLOR[sev], fontFamily: 'var(--font-display)' }}>
+                    {feedStatus.bySeverity[sev] ?? 0}
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'var(--on-surface-muted)', marginTop: '4px', letterSpacing: '0.5px' }}>{sev}</div>
+                </div>
+              ))}
+              <div style={{ padding: '14px 18px', borderRadius: '8px', background: 'rgba(0,242,255,0.04)', border: '1px solid rgba(0,242,255,0.15)', minWidth: '80px', textAlign: 'center' }}>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>
+                  {feedStatus.totalAdvisories}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--on-surface-muted)', marginTop: '4px', letterSpacing: '0.5px' }}>Total</div>
+              </div>
+            </div>
+
+            {/* Last run info */}
+            {feedStatus.lastRun && (
+              <div style={{ fontSize: '11px', color: 'var(--on-surface-muted)', lineHeight: 1.8, minWidth: '180px' }}>
+                <div>
+                  <span style={{ color: feedStatus.lastRun.status === 'success' ? '#52c41a' : feedStatus.lastRun.status === 'error' ? 'var(--error)' : 'var(--primary)' }}>
+                    ● {feedStatus.lastRun.status.toUpperCase()}
+                  </span>
+                </div>
+                <div>Last sync: {new Date(feedStatus.lastRun.started_at).toLocaleString()}</div>
+                <div>Fetched: {feedStatus.lastRun.fetched} · New: {feedStatus.lastRun.inserted} · Updated: {feedStatus.lastRun.updated}</div>
+                {feedStatus.lastRun.error_message && (
+                  <div style={{ color: 'var(--error)', marginTop: '4px' }}>{feedStatus.lastRun.error_message}</div>
+                )}
+              </div>
+            )}
+
+            {!feedStatus.lastRun && (
+              <p style={{ fontSize: '12px', color: 'var(--on-surface-muted)', margin: 0, alignSelf: 'center' }}>
+                No sync has been run yet. Click <strong style={{ color: 'var(--primary)' }}>Update Threat DB</strong> to fetch current advisories.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
 

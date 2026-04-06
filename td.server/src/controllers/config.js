@@ -181,6 +181,10 @@ export async function config(_req, res) {
       .select('key', 'value');
 
     const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    // Only consider the system configured when auth_type has been saved by the wizard
+    if (!cfg.auth_type) {
+      return res.json({ status: 'unconfigured' });
+    }
     return res.json({ status: 'configured', ...cfg });
   } catch {
     // Table may not exist yet on fresh installs.

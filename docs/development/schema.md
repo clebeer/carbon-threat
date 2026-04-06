@@ -1,201 +1,99 @@
----
-layout: page
-title: Schema
-nav_order: 5
-path: /development/schema
-group: Development
----
+# Database Schema
 
-## Threat Model Schema
+PostgreSQL. Migrations are in `td.server/src/db/migrations/` and run automatically at startup.
 
-The [original schema][td-v1-schema] for Threat Dragon models conforms to [JSON Schema][json-schema] standard.
+## Core tables
 
-There were some changes, mainly in the diagram component properties for version 2 Threat Dragon threat models,
-and so there is a [different schema][td-v2-schema] for these threat models - also conforming to JSON Schema.
+### `users`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `email` | string UNIQUE | Lowercase |
+| `password_hash` | string | bcrypt — null for OAuth-only users |
+| `role` | string | `admin` \| `analyst` \| `viewer` |
+| `is_active` | boolean | Soft-disable without deletion |
+| `last_login_at` | timestamp | |
+| `created_at` | timestamp | |
 
-Threat Dragon will check a threat model against the schema when it is loading and warn if there is a problem,
-but it will not stop the threat model from loading.
+### `app_config`
+| Column | Type | Description |
+|---|---|---|
+| `key` | string PK | Config key (e.g. `auth_type`) |
+| `value` | text | Config value |
 
-If there is doubt about a threat model then ajv (Another JSON Validator) can be run from the
-command line to provide detail for most errors or omissions.
-Ensure you have `npm` installed first, for example `brew install npm` if you are using MacOS,
-and this will also install `npx` which is bundled with `npm`.
+Populated by the setup wizard. `auth_type` presence determines whether the wizard has been completed.
 
-Install `ajv` using `npm` and then run `ajv` for the model using `npx`:
+### `threat_models`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `title` | string | |
+| `description` | text | |
+| `owner_id` | UUID FK → users | |
+| `content` | JSONB | Diagram data (encrypted at rest) |
+| `is_archived` | boolean | Soft delete / archive |
+| `created_at` / `updated_at` | timestamp | |
 
-```sh
-sudo npm install -g ajv-cli
-# if validating a version 1.x threat model
-npx ajv validate -s ~/threat-dragon-v1.schema.json  --all-errors  --verbose \
-    -d ThreatDragonModels/demo-threat-model.json
-# or if validating a version 2.x threat model
-npx ajv validate --allow-union-types -s ~/threat-dragon-v2.schema.json  --all-errors  --verbose \
-    -d ThreatDragonModels/v2-threat-model.json
-```
+### `threats`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `threat_model_id` | UUID FK → threat_models | |
+| `title` | string | |
+| `description` | text | |
+| `stride_category` | string | Spoofing / Tampering / Repudiation / Information Disclosure / DoS / Elevation of Privilege |
+| `severity` | string | Critical / High / Medium / Low |
+| `mitigation` | text | |
+| `status` | string | `open` \| `mitigated` \| `accepted` |
+| `created_at` / `updated_at` | timestamp | |
 
-## Template Schema
+### `audit_logs`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → users | |
+| `action` | string | e.g. `MODEL_CREATE`, `USER_UPDATE` |
+| `resource` | string | Resource type |
+| `resource_id` | string | |
+| `metadata` | JSONB | Additional context |
+| `created_at` | timestamp | |
 
-Threat Dragon templates use a specific format that combines threat model content with template metadata.
-Templates consist of two parts:
+Append-only — no UPDATE/DELETE on this table.
 
-### Template Metadata
+## Vulnerability intelligence tables
 
-The template metadata contains information for browsing and managing templates:
+### `vulnerability_advisories`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `source_id` | string | e.g. `CVE-2024-12345`, `GHSA-xxxx` |
+| `source` | string | `osv` \| `nvd` \| `cisa_kev` |
+| `title` | string | |
+| `description` | text | |
+| `severity` | string | Critical / High / Medium / Low |
+| `stride_categories` | TEXT[] | STRIDE categories derived from advisory content |
+| `affected` | JSONB | Affected packages and version ranges |
+| `cvss_score` | decimal(4,1) | |
+| `references` | JSONB | Array of reference URLs |
+| `published_at` | timestamp | |
+| `synced_at` | timestamp | Last sync timestamp |
 
-```json
-{
-  "id": "uuid-v4-string",
-  "modelRef": "uuid-v4-string", 
-  "name": "Template Display Name",
-  "description": "Brief description of the template purpose",
-  "tags": ["web", "api", "microservices"]
-}
-```
+### `vuln_feed_runs`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `status` | string | `running` \| `success` \| `partial` \| `error` |
+| `fetched` | integer | Total advisories fetched from APIs |
+| `inserted` | integer | New advisories added |
+| `updated` | integer | Existing advisories updated |
+| `error_message` | text | Set on failure |
+| `started_at` | timestamp | |
+| `finished_at` | timestamp | |
 
-### Template Content
+## Other tables
 
-The template content is a complete threat model that follows the
-[Version 2.x schema]({{ '/assets/schemas/owasp.threat-dragon.schema.V2.json' | relative_url }}).
-
-### Template File Format
-
-When imported or exported locally, templates combine both parts:
-
-```json
-{
-  "templateMetadata": {
-    "id": "uuid-v4-string",
-    "modelRef": "uuid-v4-string",
-    "name": "Web Application Template",
-    "description": "Basic template for web applications",
-    "tags": ["web", "basic"]
-  },
-  "model": {
-    "summary": {
-      "title": "Template Title",
-      "owner": "Template Owner"
-    },
-    "detail": {
-      "contributors": [],
-      "diagrams": []
-    }
-  }
-}
-```
-
-### Template Storage and the ModelRef Relationship
-
-When templates are stored in the organization's template repository (configured via `GITHUB_CONTENT_REPO`),
-the metadata and content are stored separately for efficient indexing and retrieval.
-
-**Field definitions:**
-
-| Field | Purpose |
-| ----- | ------- |
-| `id` | Unique identifier for the template metadata record itself |
-| `modelRef` | Reference UUID that links the metadata to its corresponding template content file |
-
-**Repository structure:**
-
-```text
-templates/
-├── template_info.json          # Index file containing all template metadata
-├── a1b2c3d4-e5f6-7890-abcd-ef1234567890.json   # Template content file
-├── b2c3d4e5-f6a7-8901-bcde-f12345678901.json   # Another template content
-└── ...
-```
-
-**How it works:**
-
-1. `template_info.json` contains an object with a `templates` array of metadata objects
-   (id, modelRef, name, description, tags)
-2. Each metadata object's `modelRef` value corresponds to a content file named
-   `{modelRef}.json`
-3. When listing templates, only `template_info.json` is fetched (lightweight operation)
-4. When a user selects a template, the full content is fetched using the `modelRef` to
-   locate the file
-
-**Example `template_info.json`:**
-
-```json
-{
-  "templates": [
-    {
-      "id": "meta-uuid-1",
-      "modelRef": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "name": "Web Application Template",
-      "description": "Basic web app architecture",
-      "tags": ["web", "basic"]
-    },
-    {
-      "id": "meta-uuid-2",
-      "modelRef": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-      "name": "Microservices Template",
-      "description": "Distributed microservices pattern",
-      "tags": ["microservices", "api"]
-    }
-  ]
-}
-```
-
-The corresponding content file `a1b2c3d4-e5f6-7890-abcd-ef1234567890.json` contains the full threat model
-that will be used as the starting point when creating a new model from this template.
-
-### TM-BOM
-
-The schema for the Threat Modeling - Bill of Materials (TM-BOM) file format is being developed as part of the
-OWASP [Threat Model Library project][tm-library].
-The long term plan for Threat Dragon is to adopt this as the primary file format
-for both read/import and write/export of threat model files.
-
-The [TM-BOM schema][tm-library-schema] defines various object that make up a TM-BOM threat model :
-
-* A **Mitigation Plan** is created and
-  * contains an array of Controls
-  * is applied to a specific Risk
-* A **Risk** is identified and
-  * is applied to an array of Threats
-* A **Control** is identified and
-  * is applied as mitigation to an array of Threats
-  * optionally contains a Trust Boundary that it protects
-* A **Trust Boundary** is identified for Controls applied between Trust Zones and
-  * contains a first Trust Zone
-  * contains a second Trust Zone
-* A **Trust Zone** is identified from changes in trust between nodes (Components / Actors / Data Stores)
-* A **Threat** is identified and
-  * contains a specific Threat Persona
-  * is optionally applied to an array of diagram objects (Components / Actors / Data Stores / Data Flows)
-* A **Threat Persona** is identified with defining attributes
-* An **Assumption** is made and
-  * is optionally applied to an array of general schema objects
-* An **Actor** is identified that creates data in transit and
-  * (TBC) is optionally assigned to a Trust Zone
-* A **Component** (process) is identified that creates data in transit and
-  * is assigned to a Trust Zone
-  * is optionally applied to a parent Component, to allow nested components
-* A **Data Store** is identified that stores data at rest and
-  * (TBC) is assigned to a Trust Zone
-* A **Data Set** is defined and
-  * is applied to an array of Data Stores
-* A **Data Flow** is identified and
-  * is applied to a source node (Component / Actor / Data Store)
-  * is applied to a destination node (Component / Actor / Data Store)
-* A **Diagram** is created and used to illustrate the threat model
-
-### References
-
-* [Version 1 Threat Dragon][td-v1-schema] schema
-* [Version 2 Threat Dragon][td-v2-schema] schema
-* [Threat Model Bill of Materials][tm-library-schema] (TM-BOM) schema
-* [Open Threat Model][otm-schema] schema
-
-----
-
-Threat Dragon: _making threat modeling less threatening_
-
-[json-schema]: https://json-schema.org/
-[otm-schema]: https://github.com/iriusrisk/OpenThreatModel/blob/main/otm_schema.json
-[td-v1-schema]: https://github.com/OWASP/threat-dragon/tree/main/td.vue/src/assets/schema/threat-dragon-v1.schema.json
-[td-v2-schema]: https://github.com/OWASP/threat-dragon/tree/main/td.vue/src/assets/schema/threat-dragon-v2.schema.json
-[tm-library]: https://github.com/OWASP/www-project-threat-model-library
-[tm-library-schema]: https://github.com/OWASP/www-project-threat-model-library/tree/main/threat-model.schema.json
+- `templates` — threat model templates (title, content JSONB, tags)
+- `domain_packs` — domain-specific threat packs (slug, name, rules JSONB)
+- `integrations` — external platform configs (Jira, GitHub Issues, etc.)
+- `assets` — derived from threat model nodes (type, name, threat_model_id)
+- `tokens` — refresh token registry for revocation

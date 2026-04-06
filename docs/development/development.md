@@ -1,114 +1,92 @@
----
-layout: page
-title: Getting started
-nav_order: 0
-path: /development
-group: Development
----
+# Development Guide
 
-## Getting started
+## Local setup
 
-1. Clone the repository: `git clone https://github.com/OWASP/threat-dragon.git`
-2. Configure your [environment]({{ '/configure/configure.html' | relative_url }})
-3. Run `npm run dev:server`
-4. In another terminal, run `npm run dev:vue`
-5. Open [localhost:8080](http://localhost:8080/) in a browser
+### Prerequisites
 
-### Node and npm
+- Node.js 20 LTS
+- PostgreSQL 15+
+- npm 10+
 
-The project is built on Node.js (node) and uses the Node Package Manager (npm).
-The version of node is LTS 20.14.0 and the pipelines use Ubuntu Linux LTS version 24.04.
-Local development will need node installed :
+### Install dependencies
 
-Use Node Version Manager (nvm) to get to the right version for Linux:
-
-```sh
-# Download and install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-# follow the on-screen instructions, usually just restart the terminal
-# then use nvm to select the correct version of node, eg 20.14.0
-nvm install 20.14.0
-nvm use 20.14.0
-node --version
+```bash
+npm install          # root workspace dependencies
 ```
 
-Alternatively for MacOS:
+### Configure environment
 
-```sh
-brew install nvm
-nvm install 20.12.2
-nvm use 20.12.2
-node --version
+```bash
+cp .env.example .env
+# Edit .env — see docs/install/configuration.md for all variables
 ```
 
-### Coding style
+Minimum required in `.env` for local dev:
 
-The coding style is not strict, and follows generally accepted styles such as
-[Javascript Info](https://javascript.info/coding-style).
-Adopting [JavaScript Standard Style](https://github.com/standard/standard) would be too strict for this project,
-for example the dropping of 'unnecessary' semicolons is not to be adopted.
+```
+NODE_ENV=development
+PORT=3001
+DATABASE_URL=postgresql://carbonthreat:password@localhost:5432/carbonthreat
+ENCRYPTION_JWT_SIGNING_KEY=<32+ chars>
+ENCRYPTION_JWT_REFRESH_SIGNING_KEY=<32+ chars>
+ENCRYPTION_KEY=<64 hex chars>
+ENCRYPTION_KEYS=[{"isPrimary":true,"id":0,"value":"<32 chars>"}]
+DEFAULT_ADMIN_EMAIL=admin@ct.ai
+DEFAULT_ADMIN_PASSWORD=CT_Admin@2026
+```
 
-Indents are generally set to 4, but this may change and it might go to a 2 space indentation sometime in the future.
+### Run locally (with hot reload)
 
-### Running Locally
+```bash
+# Terminal 1 — backend (Babel-Node, port 3001)
+npm run dev:server
 
-The local environment is split into different parts: `td.server` and `td.vue`.
-These can run and be tested independently of one another.
-The server is configured to use port 3000 by default, and the Vue project is configured
-to proxy all requests beginning with `/api`
-to the locally running server on port 3000.  This is configured in `td.vue/vue.config.js`
+# Terminal 2 — frontend (Vite dev server, port 5173)
+npm run dev:client
+```
 
-The following run scripts have been standardized across all sub-projects.
-From the top level, each command should have a corresponding project-specific command
-in the format `<command>:<vue|server|desktop>`. As an example run from top-level:
+Open http://localhost:5173 — the Vite proxy forwards `/api/*` to port 3001.
 
-| Command | Description |
-| ------- | ----------- |
-| `npm build` | Builds the web-based project(s). |
-| `npm run dev` | Starts the development version of the project and watches for changes. _This requires using two different terminals._ Run `npm run dev:vue` and in another terminal, `npm run dev:server`. |
-| `npm start` | Starts the development version of the project(s) using [pm2](https://github.com/Unitech/pm2). _This only requires a single terminal_. |
-| `npm run start:desktop` | Starts the development desktop version. |
-| `npm run test:vue` | Runs the end-to-end tests in headless mode. |
-| `npm test` | Runs the unit tests for the project(s). |
+### Database migrations
 
-### Logs
+Migrations run automatically at startup. To run them manually:
 
-Server logs `app.log` and  `audit.log` can be accessed from directory `td.server`.
+```bash
+cd td.server && npm run migrate
+```
 
-### HTTP vs HTTPS
+To rollback the last migration:
 
-The default protocol for accessing the Threat Dragon back-end is HTTPS,
-and this is highly recommended for any production environment.
-This causes problems in local development environments,
-so the protocol may need to be set to HTTP using `SERVER_API_PROTOCOL=http` in the `.env` file
-or as a shell environment variable.
+```bash
+cd td.server && npm run migrate:rollback
+```
 
-## Docker
+## Building for production
 
-A Dockerfile is provided that can be used to create a docker image:
+```bash
+npm run build        # builds both client and server
+```
 
-* checkout the Threat Dragon source repo
-* from the root directory build the docker image using `docker build -t owasp-threat-dragon:dev .`
-* wait for the docker image to build
-* create a `.env` environment variable file using the example `example.env` as a template
-* run a docker container, mapping port 8080:
-    `docker run -it --rm -p 8080:3000 -v $(pwd)/.env:/app/.env owasp-threat-dragon:dev`
-* navigate in a browser to `http://localhost:8080/`
-* if there is an error in the browser such as 'Cannot GET /' then make sure the `.env` file is correct
+Output:
+- `dist/` — compiled frontend (served as static files by Express)
+- `td.server/dist/` — compiled backend
 
-## Desktop
+## Running tests
 
-Threat Dragon uses electron to build install images for the desktop application, supporting Linux, MacOS and Windows.
-Build these using `npm run build:desktop` from the top directory.
+```bash
+npm test                    # all tests
+npm run test:server         # backend only
+npm run test:client         # frontend only
+```
 
-During development launch the electron-based desktop application from the top directory: `npm run start:desktop`.
-This runs the desktop application in development mode that will relaunch the application as changes are made.
+## Docker (production stack)
 
-### Image signing
+See [install/quickstart.md](../install/quickstart.md).
 
-The notarization status of the MacOS `.app` file can be checked with command:
-`spctl --assess -vv --type install /Applications/Threat-Dragon-ng.app` .
+## Code conventions
 
-----
-
-Threat Dragon: _making threat modeling less threatening_
+- JavaScript (Babel) on the backend — ES modules syntax
+- TypeScript on the frontend
+- `snake_case` for database columns, `camelCase` for JS, `PascalCase` for classes
+- Controllers → Services → Repositories layering (see [architecture.md](architecture.md))
+- All mutating routes go through `auditMiddleware` — check `routes.config.js` for examples

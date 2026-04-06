@@ -1,25 +1,14 @@
-## Threat Dragon documentation
+# CarbonThreat — Documentation
 
-This docs directory provides the documentation site at `https://www.threatdragon.com/docs/`
+CarbonThreat is an enterprise threat modeling platform built on OWASP Threat Dragon.
 
-The [owasp-td-jekyll](https://github.com/lreading/owasp-td-jekyll) theme provides
-the header bar for the documentation site (such as flask, cloud etc).
+## Contents
 
-### Running Locally
-
-If you do not already have Jekyll or Ruby installed, see [Jekyll's Guide](https://jekyllrb.com/docs/installation/).
-
-MacOS users should use chruby instead of the system ruby:
-
-* From a terminal navigate to this `docs` directory
-* Install/update bundle: `npm add --location=global bundle`
-* Install jekyll, webrick etc: `bundle update`
-* Run the docs server: `bundle exec jekyll serve`
-* Navigate in a browser to server address: `http://127.0.0.1:4000/`
-
-### Check for updates
-
-It is good to note out-dated gem packages:
-
-* `bundle outdated`
-* `bundle update`
+| Document | Description |
+|---|---|
+| [install/quickstart.md](install/quickstart.md) | Run CarbonThreat locally with Docker in minutes |
+| [install/configuration.md](install/configuration.md) | Environment variables reference |
+| [install/wizard.md](install/wizard.md) | First-run setup wizard and default admin credentials |
+| [development/architecture.md](development/architecture.md) | Backend architecture, layers, and conventions |
+| [development/api.md](development/api.md) | API endpoints reference |
+| [development/database.md](development/database.md) | Database schema and migrations |
