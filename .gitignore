@@ -112,6 +112,9 @@
 !ct.client/package.json
 !ct.client/package-lock.json
 
+# Install scripts
+!scripts/*.sh
+
 # Docker orchestration
 !docker-compose.yml
 !td.server/test/
