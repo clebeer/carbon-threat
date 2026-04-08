@@ -60,7 +60,6 @@ const unauthRoutes = (router) => {
     router.get('/api/healthz', healthcheck.healthz);
     router.get('/api/config', configController.config);
     router.get('/api/config/setup-status', setupController.config);
-    router.post('/api/config/test-db', setupController.testDbConnection);
     router.post('/api/config/setup', setupController.submitEnterpriseSetup);
     router.get('/api/threatmodel/organisation', threatmodelController.organisation);
 
@@ -88,6 +87,9 @@ const unauthRoutes = (router) => {
     // Token management (needs to be unauth to allow refreshing with expired access tokens)
     router.post('/api/logout', auth.logout);
     router.post('/api/token/refresh', refreshLimiter, auth.refresh);
+
+    // SSO auth-code exchange — single-use, 60s TTL code issued by samlCallback
+    router.post('/api/auth/exchange', authLimiter, authSso.exchangeCode);
 };
 
 /**
@@ -131,6 +133,9 @@ const routes = (router) => {
     router.post('/api/users', requireRole('admin'), auditMiddleware('USER_CREATE'), usersController.createUser);
     router.put('/api/users/:id', requireRole('admin', 'analyst', 'viewer'), auditMiddleware('USER_UPDATE'), usersController.updateUser);
     router.delete('/api/users/:id', requireRole('admin'), auditMiddleware('USER_DEACTIVATE'), usersController.deleteUser);
+
+    // DB connection test (admin only — prevents unauthenticated SSRF)
+    router.post('/api/config/test-db', requireRole('admin'), setupController.testDbConnection);
 
     // SMTP configuration (admin only)
     router.get('/api/config/smtp',        requireRole('admin'), smtpController.getSmtpConfig);

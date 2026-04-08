@@ -1,7 +1,27 @@
+import crypto from 'crypto';
 import axios from 'axios';
 import db from '../db/knex.js';
 import { encryptModel, decryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
+
+// Server-side state store for OAuth CSRF protection.
+// state → { userId, provider, expiresAt }
+const pendingOAuthStates = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [s, entry] of pendingOAuthStates.entries()) {
+    if (entry.expiresAt < now) pendingOAuthStates.delete(s);
+  }
+}, 60_000);
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
 
 const logger = loggerHelper.get('controllers/cloudStorageController.js');
 
@@ -94,7 +114,8 @@ export async function getAuthUrl(req, res) {
     return res.status(500).json({ error: `${providerConfig.clientIdEnv} not configured` });
   }
 
-  const state = Buffer.from(JSON.stringify({ userId: req.user.id, provider })).toString('base64');
+  const state = crypto.randomBytes(32).toString('hex');
+  pendingOAuthStates.set(state, { userId: req.user.id, provider, expiresAt: Date.now() + 10 * 60_000 });
   const callbackUrl = getCallbackUrl();
 
   const params = new URLSearchParams({
@@ -115,19 +136,20 @@ export async function oauthCallback(req, res) {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.status(400).send(`<html><body><p>Auth error: ${error}</p></body></html>`);
+    return res.status(400).send(`<html><body><p>Auth error: ${escapeHtml(error)}</p></body></html>`);
   }
 
   if (!code || !state) {
     return res.status(400).send('<html><body><p>Missing code or state</p></body></html>');
   }
 
-  let userId, provider;
-  try {
-    ({ userId, provider } = JSON.parse(Buffer.from(state, 'base64').toString('utf8')));
-  } catch {
-    return res.status(400).send('<html><body><p>Invalid state</p></body></html>');
+  const pending = pendingOAuthStates.get(state);
+  if (!pending || Date.now() > pending.expiresAt) {
+    pendingOAuthStates.delete(state);
+    return res.status(400).send('<html><body><p>Invalid or expired state</p></body></html>');
   }
+  pendingOAuthStates.delete(state);
+  const { userId, provider } = pending;
 
   const providerConfig = PROVIDERS[provider];
   if (!providerConfig) {
@@ -167,7 +189,7 @@ export async function oauthCallback(req, res) {
     logger.info(`Cloud storage connected: user ${userId} provider ${provider}`);
 
     return res.send(
-      `<html><body><script>window.opener?.postMessage({type:'CLOUD_AUTH_SUCCESS',provider:'${provider}'},'*');window.close();</script></body></html>`
+      `<html><body><script>window.opener?.postMessage({type:'CLOUD_AUTH_SUCCESS',provider:${JSON.stringify(provider)}},'*');window.close();</script></body></html>`
     );
   } catch (err) {
     logger.error('oauthCallback failed', err);

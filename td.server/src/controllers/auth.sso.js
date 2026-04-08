@@ -10,12 +10,23 @@
  * (role defaults to 'viewer' on first login) and a JWT pair is issued,
  * compatible with the existing bearer.config.js middleware.
  */
+import crypto from 'crypto';
 import { Strategy as SamlStrategy } from 'passport-saml';
 import passport from 'passport';
 import db from '../db/knex.js';
 import jwtHelper from '../helpers/jwt.helper.js';
 import loggerHelper from '../helpers/logger.helper.js';
 import { getSamlConfig, isSamlEnabled } from '../config/saml.config.js';
+
+// Short-lived single-use codes: code → { accessToken, refreshToken, expiresAt }
+// Codes expire after 60 seconds; only one exchange is allowed per code.
+const authCodes = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [code, entry] of authCodes.entries()) {
+        if (entry.expiresAt < now) authCodes.delete(code);
+    }
+}, 30_000);
 
 const logger = loggerHelper.get('controllers/auth.sso.js');
 
@@ -125,12 +136,13 @@ export function samlCallback(req, res, next) {
 
             logger.info(`SSO login successful: ${user.email} (role=${user.role})`);
 
-            // Redirect to the SPA with tokens as query params.
-            // The frontend reads them once from the URL and stores them in memory/store,
-            // then replaces the URL with history.replaceState to remove the tokens.
+            // Issue a short-lived single-use code instead of putting tokens in the URL.
+            // The frontend exchanges the code via POST /api/auth/exchange within 60 seconds.
+            const code = crypto.randomBytes(32).toString('hex');
+            authCodes.set(code, { accessToken, refreshToken, expiresAt: Date.now() + 60_000 });
+
             const redirectUrl = new URL(process.env.SSO_REDIRECT_URL ?? '/');
-            redirectUrl.searchParams.set('accessToken', accessToken);
-            redirectUrl.searchParams.set('refreshToken', refreshToken);
+            redirectUrl.searchParams.set('code', code);
 
             return res.redirect(redirectUrl.toString());
         } catch (jwtErr) {
@@ -138,6 +150,25 @@ export function samlCallback(req, res, next) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     })(req, res, next);
+}
+
+/**
+ * POST /api/auth/exchange
+ * Exchanges a short-lived SSO auth code for an accessToken + refreshToken pair.
+ * The code is single-use and expires after 60 seconds.
+ */
+export function exchangeCode(req, res) {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'code is required' });
+
+    const entry = authCodes.get(code);
+    if (!entry || entry.expiresAt < Date.now()) {
+        authCodes.delete(code);
+        return res.status(410).json({ error: 'Invalid or expired code' });
+    }
+
+    authCodes.delete(code);
+    return res.json({ accessToken: entry.accessToken, refreshToken: entry.refreshToken });
 }
 
 /**

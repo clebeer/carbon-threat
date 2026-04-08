@@ -38,7 +38,7 @@ export async function testDbConnection(req, res) {
   } catch (err) {
     try { await client.end(); } catch { /* ignore */ }
     logger.warn(`DB test connection failed: ${err.message}`);
-    return res.status(503).json({ error: err.message || 'Connection failed' });
+    return res.status(503).json({ error: 'Database connection failed' });
   }
 }
 
@@ -61,6 +61,17 @@ export async function submitEnterpriseSetup(req, res) {
   if (!authType) {
     return res.status(400).json({ error: 'authType is required' });
   }
+
+  // Block once any users exist — prevents SSRF abuse after initial setup
+  try {
+    const hasTable = await db.schema.hasTable('users');
+    if (hasTable) {
+      const count = await db('users').count('id as n').first();
+      if (parseInt(count.n, 10) > 0) {
+        return res.status(403).json({ error: 'Setup already completed' });
+      }
+    }
+  } catch { /* users table may not exist on fresh install — allow through */ }
 
   // If using an external database, wire up a separate Knex instance so we can
   // run migrations against the target host.  The default `db` instance points at

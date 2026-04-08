@@ -1,5 +1,17 @@
 import db from '../db/knex.js';
 
+const SENSITIVE_KEYS = ['password', 'token', 'apiKey', 'api_key', 'secret', 'clientSecret',
+    'refreshToken', 'accessToken', 'smtpPassword', 'client_secret'];
+
+function redactBody(body) {
+    if (!body || typeof body !== 'object') return body;
+    const out = { ...body };
+    for (const k of SENSITIVE_KEYS) {
+        if (k in out) out[k] = '[REDACTED]';
+    }
+    return out;
+}
+
 export async function logAudit(action, userId, resourceId, details, ipAddress) {
   try {
     await db('audit_logs').insert({
@@ -23,7 +35,7 @@ export const auditMiddleware = (actionProvider) => {
     
     const originalSend = res.send;
     res.send = function (data) {
-      logAudit(action, userId, resourceId, { body: req.body, statusCode: res.statusCode }, req.ip);
+      logAudit(action, userId, resourceId, { body: redactBody(req.body), statusCode: res.statusCode }, req.ip);
       originalSend.call(this, data);
     };
     next();

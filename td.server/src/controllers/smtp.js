@@ -9,6 +9,7 @@
 
 import nodemailer from 'nodemailer';
 import db from '../db/knex.js';
+import { encryptModel, decryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/smtp.js');
@@ -17,7 +18,12 @@ const CONFIG_KEY = 'smtp_config';
 
 async function loadSmtp() {
   const row = await db('app_config').where({ key: CONFIG_KEY }).first();
-  return row ? row.value : null;
+  if (!row?.value) return null;
+  // Handle encrypted format (new) — fall back to legacy cleartext for migration
+  if (row.value?.encryptedData) {
+    return decryptModel(row.value);
+  }
+  return row.value;
 }
 
 export async function getSmtpConfig(_req, res) {
@@ -56,11 +62,11 @@ export async function saveSmtpConfig(req, res) {
   }
 
   try {
-    const jsonCfg = JSON.stringify(cfg);
+    const encrypted = JSON.stringify(encryptModel(cfg));
     await db('app_config')
-      .insert({ key: CONFIG_KEY, value: jsonCfg })
+      .insert({ key: CONFIG_KEY, value: encrypted })
       .onConflict('key')
-      .merge({ value: jsonCfg, updated_at: db.fn.now() });
+      .merge({ value: encrypted, updated_at: db.fn.now() });
     logger.info('SMTP config updated');
     return res.json({ ok: true });
   } catch (err) {

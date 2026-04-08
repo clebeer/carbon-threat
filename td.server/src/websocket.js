@@ -50,12 +50,19 @@ const WINDOW_MS             = 60_000; // 1 minute sliding window
 // Maps IP → { count: number (open connections), timestamps: number[] }
 const connState = new Map();
 
+// Only trust X-Forwarded-For from known proxy IPs.
+// Set TRUSTED_PROXY_IPS as a comma-separated list in the environment (e.g. "127.0.0.1,::1").
+const TRUSTED_PROXY_IPS = new Set(
+  (process.env.TRUSTED_PROXY_IPS || '127.0.0.1,::1').split(',').map((s) => s.trim()).filter(Boolean)
+);
+
 function getIp(req) {
-  // Respect X-Forwarded-For when behind a trusted proxy (app.set('trust proxy', true))
-  const forwarded = req.headers && req.headers['x-forwarded-for'];
-  return (forwarded ? forwarded.split(',')[0].trim() : null)
-    || req.socket?.remoteAddress
-    || 'unknown';
+  const remoteAddr = req.socket?.remoteAddress;
+  if (remoteAddr && TRUSTED_PROXY_IPS.has(remoteAddr)) {
+    const forwarded = req.headers && req.headers['x-forwarded-for'];
+    if (forwarded) return forwarded.split(',')[0].trim();
+  }
+  return remoteAddr || 'unknown';
 }
 
 function isRateLimited(ip) {

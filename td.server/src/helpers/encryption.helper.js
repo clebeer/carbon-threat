@@ -6,10 +6,9 @@ import loggerHelper from './logger.helper.js';
 
 const logger = loggerHelper.get('helpers/encryption.helper.js');
 
-const inputEncoding = 'ascii';
+const inputEncoding = 'utf8';
 const outputEncoding = 'base64';
-const keyEncoding = 'ascii';
-const algorithm = 'aes256';
+const algorithm = 'aes-256-gcm';
 
 /**
  * Gets the primary key used for encryption
@@ -27,7 +26,7 @@ const getPrimaryKey = () => {
 
     return {
         id: primaryKey.id,
-        value: Buffer.from(primaryKey.value, keyEncoding)
+        value: Buffer.from(primaryKey.value, 'ascii')
     };
 };
 
@@ -49,7 +48,7 @@ const getKeyById = (id) => {
 
     return {
         id: key.id,
-        value: Buffer.from(key.value, keyEncoding)
+        value: Buffer.from(key.value, 'ascii')
     };
 };
 
@@ -64,10 +63,12 @@ const encryptData = (plainText, key, iv) => {
     const encryptor = crypto.createCipheriv(algorithm, key.value, iv);
     let cipherText = encryptor.update(plainText, inputEncoding, outputEncoding);
     cipherText += encryptor.final(outputEncoding);
+    const authTag = encryptor.getAuthTag().toString('base64');
     return {
         keyId: key.id,
-        iv: iv.toString(keyEncoding),
-        data: cipherText
+        iv: iv.toString('hex'),
+        data: cipherText,
+        authTag
     };
 };
 
@@ -78,8 +79,9 @@ const encryptData = (plainText, key, iv) => {
  * @param {String} iv
  * @returns {String}
  */
-const decryptData = (cipherText, key, iv) => {
+const decryptData = (cipherText, key, iv, authTag) => {
     const decryptor = crypto.createDecipheriv(algorithm, key.value, iv);
+    decryptor.setAuthTag(Buffer.from(authTag, 'base64'));
     const plainText = decryptor.update(cipherText, outputEncoding, inputEncoding);
     return `${plainText}${decryptor.final(inputEncoding)}`;
 };
@@ -95,7 +97,7 @@ const encryptPromise = (plainText) => {
     const key = getPrimaryKey();
     logger.debug('Encrypting plaintext');
 
-    return cryptoPromise.randomBytes(16).
+    return cryptoPromise.randomBytes(12).
         then((iv) => encryptData(plainText, key, iv));
 };
 
@@ -106,11 +108,11 @@ const encryptPromise = (plainText) => {
  * @returns {String}
  */
 const decrypt = (encryptedData) => {
-    const iv = Buffer.from(encryptedData.iv, keyEncoding);
+    const iv = Buffer.from(encryptedData.iv, 'hex');
     const key = getKeyById(encryptedData.keyId);
     logger.debug('Decrypting ciphertext');
 
-    return decryptData(encryptedData.data, key, iv);
+    return decryptData(encryptedData.data, key, iv, encryptedData.authTag);
 };
 
 export default {
