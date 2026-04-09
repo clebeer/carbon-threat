@@ -10,6 +10,7 @@
  * (role defaults to 'viewer' on first login) and a JWT pair is issued,
  * compatible with the existing bearer.config.js middleware.
  */
+import { randomUUID } from 'crypto';
 import { Strategy as SamlStrategy } from 'passport-saml';
 import passport from 'passport';
 import db from '../db/knex.js';
@@ -18,6 +19,34 @@ import loggerHelper from '../helpers/logger.helper.js';
 import { getSamlConfig, isSamlEnabled } from '../config/saml.config.js';
 
 const logger = loggerHelper.get('controllers/auth.sso.js');
+
+// ── One-time SSO code store (F7) ───────────────────────────────────────────
+// Tokens are never placed in the redirect URL as query params.  Instead a
+// short-lived (30 s) single-use code is issued; the SPA exchanges it via
+// POST /api/auth/sso/exchange to retrieve the actual JWT pair.
+const _ssoCodeStore = new Map(); // code → { accessToken, refreshToken, expiresAt }
+
+function storeSsoCode(accessToken, refreshToken) {
+  const code = randomUUID();
+  const expiresAt = Date.now() + 30_000; // 30 seconds
+  _ssoCodeStore.set(code, { accessToken, refreshToken, expiresAt });
+  setTimeout(() => _ssoCodeStore.delete(code), 30_000);
+  return code;
+}
+
+export function exchangeSsoCode(req, res) {
+  const { code } = req.body || {};
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'code is required' });
+  }
+  const entry = _ssoCodeStore.get(code);
+  if (!entry || entry.expiresAt < Date.now()) {
+    _ssoCodeStore.delete(code);
+    return res.status(401).json({ error: 'Invalid or expired SSO code' });
+  }
+  _ssoCodeStore.delete(code); // single-use
+  return res.json({ accessToken: entry.accessToken, refreshToken: entry.refreshToken });
+}
 
 // ── Strategy initialisation (lazy — only if SAML env vars are present) ────
 
@@ -125,12 +154,12 @@ export function samlCallback(req, res, next) {
 
             logger.info(`SSO login successful: ${user.email} (role=${user.role})`);
 
-            // Redirect to the SPA with tokens as query params.
-            // The frontend reads them once from the URL and stores them in memory/store,
-            // then replaces the URL with history.replaceState to remove the tokens.
+            // F7 — issue a short-lived single-use code instead of embedding
+            // tokens directly in the redirect URL (prevents leakage via logs,
+            // Referer headers, and browser history).
+            const code = storeSsoCode(accessToken, refreshToken);
             const redirectUrl = new URL(process.env.SSO_REDIRECT_URL ?? '/');
-            redirectUrl.searchParams.set('accessToken', accessToken);
-            redirectUrl.searchParams.set('refreshToken', refreshToken);
+            redirectUrl.searchParams.set('sso_code', code);
 
             return res.redirect(redirectUrl.toString());
         } catch (jwtErr) {

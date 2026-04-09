@@ -7,7 +7,7 @@ CarbonThreat is a monorepo with two packages:
 | `td.server/` | Node.js, Express, Knex, PostgreSQL | REST API backend |
 | `ct.client/` | React, Vite, TypeScript, React Query | Single-page application |
 
-Nginx terminates TLS and reverse-proxies to the Node server in production.
+Node.js terminates TLS natively configured by environment variables.
 
 ## Backend layers
 

@@ -41,8 +41,15 @@ RUN cd td.server && npm install --omit=dev
 COPY td.server/server.js ./td.server/server.js
 COPY --from=build /app/td.server/dist ./td.server/dist
 
+# Pre-compiled rule engine (lives outside src/ — must be copied explicitly)
+COPY td.server/engine/ ./td.server/engine/
+
 # Built React SPA — served as static files from /app/dist
 COPY --from=build /app/ct.client/dist ./dist
 
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 EXPOSE 3001
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "td.server/server.js"]

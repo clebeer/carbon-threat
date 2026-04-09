@@ -18,11 +18,12 @@ Enterprise threat modeling platform — built on [OWASP Threat Dragon](https://o
 
 ```bash
 git clone <repo-url> carbon-threat && cd carbon-threat
+cp minimal.env .env                      # setup local environment
 bash scripts/gen-local-certs.sh          # generate self-signed TLS cert
-docker compose -f docker-compose.prod.yml up --build -d
+docker compose up --build -d
 ```
 
-Open **https://localhost** — the setup wizard runs on first visit.
+Open **https://localhost:3001** — the setup wizard runs on first visit.
 
 **Default admin credentials (first run only):**
 
@@ -49,10 +50,9 @@ Open **https://localhost** — the setup wizard runs on first visit.
 
 | Layer | Technology |
 |---|---|
-| Backend | Node.js 20, Express, Knex, Babel |
+| Backend | Node.js 20, Express, Native TLS, Knex, Babel |
 | Frontend | React 18, Vite, TypeScript, React Query |
 | Database | PostgreSQL 15 |
-| Proxy | Nginx (TLS termination) |
 | Auth | JWT, Passport.js, SAML |
 
 ## License

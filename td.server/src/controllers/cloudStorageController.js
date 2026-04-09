@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import db from '../db/knex.js';
 import { encryptModel, decryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
@@ -24,6 +25,49 @@ const PROVIDERS = {
 
 function getCallbackUrl() {
   return process.env.CLOUD_STORAGE_CALLBACK_URL || 'http://localhost:3000/api/cloud-storage/callback';
+}
+
+// ── OAuth state helpers (F6 — HMAC-signed state to prevent forgery) ─────────
+
+function getStateSecret() {
+  // Reuse the JWT signing key; any 32-byte secret from env is acceptable.
+  const secret = process.env.ENCRYPTION_JWT_SIGNING_KEY || process.env.ENCRYPTION_KEY;
+  if (!secret) throw new Error('No signing secret available for OAuth state');
+  return secret;
+}
+
+function buildState(userId, provider) {
+  const payload = JSON.stringify({ userId, provider, nonce: randomBytes(8).toString('hex') });
+  const sig = createHmac('sha256', getStateSecret()).update(payload).digest('hex');
+  return Buffer.from(JSON.stringify({ payload, sig })).toString('base64url');
+}
+
+function parseState(state) {
+  let parsed;
+  try {
+    parsed = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+  } catch {
+    throw new Error('Malformed state parameter');
+  }
+  const { payload, sig } = parsed;
+  if (typeof payload !== 'string' || typeof sig !== 'string') {
+    throw new Error('Malformed state parameter');
+  }
+  const expected = createHmac('sha256', getStateSecret()).update(payload).digest('hex');
+  const sigBuf = Buffer.from(sig,      'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    throw new Error('Invalid state signature');
+  }
+  return JSON.parse(payload);
+}
+
+// ── HTML escaping helper (F2) ────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  return String(str).replace(/[<>&"']/g, (c) => (
+    { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#x27;' }[c]
+  ));
 }
 
 function encryptToken(token) {
@@ -94,7 +138,7 @@ export async function getAuthUrl(req, res) {
     return res.status(500).json({ error: `${providerConfig.clientIdEnv} not configured` });
   }
 
-  const state = Buffer.from(JSON.stringify({ userId: req.user.id, provider })).toString('base64');
+  const state = buildState(req.user.id, provider);
   const callbackUrl = getCallbackUrl();
 
   const params = new URLSearchParams({
@@ -115,7 +159,8 @@ export async function oauthCallback(req, res) {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.status(400).send(`<html><body><p>Auth error: ${error}</p></body></html>`);
+    // F2 — escape the error param before embedding in HTML
+    return res.status(400).send(`<html><body><p>Auth error: ${escapeHtml(error)}</p></body></html>`);
   }
 
   if (!code || !state) {
@@ -124,7 +169,8 @@ export async function oauthCallback(req, res) {
 
   let userId, provider;
   try {
-    ({ userId, provider } = JSON.parse(Buffer.from(state, 'base64').toString('utf8')));
+    // F6 — verify HMAC signature before trusting state contents
+    ({ userId, provider } = parseState(state));
   } catch {
     return res.status(400).send('<html><body><p>Invalid state</p></body></html>');
   }
@@ -166,8 +212,10 @@ export async function oauthCallback(req, res) {
 
     logger.info(`Cloud storage connected: user ${userId} provider ${provider}`);
 
+    // F3 — use JSON.stringify to safely embed provider inside a script literal,
+    // preventing injection even if provider somehow contains quote characters.
     return res.send(
-      `<html><body><script>window.opener?.postMessage({type:'CLOUD_AUTH_SUCCESS',provider:'${provider}'},'*');window.close();</script></body></html>`
+      `<html><body><script>window.opener?.postMessage({type:'CLOUD_AUTH_SUCCESS',provider:${JSON.stringify(String(provider))}},'*');window.close();</script></body></html>`
     );
   } catch (err) {
     logger.error('oauthCallback failed', err);

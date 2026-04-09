@@ -1,22 +1,18 @@
 # =============================================================================
 # CarbonThreat — Docker Compose
 #
-# Quick start (local MVP):
-#   cp minimal.env .env        # edit DB_USER / DB_PASSWORD if desired
-#   docker compose up --build
+# Quick start (local MVP / Production):
+#   cp minimal.env .env            # edit DB_USER / DB_PASSWORD if desired
+#   ./scripts/gen-local-certs.sh   # generate self-signed certs (only needed if APP_USE_TLS=true)
+#   docker compose up --build -d
 #
-# The app will be available at http://localhost:3001 (direct)
-# or https://localhost:443 (via Nginx — profile: tls)
-#
-# TLS/HTTPS (nginx profile):
-#   ./scripts/gen-local-certs.sh   # generate self-signed certs once
-#   docker compose --profile tls up --build
-#   App → https://localhost
+# The app will be available natively at https://localhost:3001 (if APP_USE_TLS=true)
+# or http://localhost:3001 (if APP_USE_TLS=false).
 #
 # Development mode (Vite hot-reload):
 #   docker compose --profile dev up --build
 #   Frontend → http://localhost:3000  (Vite)
-#   API      → http://localhost:3001  (Express)
+#   API      → https://localhost:3001  (Express Native TLS)
 # =============================================================================
 
 services:
@@ -55,31 +51,18 @@ services:
       PORT: "3001"
     ports:
       - "3001:3001"
+    volumes:
+      - ct_secrets:/app/secrets
+      - ./certs:/etc/ssl/certs:ro
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1:3001/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  # ── Nginx reverse proxy with TLS (optional — docker compose --profile tls up) ─
-  nginx:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
-    depends_on:
-      carbonthreat:
-        condition: service_healthy
-    profiles:
-      - tls
 
   # ── Vite dev server (development only — docker compose --profile dev up) ───
   # Hot-reloads ct.client source; proxies /api/* to the Express backend.
@@ -93,7 +76,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_API_URL: http://carbonthreat:3001
+      VITE_API_URL: https://carbonthreat:3001
     depends_on:
       - carbonthreat
     profiles:
@@ -101,3 +84,4 @@ services:
 
 volumes:
   pgdata:
+  ct_secrets:

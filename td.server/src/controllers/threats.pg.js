@@ -1,6 +1,6 @@
 import db from '../db/knex.js';
 import { decryptModel } from '../security/encryption.js';
-import { generateThreats } from '../engine/rule-engine.js';
+import { generateThreats } from '../../engine/rule-engine.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/threats.pg.js');

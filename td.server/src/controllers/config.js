@@ -14,6 +14,14 @@ const logger = loggerHelper.get('controllers/config.js');
  * failure with a human-readable error message.
  */
 export async function testDbConnection(req, res) {
+  // Only available before the system is configured (setup wizard phase)
+  try {
+    const existing = await db('app_config').where({ key: 'auth_type' }).first();
+    if (existing) {
+      return res.status(403).json({ error: 'System is already configured.' });
+    }
+  } catch { /* table may not exist yet on a fresh install — that is fine */ }
+
   const { host, port, user, password, name } = req.body || {};
 
   if (!host || !user || !password || !name) {
@@ -92,7 +100,17 @@ export async function submitEnterpriseSetup(req, res) {
       )
     `);
 
-    // 2. Persist auth type and optional SAML config.
+    // 2. Guard: reject if the system has already been configured.
+    //    This prevents an unauthenticated attacker from overwriting the SAML
+    //    config after initial setup (F1 — SAML config takeover).
+    const existingAuthType = await targetDb('app_config').where({ key: 'auth_type' }).first();
+    if (existingAuthType) {
+      return res.status(403).json({
+        error: 'System is already configured. Use the admin settings panel to change configuration.',
+      });
+    }
+
+    // 3. Persist auth type and optional SAML config.
     const configs = [
       { key: 'auth_type', value: JSON.stringify(authType) },
     ];
@@ -125,7 +143,7 @@ export async function submitEnterpriseSetup(req, res) {
       );
     }
 
-    // 3. Create root admin (local auth only, and only when no users exist yet).
+    // 4. Create root admin (local auth only, and only when no users exist yet).
     if (authType === 'local' && admin && admin.email && admin.password) {
       // Ensure users table exists before querying it.
       const usersExist = await targetDb.schema.hasTable('users');

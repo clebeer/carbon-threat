@@ -9,6 +9,7 @@
 
 import nodemailer from 'nodemailer';
 import db from '../db/knex.js';
+import { encryptModel, decryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/smtp.js');
@@ -17,7 +18,18 @@ const CONFIG_KEY = 'smtp_config';
 
 async function loadSmtp() {
   const row = await db('app_config').where({ key: CONFIG_KEY }).first();
-  return row ? row.value : null;
+  if (!row) return null;
+  try {
+    // Stored as AES-256-GCM encrypted JSON (encryptModel output)
+    return decryptModel(JSON.parse(row.value));
+  } catch {
+    // Backwards-compatibility: handle plaintext JSON from before encryption was added
+    try {
+      return typeof row.value === 'object' ? row.value : JSON.parse(row.value);
+    } catch {
+      return null;
+    }
+  }
 }
 
 export async function getSmtpConfig(_req, res) {
@@ -56,11 +68,12 @@ export async function saveSmtpConfig(req, res) {
   }
 
   try {
-    const jsonCfg = JSON.stringify(cfg);
+    // Encrypt the full config (including password) before persisting — F5
+    const encrypted = JSON.stringify(encryptModel(cfg));
     await db('app_config')
-      .insert({ key: CONFIG_KEY, value: jsonCfg })
+      .insert({ key: CONFIG_KEY, value: encrypted })
       .onConflict('key')
-      .merge({ value: jsonCfg, updated_at: db.fn.now() });
+      .merge({ value: encrypted, updated_at: db.fn.now() });
     logger.info('SMTP config updated');
     return res.json({ ok: true });
   } catch (err) {

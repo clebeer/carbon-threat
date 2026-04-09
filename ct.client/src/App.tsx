@@ -69,13 +69,10 @@ export default function App() {
 
   // Setup wizard gate — check /api/config/setup-status to see if wizard has been completed
   useEffect(() => {
-    const done = localStorage.getItem('carbonthreat_setup_complete');
-    if (done) { setIsSetup(true); return; }
     fetch('/api/config/setup-status')
       .then(r => r.json())
       .then(data => {
         if (data?.status === 'configured') {
-          localStorage.setItem('carbonthreat_setup_complete', 'true');
           setIsSetup(true);
         } else {
           setIsSetup(false);

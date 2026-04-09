@@ -82,6 +82,8 @@ const unauthRoutes = (router) => {
     // SSO / SAML — redirects to IdP (no auth token required)
     router.get('/api/auth/sso/saml', authSso.samlLogin);
     router.post('/api/auth/sso/saml/callback', authSso.samlCallback);
+    // Exchange a short-lived SSO code for the actual JWT pair (F7)
+    router.post('/api/auth/sso/exchange', authSso.exchangeSsoCode);
     // Fixes 401 on favicon.ico request by browser
     router.get('/favicon.ico', (req, res) => res.sendStatus(204));
 
