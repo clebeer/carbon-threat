@@ -10,7 +10,7 @@ import { apiClient } from './client';
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 
-export type ScanType   = 'lockfile' | 'sbom' | 'manual';
+export type ScanType   = 'lockfile' | 'sbom' | 'manual' | 'git' | 'container';
 export type ScanStatus = 'pending' | 'running' | 'complete' | 'error';
 export type Severity   = 'Critical' | 'High' | 'Medium' | 'Low';
 
@@ -119,6 +119,30 @@ export async function createManualScan(
     name,
     scan_type: 'manual',
     packages,
+  });
+  return data;
+}
+
+export async function createGitScan(
+  name: string,
+  repoUrl: string
+): Promise<CreateScanResponse> {
+  const { data } = await apiClient.post<CreateScanResponse>('/scanner/scans', {
+    name,
+    scan_type: 'git',
+    repo_url:  repoUrl,
+  });
+  return data;
+}
+
+export async function createContainerScan(
+  name: string,
+  imageName: string
+): Promise<CreateScanResponse> {
+  const { data } = await apiClient.post<CreateScanResponse>('/scanner/scans', {
+    name,
+    scan_type:  'container',
+    image_name: imageName,
   });
   return data;
 }

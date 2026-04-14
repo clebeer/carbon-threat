@@ -20,7 +20,13 @@
 
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
-import { detectLockfileType, parseLockfile, runScan } from '../services/osvScanner.js';
+import {
+  detectLockfileType,
+  parseLockfile,
+  runScan,
+  runGitScan,
+  runContainerScan,
+} from '../services/osvScanner.js';
 
 const logger = loggerHelper.get('controllers/osvScannerController.js');
 
@@ -58,6 +64,10 @@ export async function createScan(req, res) {
     content,
     packages: manualPackages,
     ecosystem,
+    // git scan
+    repo_url,
+    // container scan
+    image_name,
   } = req.body;
 
   if (!name?.trim())    return res.status(400).json({ error: 'name is required' });
@@ -70,13 +80,16 @@ export async function createScan(req, res) {
 
   try {
     // Fetch policy for ignored vuln IDs
-    const policy        = await db('osv_scanner_policy').first();
+    const policy         = await db('osv_scanner_policy').first();
     const ignoredVulnIds = Array.isArray(policy?.ignored_vuln_ids)
       ? policy.ignored_vuln_ids
       : (JSON.parse(policy?.ignored_vuln_ids ?? '[]'));
 
     let parsedPackages = [];
     let lockfileType   = null;
+    // For async-only scan types (git / container), we defer package extraction
+    // to the background worker and leave parsedPackages empty.
+    let asyncScanType  = null;
 
     // ── Branch by scan type ────────────────────────────────────────────────
     if (scan_type === 'manual') {
@@ -119,32 +132,69 @@ export async function createScan(req, res) {
         });
       }
 
+    } else if (scan_type === 'git') {
+      if (!repo_url?.trim()) {
+        return res.status(400).json({ error: 'repo_url is required for git scan' });
+      }
+      try { new URL(repo_url); } catch {
+        return res.status(400).json({ error: 'repo_url must be a valid URL' });
+      }
+      asyncScanType = 'git';
+
+    } else if (scan_type === 'container') {
+      if (!image_name?.trim()) {
+        return res.status(400).json({ error: 'image_name is required for container scan' });
+      }
+      if (!/^[a-zA-Z0-9._\-/:@]+$/.test(image_name.trim())) {
+        return res.status(400).json({ error: 'image_name contains invalid characters' });
+      }
+      asyncScanType = 'container';
+
     } else {
-      return res.status(400).json({ error: "scan_type must be 'lockfile', 'sbom', or 'manual'" });
+      return res.status(400).json({
+        error: "scan_type must be 'lockfile', 'sbom', 'manual', 'git', or 'container'",
+      });
     }
 
     // ── Persist the run record ─────────────────────────────────────────────
     const [run] = await db('osv_scan_runs')
       .insert({
-        name:            name.trim(),
+        name:             name.trim(),
         scan_type,
-        status:          'pending',
-        source_filename: source_filename ?? null,
-        lockfile_type:   lockfileType,
+        status:           'pending',
+        // For git/container scans store the URL/image name in source_filename
+        source_filename:  asyncScanType === 'git'       ? repo_url.trim()
+                        : asyncScanType === 'container' ? image_name.trim()
+                        : (source_filename ?? null),
+        lockfile_type:    lockfileType,
         packages_scanned: 0,
-        vulns_found:     0,
-        created_by:      req.user?.id ?? null,
-        created_at:      db.fn.now(),
+        vulns_found:      0,
+        created_by:       req.user?.id ?? null,
+        created_at:       db.fn.now(),
       })
       .returning('*');
 
-    // Respond immediately (202 Accepted) — the actual scan is asynchronous
-    res.status(202).json({ scan: run, packagesDetected: parsedPackages.length });
+    // Respond immediately (202 Accepted) — the actual scan is asynchronous.
+    // For git/container scans packagesDetected is unknown until the async worker finishes.
+    res.status(202).json({
+      scan: run,
+      packagesDetected: asyncScanType ? null : parsedPackages.length,
+    });
 
-    // Kick off async scan — errors are caught internally and written to the DB
-    runScan(run.id, parsedPackages, ignoredVulnIds).catch(err =>
-      logger.error(`runScan unhandled error for ${run.id}: ${err.message}`)
-    );
+    // Kick off the appropriate async scan
+    if (asyncScanType === 'git') {
+      runGitScan(run.id, repo_url.trim(), ignoredVulnIds).catch(err =>
+        logger.error(`runGitScan unhandled error for ${run.id}: ${err.message}`)
+      );
+    } else if (asyncScanType === 'container') {
+      runContainerScan(run.id, image_name.trim(), ignoredVulnIds).catch(err =>
+        logger.error(`runContainerScan unhandled error for ${run.id}: ${err.message}`)
+      );
+    } else {
+      runScan(run.id, parsedPackages, ignoredVulnIds).catch(err =>
+        logger.error(`runScan unhandled error for ${run.id}: ${err.message}`)
+      );
+    }
 
   } catch (err) {
     logger.error('createScan failed', err);

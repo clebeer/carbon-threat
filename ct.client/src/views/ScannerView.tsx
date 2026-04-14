@@ -18,6 +18,8 @@ import {
   createLockfileScan,
   createSbomScan,
   createManualScan,
+  createGitScan,
+  createContainerScan,
   deleteScan,
   getScannerPolicy,
   updateScannerPolicy,
@@ -283,31 +285,54 @@ function FindingsTable({
 
 // ── New Scan tab ──────────────────────────────────────────────────────────────
 
+type ScanMode = 'file' | 'manual' | 'git' | 'container';
+
+const SCAN_MODES: { id: ScanMode; label: string }[] = [
+  { id: 'file',      label: 'Upload File'      },
+  { id: 'manual',    label: 'Manual Packages'  },
+  { id: 'git',       label: 'Git Repository'   },
+  { id: 'container', label: 'Container Image'  },
+];
+
 function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }) {
   const [scanName, setScanName]       = useState('');
-  const [mode, setMode]               = useState<'file' | 'manual'>('file');
+  const [mode, setMode]               = useState<ScanMode>('file');
   const [file, setFile]               = useState<File | null>(null);
   const [fileContent, setFileContent] = useState('');
   const [dragOver, setDragOver]       = useState(false);
   const [scanError, setScanError]     = useState<string | null>(null);
   const [manualPkgs, setManualPkgs]   = useState<ManualPackage[]>([{ name: '', version: '', ecosystem: 'npm' }]);
+  const [repoUrl, setRepoUrl]         = useState('');
+  const [imageName, setImageName]     = useState('');
   const fileInputRef                  = useRef<HTMLInputElement>(null);
 
   const qc = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const name = scanName.trim() || (file?.name ?? 'Manual Scan');
       if (mode === 'file') {
+        const name = scanName.trim() || (file?.name ?? 'Lockfile Scan');
         if (!file || !fileContent) throw new Error('Please select a lockfile or SBOM to scan.');
         const isSbom = file.name.includes('spdx') || file.name.includes('cyclonedx') || file.name === 'bom.json';
         return isSbom
           ? createSbomScan(name, file.name, fileContent)
           : createLockfileScan(name, file.name, fileContent);
-      } else {
+
+      } else if (mode === 'manual') {
+        const name = scanName.trim() || 'Manual Package Check';
         const valid = manualPkgs.filter(p => p.name.trim() && p.version.trim());
         if (valid.length === 0) throw new Error('Add at least one package with name and version.');
         return createManualScan(name, valid);
+
+      } else if (mode === 'git') {
+        const name = scanName.trim() || repoUrl.trim().split('/').pop() || 'Git Repo Scan';
+        if (!repoUrl.trim()) throw new Error('Enter a repository URL.');
+        return createGitScan(name, repoUrl.trim());
+
+      } else {
+        const name = scanName.trim() || imageName.trim() || 'Container Scan';
+        if (!imageName.trim()) throw new Error('Enter a container image name.');
+        return createContainerScan(name, imageName.trim());
       }
     },
     onSuccess: (data) => {
@@ -319,6 +344,8 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
       setFile(null);
       setFileContent('');
       setManualPkgs([{ name: '', version: '', ecosystem: 'npm' }]);
+      setRepoUrl('');
+      setImageName('');
     },
     onError: (err: { response?: { data?: { error?: string } }; message?: string }) => {
       setScanError(err?.response?.data?.error ?? err?.message ?? 'Scan failed');
@@ -326,8 +353,8 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
   });
 
   const readFile = useCallback((f: File) => {
-    if (f.size > 5 * 1024 * 1024) {
-      setScanError('File exceeds the 5 MB limit');
+    if (f.size > 50 * 1024 * 1024) {
+      setScanError('File exceeds the 50 MB limit');
       return;
     }
     const reader = new FileReader();
@@ -356,18 +383,24 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
   function addManualRow() {
     setManualPkgs(prev => [...prev, { name: '', version: '', ecosystem: 'npm' }]);
   }
-
   function removeManualRow(idx: number) {
     setManualPkgs(prev => prev.filter((_, i) => i !== idx));
   }
-
   function updateManualRow(idx: number, field: keyof ManualPackage, value: string) {
     setManualPkgs(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
   }
 
-  const canSubmit = mode === 'file'
-    ? !!fileContent
-    : manualPkgs.some(p => p.name.trim() && p.version.trim());
+  const canSubmit =
+    mode === 'file'      ? !!fileContent :
+    mode === 'manual'    ? manualPkgs.some(p => p.name.trim() && p.version.trim()) :
+    mode === 'git'       ? !!repoUrl.trim() :
+    /* container */        !!imageName.trim();
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', borderRadius: '6px',
+    border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)',
+    color: '#e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', maxWidth: '800px' }}>
@@ -381,27 +414,34 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
           type="text"
           value={scanName}
           onChange={e => setScanName(e.target.value)}
-          placeholder={mode === 'file' ? (file?.name ?? 'my-app lockfile scan') : 'Manual package check'}
-          style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+          placeholder={
+            mode === 'file'      ? (file?.name ?? 'my-app lockfile scan') :
+            mode === 'manual'    ? 'Manual package check' :
+            mode === 'git'       ? 'my-repo vulnerability scan' :
+                                   'nginx:latest scan'
+          }
+          style={inputStyle}
         />
       </div>
 
-      {/* Mode toggle */}
-      <div style={{ display: 'flex', gap: '0' }}>
-        {([['file', 'Upload File'], ['manual', 'Manual Packages']] as const).map(([m, label]) => (
+      {/* Mode toggle — 4-way segmented control */}
+      <div style={{ display: 'flex' }}>
+        {SCAN_MODES.map((m, idx) => (
           <button
-            key={m}
-            onClick={() => { setMode(m); setScanError(null); }}
+            key={m.id}
+            onClick={() => { setMode(m.id); setScanError(null); }}
             style={{
-              flex: 1, padding: '9px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-              fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.2s',
-              borderRadius: m === 'file' ? '6px 0 0 6px' : '0 6px 6px 0',
-              background: mode === m ? 'rgba(0,242,255,0.12)' : 'rgba(255,255,255,0.03)',
-              color:      mode === m ? 'var(--primary)'       : 'var(--on-surface-muted)',
-              fontWeight: mode === m ? 600                    : 400,
+              flex: 1, padding: '9px 6px', border: '1px solid rgba(255,255,255,0.1)',
+              borderLeft: idx === 0 ? '1px solid rgba(255,255,255,0.1)' : 'none',
+              cursor: 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)',
+              letterSpacing: '0.4px', transition: 'all 0.2s',
+              borderRadius: idx === 0 ? '6px 0 0 6px' : idx === SCAN_MODES.length - 1 ? '0 6px 6px 0' : '0',
+              background: mode === m.id ? 'rgba(0,242,255,0.12)' : 'rgba(255,255,255,0.03)',
+              color:      mode === m.id ? 'var(--primary)'       : 'var(--on-surface-muted)',
+              fontWeight: mode === m.id ? 600                    : 400,
             }}
           >
-            {label}
+            {m.label}
           </button>
         ))}
       </div>
@@ -416,11 +456,8 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
             onClick={() => fileInputRef.current?.click()}
             style={{
               border: `2px dashed ${dragOver ? 'var(--primary)' : 'rgba(255,255,255,0.12)'}`,
-              borderRadius: '8px',
-              padding: '36px 24px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              borderRadius: '8px', padding: '36px 24px', textAlign: 'center',
+              cursor: 'pointer', transition: 'all 0.2s',
               background: dragOver ? 'rgba(0,242,255,0.04)' : 'rgba(255,255,255,0.01)',
             }}
           >
@@ -494,6 +531,52 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
         </div>
       )}
 
+      {/* ── Git repository mode ── */}
+      {mode === 'git' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: 'var(--on-surface-muted)', marginBottom: '6px', letterSpacing: '0.3px' }}>
+              Repository URL
+            </label>
+            <input
+              type="url"
+              value={repoUrl}
+              onChange={e => setRepoUrl(e.target.value)}
+              placeholder="https://github.com/org/repo.git"
+              style={inputStyle}
+              autoComplete="off"
+            />
+          </div>
+          <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', fontSize: '11px', color: 'var(--on-surface-muted)', lineHeight: '1.6' }}>
+            The server will perform a shallow clone (<code style={{ color: 'var(--primary)', background: 'rgba(0,242,255,0.08)', padding: '1px 5px', borderRadius: '3px' }}>--depth 1</code>), detect all lockfiles in the repository, and scan them against OSV.
+            Requires <code style={{ color: 'var(--primary)', background: 'rgba(0,242,255,0.08)', padding: '1px 5px', borderRadius: '3px' }}>git</code> on the server. Public repositories only (no credentials sent).
+          </div>
+        </div>
+      )}
+
+      {/* ── Container image mode ── */}
+      {mode === 'container' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: 'var(--on-surface-muted)', marginBottom: '6px', letterSpacing: '0.3px' }}>
+              Image Name
+            </label>
+            <input
+              type="text"
+              value={imageName}
+              onChange={e => setImageName(e.target.value)}
+              placeholder="nginx:latest  or  python:3.12-slim  or  gcr.io/org/app:v1.2.3"
+              style={inputStyle}
+              autoComplete="off"
+            />
+          </div>
+          <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', fontSize: '11px', color: 'var(--on-surface-muted)', lineHeight: '1.6' }}>
+            The server will run <code style={{ color: 'var(--primary)', background: 'rgba(0,242,255,0.08)', padding: '1px 5px', borderRadius: '3px' }}>docker pull</code>, export the container filesystem, locate all lockfiles inside it, and scan against OSV.
+            Requires <code style={{ color: 'var(--primary)', background: 'rgba(0,242,255,0.08)', padding: '1px 5px', borderRadius: '3px' }}>docker</code> on the server. Large images may take several minutes.
+          </div>
+        </div>
+      )}
+
       {/* Error */}
       {scanError && (
         <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', fontSize: '12px', color: 'var(--error)' }}>
@@ -506,11 +589,12 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
         onClick={() => { setScanError(null); createMutation.mutate(); }}
         disabled={!canSubmit || createMutation.isPending}
         style={{
-          padding: '12px', borderRadius: '6px', border: 'none', cursor: canSubmit && !createMutation.isPending ? 'pointer' : 'not-allowed',
+          padding: '12px', borderRadius: '6px', border: 'none',
+          cursor: canSubmit && !createMutation.isPending ? 'pointer' : 'not-allowed',
           background: canSubmit && !createMutation.isPending ? 'var(--primary)' : 'rgba(0,242,255,0.15)',
           color:      canSubmit && !createMutation.isPending ? '#000'          : 'rgba(255,255,255,0.2)',
-          fontWeight: 700, fontSize: '13px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.2s',
-          maxWidth: '200px',
+          fontWeight: 700, fontSize: '13px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px',
+          transition: 'all 0.2s', maxWidth: '200px',
         }}
       >
         {createMutation.isPending ? 'Starting…' : '▶ Run Scan'}
@@ -568,11 +652,16 @@ function HistoryPanel({
             >
               <td style={{ padding: '10px 10px', color: '#e2e8f0', fontWeight: 500 }}>
                 {scan.name}
-                {scan.error_message && <div style={{ fontSize: '10px', color: 'var(--error)', marginTop: '2px' }}>{scan.error_message.slice(0, 60)}</div>}
+                {scan.error_message && <div style={{ fontSize: '10px', color: 'var(--error)', marginTop: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{scan.error_message}</div>}
               </td>
               <td style={{ padding: '10px 10px', color: 'var(--on-surface-muted)', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.3px' }}>{scan.scan_type}</td>
-              <td style={{ padding: '10px 10px', color: 'var(--on-surface-muted)', fontSize: '11px' }}>
-                {scan.lockfile_type ? (LOCKFILE_TYPES[scan.lockfile_type] ?? scan.lockfile_type) : '–'}
+              <td style={{ padding: '10px 10px', color: 'var(--on-surface-muted)', fontSize: '11px', maxWidth: '200px' }}>
+                {scan.lockfile_type
+                  ? (LOCKFILE_TYPES[scan.lockfile_type] ?? scan.lockfile_type)
+                  : (scan.source_filename
+                      ? <span title={scan.source_filename} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scan.source_filename}</span>
+                      : '–')
+                }
               </td>
               <td style={{ padding: '10px 10px' }}><StatusBadge status={scan.status} /></td>
               <td style={{ padding: '10px 10px', color: 'var(--primary)', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{scan.packages_scanned}</td>
@@ -823,7 +912,7 @@ export default function ScannerView() {
         Vulnerability Scanner
       </h1>
       <p className="label-text" style={{ color: 'var(--on-surface-muted)', marginBottom: '28px' }}>
-        Scan lockfiles, SBOMs, and packages against the{' '}
+        Scan lockfiles, SBOMs, git repositories, container images, and individual packages against the{' '}
         <a href="https://osv.dev" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>
           OSV (Open Source Vulnerabilities)
         </a>{' '}
@@ -896,6 +985,11 @@ export default function ScannerView() {
                         <span>Type: <strong style={{ color: '#e2e8f0' }}>{findingsData.scan.scan_type}</strong></span>
                         {findingsData.scan.lockfile_type && (
                           <span>Format: <strong style={{ color: '#e2e8f0' }}>{LOCKFILE_TYPES[findingsData.scan.lockfile_type] ?? findingsData.scan.lockfile_type}</strong></span>
+                        )}
+                        {!findingsData.scan.lockfile_type && findingsData.scan.source_filename && (
+                          <span title={findingsData.scan.source_filename} style={{ maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Source: <strong style={{ color: '#e2e8f0' }}>{findingsData.scan.source_filename}</strong>
+                          </span>
                         )}
                         <span>Packages: <strong style={{ color: 'var(--primary)' }}>{findingsData.scan.packages_scanned}</strong></span>
                         <StatusBadge status={findingsData.scan.status} />

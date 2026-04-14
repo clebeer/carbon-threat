@@ -49,11 +49,15 @@ services:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME:-carbonthreat}
       NODE_ENV: ${NODE_ENV:-production}
       PORT: "3001"
+      # Mount app TLS certs to a dedicated path so /etc/ssl/certs (system CA bundle)
+      # is never overwritten — required for git/curl HTTPS access.
+      APP_TLS_CERT_PATH: /app/certs/fullchain.pem
+      APP_TLS_KEY_PATH:  /app/certs/privkey.pem
     ports:
       - "3001:3001"
     volumes:
       - ct_secrets:/app/secrets
-      - ./certs:/etc/ssl/certs:ro
+      - ./certs:/app/certs:ro
     depends_on:
       db:
         condition: service_healthy
