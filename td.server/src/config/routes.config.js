@@ -23,6 +23,7 @@ import * as threatsController from '../controllers/threats.pg.js';
 import * as domainPacksController from '../controllers/domainPacksController.js';
 import * as cloudStorageController from '../controllers/cloudStorageController.js';
 import * as vulnSyncController from '../controllers/vulnSync.js';
+import * as osvScannerController from '../controllers/osvScannerController.js';
 import { requireRole } from '../auth/rbac.js';
 import { auditMiddleware } from '../security/audit.js';
 
@@ -182,6 +183,16 @@ const routes = (router) => {
 
     // AI Threat Bot — analyst+ required to prevent abuse
     router.post('/api/ai/suggest', requireRole('admin', 'analyst'), auditMiddleware('AI_SUGGEST'), aiController.suggest);
+
+    // ── OSV Vulnerability Scanner ─────────────────────────────────────────
+    router.get('/api/scanner/scans',                requireRole('admin', 'analyst', 'viewer'), osvScannerController.listScans);
+    router.post('/api/scanner/scans',               requireRole('admin', 'analyst'), auditMiddleware('SCAN_CREATE'), osvScannerController.createScan);
+    router.get('/api/scanner/scans/:id',            requireRole('admin', 'analyst', 'viewer'), osvScannerController.getScan);
+    router.get('/api/scanner/scans/:id/findings',   requireRole('admin', 'analyst', 'viewer'), osvScannerController.getScanFindings);
+    router.delete('/api/scanner/scans/:id',         requireRole('admin', 'analyst'), auditMiddleware('SCAN_DELETE'), osvScannerController.deleteScan);
+    router.get('/api/scanner/scans/:id/export',     requireRole('admin', 'analyst', 'viewer'), osvScannerController.exportScan);
+    router.get('/api/scanner/policy',               requireRole('admin', 'analyst', 'viewer'), osvScannerController.getPolicy);
+    router.put('/api/scanner/policy',               requireRole('admin'), auditMiddleware('SCANNER_POLICY_UPDATE'), osvScannerController.updatePolicy);
 
     // Integration configs — admin manages credentials; analyst/viewer can list/export
     router.get('/api/integrations', requireRole('admin', 'analyst', 'viewer'), integrationsController.listConfigs);
