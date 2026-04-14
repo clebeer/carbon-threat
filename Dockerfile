@@ -15,9 +15,9 @@ COPY td.server/package.json td.server/package-lock.json* ./td.server/
 COPY ct.client/package.json ct.client/package-lock.json* ./ct.client/
 
 # Install all dependencies
-RUN npm install --ignore-scripts
-RUN cd td.server && npm install
-RUN cd ct.client && npm install
+RUN npm install --ignore-scripts --legacy-peer-deps
+RUN cd td.server && npm install --legacy-peer-deps
+RUN cd ct.client && npm install --legacy-peer-deps
 
 # Copy source trees
 COPY td.server/ ./td.server/

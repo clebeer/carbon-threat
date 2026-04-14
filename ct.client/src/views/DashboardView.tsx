@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import { apiClient } from '../api/client';
 import { listThreatModels, type ThreatModelSummary } from '../api/threatmodels';
 import { listThreats, type Threat } from '../api/threats';
+import { listScans, type ScanRun } from '../api/scanner';
 import { useAuthStore } from '../store/authStore';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -128,6 +129,12 @@ export default function DashboardView() {
     enabled: models.length > 0,
   });
 
+  const { data: scansData } = useQuery<{ scans: ScanRun[] }>({
+    queryKey: ['scanner-recent-scans'],
+    queryFn: listScans,
+  });
+  const allScans = scansData?.scans ?? [];
+
   const { data: auditData } = useQuery<{ logs: AuditRow[] }>({
     queryKey: ['audit-recent'],
     queryFn: async () => { const { data } = await apiClient.get('/audit?limit=8'); return data; },
@@ -144,6 +151,12 @@ export default function DashboardView() {
   const critical      = allThreats.filter(t => t.severity === 'Critical').length;
   const owaspRefCount = allThreats.reduce((n, t) => n + (t.owasp_refs?.length ?? 0), 0);
   const mitigationPct = totalThreats > 0 ? Math.round((mitigated / totalThreats) * 100) : 0;
+
+  // Scanner Computed
+  const totalScans = allScans.length;
+  const totalVulnsFound = allScans.reduce((acc, scan) => acc + (scan.vulns_found || 0), 0);
+  const totalPackagesScanned = allScans.reduce((acc, scan) => acc + (scan.packages_scanned || 0), 0);
+  const recentScans = [...allScans].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
 
   // STRIDE pie data
   const strideData = STRIDE_CATEGORIES
@@ -235,6 +248,9 @@ export default function DashboardView() {
       ['Total Threats',       String(totalThreats)],
       ['Open / Unresolved',   String(openThreats)],
       ['Mitigated',           `${mitigated} (${mitigationPct}%)`],
+      ['Total Scans',         String(totalScans)],
+      ['Vulns Found',         String(totalVulnsFound)],
+      ['Packages Scanned',    String(totalPackagesScanned)],
       ['Critical Severity',   String(critical)],
       ['OWASP References',    String(owaspRefCount)],
     ];
@@ -393,12 +409,16 @@ export default function DashboardView() {
       </div>
 
       {/* ── Row 1: Stats ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
         <StatCard label="Total Threats"  value={totalThreats} color="var(--primary)"   sub={`across ${activeModels} active model${activeModels !== 1 ? 's' : ''}`} />
-        <StatCard label="Open"           value={openThreats}  color="#ef4444"          sub="require attention" />
-        <StatCard label="Mitigated"      value={mitigated}    color="#22c55e"           sub={`${mitigationPct}% mitigation rate`} />
-        <StatCard label="Critical"       value={critical}     color="#ec4899"           sub="highest severity" />
-        <StatCard label="OWASP Refs"     value={owaspRefCount} color="#f59e0b"          sub="standards mapped" />
+        <StatCard label="Open Threats"   value={openThreats}  color="#ef4444"          sub="require attention" />
+        <StatCard label="Mitigated"      value={mitigated}    color="#22c55e"          sub={`${mitigationPct}% mitigation rate`} />
+        <StatCard label="Critical Risk"  value={critical}     color="#ec4899"          sub="highest severity" />
+        
+        <StatCard label="Total Scans"    value={totalScans}   color="#a855f7"          sub="OSV vulnerability scans" />
+        <StatCard label="Total Vulns"    value={totalVulnsFound} color="#f97316"       sub="vulnerabilities found" />
+        <StatCard label="Scanned Pkgs"   value={totalPackagesScanned} color="#06b6d4"  sub="dependencies checked" />
+        <StatCard label="OWASP Refs"     value={owaspRefCount} color="#f59e0b"         sub="standards mapped" />
       </div>
 
       {/* ── Row 2: STRIDE + Severity charts ── */}
@@ -598,6 +618,38 @@ export default function DashboardView() {
           </div>
         </div>
       </div>
+
+      {/* ── Row 5: Recent Scans ── */}
+      <div className="glass-panel" style={{ padding: '20px', marginBottom: '24px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
+          RECENT VULNERABILITY SCANS
+        </div>
+        {recentScans.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--on-surface-muted)', fontSize: '13px' }}>
+            No vulnerability scans found. Run a scan in the Scanner module to view activity.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {recentScans.map(scan => {
+               const statusColor = scan.status === 'error' ? '#ef4444' : scan.status === 'complete' ? '#22c55e' : '#f59e0b';
+               return (
+                <div key={scan.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${statusColor}` }}>
+                  <span style={{ fontSize: '12px', color: '#e2e8f0', flex: 1, fontWeight: 600 }}>{scan.name}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)', width: '90px' }}>{scan.scan_type.toUpperCase()}</span>
+                  <span style={{ fontSize: '11px', color: '#06b6d4', width: '120px' }}>{scan.packages_scanned} packages</span>
+                  <span style={{ fontSize: '11px', color: scan.vulns_found > 0 ? '#ef4444' : '#22c55e', width: '100px', fontWeight: scan.vulns_found > 0 ? 700 : 400 }}>
+                    {scan.vulns_found} vulns
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--on-surface-muted)', flexShrink: 0 }}>
+                    {new Date(scan.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+               );
+            })}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

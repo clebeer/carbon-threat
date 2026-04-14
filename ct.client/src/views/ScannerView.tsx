@@ -221,7 +221,7 @@ function FindingsTable({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Package', 'Version', 'Ecosystem', 'Vuln ID', 'Title', 'Sev.', 'CVSS', 'Fixed In'].map(h => (
+                {['Package', 'Version', 'Ecosystem', 'Vuln ID', 'Summary', 'Sev.', 'CVSS', 'Fixed In'].map(h => (
                   <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--on-surface-muted)', fontWeight: 500, letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -251,8 +251,9 @@ function FindingsTable({
                       {f.vuln_id}
                     </a>
                   </td>
-                  <td style={{ padding: '8px 10px', color: '#e2e8f0', maxWidth: '260px' }}>
-                    <span title={f.description ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '8px 10px', color: '#e2e8f0', maxWidth: '300px' }}>
+                    {/* title in DB == OSV summary field; show full text on hover */}
+                    <span title={f.title ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {f.title ?? '–'}
                     </span>
                   </td>
