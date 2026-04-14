@@ -58,6 +58,10 @@ services:
     volumes:
       - ct_secrets:/app/secrets
       - ./certs:/app/certs:ro
+      # Docker-out-of-Docker: expõe o daemon do host ao container image scanner.
+      # O processo Node.js roda como root (padrão do node:20-alpine), logo tem
+      # acesso direto ao socket sem necessidade de group_add.
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy

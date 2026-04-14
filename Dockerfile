@@ -33,9 +33,10 @@ RUN cd td.server && npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# git + ca-certificates are required by the OSV Scanner's Git Repository scan feature.
-# ca-certificates provides the root CA bundle that git/curl needs for HTTPS clones.
-RUN apk add --no-cache git ca-certificates && update-ca-certificates
+# git        — required by the OSV Scanner Git Repository scan feature
+# docker-cli — required by the OSV Scanner Container Image scan feature (DooD)
+# ca-certificates — root CA bundle needed by git/curl for HTTPS clones
+RUN apk add --no-cache git docker-cli ca-certificates && update-ca-certificates
 
 # Production-only server deps
 COPY td.server/package.json td.server/package-lock.json* ./td.server/

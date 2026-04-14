@@ -11,7 +11,7 @@
  * compatible with the existing bearer.config.js middleware.
  */
 import { randomUUID } from 'crypto';
-import { Strategy as SamlStrategy } from 'passport-saml';
+import { Strategy as SamlStrategy } from '@node-saml/passport-saml';
 import passport from 'passport';
 import db from '../db/knex.js';
 import jwtHelper from '../helpers/jwt.helper.js';
