@@ -23,9 +23,9 @@ import loggerHelper from '../helpers/logger.helper.js';
 import {
   detectLockfileType,
   parseLockfile,
-  runScan,
-  runGitScan,
   runContainerScan,
+  runGitScan,
+  runScan,
 } from '../services/osvScanner.js';
 
 const logger = loggerHelper.get('controllers/osvScannerController.js');
@@ -37,15 +37,15 @@ const MAX_CONTENT_LENGTH = 50 * 1024 * 1024;
 
 export async function listScans(req, res) {
   try {
-    const scans = await db('osv_scan_runs')
-      .leftJoin('users', 'osv_scan_runs.created_by', 'users.id')
-      .select(
+    const scans = await db('osv_scan_runs').
+      leftJoin('users', 'osv_scan_runs.created_by', 'users.id').
+      select(
         'osv_scan_runs.*',
         'users.email        as created_by_email',
         'users.display_name as created_by_name'
-      )
-      .orderBy('osv_scan_runs.created_at', 'desc')
-      .limit(100);
+      ).
+      orderBy('osv_scan_runs.created_at', 'desc').
+      limit(100);
 
     return res.json({ scans });
   } catch (err) {
@@ -70,8 +70,8 @@ export async function createScan(req, res) {
     image_name,
   } = req.body;
 
-  if (!name?.trim())    return res.status(400).json({ error: 'name is required' });
-  if (!scan_type)       return res.status(400).json({ error: 'scan_type is required' });
+  if (!name?.trim()) {return res.status(400).json({ error: 'name is required' });}
+  if (!scan_type) {return res.status(400).json({ error: 'scan_type is required' });}
 
   // Guard oversized uploads early
   if (content && content.length > MAX_CONTENT_LENGTH) {
@@ -80,36 +80,36 @@ export async function createScan(req, res) {
 
   try {
     // Fetch policy for ignored vuln IDs
-    const policy         = await db('osv_scanner_policy').first();
+    const policy = await db('osv_scanner_policy').first();
     const ignoredVulnIds = Array.isArray(policy?.ignored_vuln_ids)
       ? policy.ignored_vuln_ids
       : (JSON.parse(policy?.ignored_vuln_ids ?? '[]'));
 
     let parsedPackages = [];
-    let lockfileType   = null;
+    let lockfileType = null;
     // For async-only scan types (git / container), we defer package extraction
     // to the background worker and leave parsedPackages empty.
-    let asyncScanType  = null;
+    let asyncScanType = null;
 
     // ── Branch by scan type ────────────────────────────────────────────────
     if (scan_type === 'manual') {
       if (!Array.isArray(manualPackages) || manualPackages.length === 0) {
         return res.status(400).json({ error: 'packages array is required for manual scan' });
       }
-      parsedPackages = manualPackages
-        .map(p => ({
-          name:      (p.name      ?? '').trim(),
-          version:   (p.version   ?? '').trim(),
+      parsedPackages = manualPackages.
+        map((p) => ({
+          name:      (p.name ?? '').trim(),
+          version:   (p.version ?? '').trim(),
           ecosystem: (p.ecosystem ?? ecosystem ?? 'npm').trim(),
-        }))
-        .filter(p => p.name && p.version);
+        })).
+        filter((p) => p.name && p.version);
 
       if (parsedPackages.length === 0) {
         return res.status(400).json({ error: 'No valid packages provided (name and version are required)' });
       }
 
     } else if (scan_type === 'lockfile' || scan_type === 'sbom') {
-      if (!content) return res.status(400).json({ error: 'content is required for lockfile / sbom scan' });
+      if (!content) {return res.status(400).json({ error: 'content is required for lockfile / sbom scan' });}
 
       lockfileType = detectLockfileType(source_filename ?? '', content);
       if (!lockfileType) {
@@ -117,7 +117,7 @@ export async function createScan(req, res) {
           error:    'Unrecognised lockfile format',
           supported: [
             'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-            'requirements.txt',  'Pipfile.lock',
+            'requirements.txt', 'Pipfile.lock',
             'go.sum', 'Cargo.lock', 'Gemfile.lock',
             'packages.lock.json', 'composer.lock',
             '*.spdx.json', 'cyclonedx*.json',
@@ -145,7 +145,7 @@ export async function createScan(req, res) {
       if (!image_name?.trim()) {
         return res.status(400).json({ error: 'image_name is required for container scan' });
       }
-      if (!/^[a-zA-Z0-9._\-/:@]+$/.test(image_name.trim())) {
+      if (!(/^[a-zA-Z0-9._\-/:@]+$/).test(image_name.trim())) {
         return res.status(400).json({ error: 'image_name contains invalid characters' });
       }
       asyncScanType = 'container';
@@ -157,13 +157,13 @@ export async function createScan(req, res) {
     }
 
     // ── Persist the run record ─────────────────────────────────────────────
-    const [run] = await db('osv_scan_runs')
-      .insert({
+    const [run] = await db('osv_scan_runs').
+      insert({
         name:             name.trim(),
         scan_type,
         status:           'pending',
         // For git/container scans store the URL/image name in source_filename
-        source_filename:  asyncScanType === 'git'       ? repo_url.trim()
+        source_filename:  asyncScanType === 'git' ? repo_url.trim()
                         : asyncScanType === 'container' ? image_name.trim()
                         : (source_filename ?? null),
         lockfile_type:    lockfileType,
@@ -171,8 +171,8 @@ export async function createScan(req, res) {
         vulns_found:      0,
         created_by:       req.user?.id ?? null,
         created_at:       db.fn.now(),
-      })
-      .returning('*');
+      }).
+      returning('*');
 
     // Respond immediately (202 Accepted) — the actual scan is asynchronous.
     // For git/container scans packagesDetected is unknown until the async worker finishes.
@@ -183,16 +183,13 @@ export async function createScan(req, res) {
 
     // Kick off the appropriate async scan
     if (asyncScanType === 'git') {
-      runGitScan(run.id, repo_url.trim(), ignoredVulnIds).catch(err =>
-        logger.error(`runGitScan unhandled error for ${run.id}: ${err.message}`)
+      runGitScan(run.id, repo_url.trim(), ignoredVulnIds).catch((err) => logger.error(`runGitScan unhandled error for ${run.id}: ${err.message}`)
       );
     } else if (asyncScanType === 'container') {
-      runContainerScan(run.id, image_name.trim(), ignoredVulnIds).catch(err =>
-        logger.error(`runContainerScan unhandled error for ${run.id}: ${err.message}`)
+      runContainerScan(run.id, image_name.trim(), ignoredVulnIds).catch((err) => logger.error(`runContainerScan unhandled error for ${run.id}: ${err.message}`)
       );
     } else {
-      runScan(run.id, parsedPackages, ignoredVulnIds).catch(err =>
-        logger.error(`runScan unhandled error for ${run.id}: ${err.message}`)
+      runScan(run.id, parsedPackages, ignoredVulnIds).catch((err) => logger.error(`runScan unhandled error for ${run.id}: ${err.message}`)
       );
     }
 
@@ -206,8 +203,9 @@ export async function createScan(req, res) {
 
 export async function getScan(req, res) {
   try {
-    const scan = await db('osv_scan_runs').where({ id: req.params.id }).first();
-    if (!scan) return res.status(404).json({ error: 'Scan not found' });
+    const scan = await db('osv_scan_runs').where({ id: req.params.id }).
+first();
+    if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
     return res.json({ scan });
   } catch (err) {
     logger.error('getScan failed', err);
@@ -219,12 +217,13 @@ export async function getScan(req, res) {
 
 export async function getScanFindings(req, res) {
   try {
-    const scan = await db('osv_scan_runs').where({ id: req.params.id }).first();
-    if (!scan) return res.status(404).json({ error: 'Scan not found' });
+    const scan = await db('osv_scan_runs').where({ id: req.params.id }).
+first();
+    if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
 
-    const findings = await db('osv_scan_findings')
-      .where({ scan_id: req.params.id })
-      .orderByRaw(`
+    const findings = await db('osv_scan_findings').
+      where({ scan_id: req.params.id }).
+      orderByRaw(`
         CASE severity
           WHEN 'Critical' THEN 1
           WHEN 'High'     THEN 2
@@ -232,8 +231,8 @@ export async function getScanFindings(req, res) {
           WHEN 'Low'      THEN 4
           ELSE 5
         END
-      `)
-      .orderBy('package_name');
+      `).
+      orderBy('package_name');
 
     const bySeverity = findings.reduce((acc, f) => {
       acc[f.severity] = (acc[f.severity] ?? 0) + 1;
@@ -251,8 +250,9 @@ export async function getScanFindings(req, res) {
 
 export async function deleteScan(req, res) {
   try {
-    const deleted = await db('osv_scan_runs').where({ id: req.params.id }).delete();
-    if (!deleted) return res.status(404).json({ error: 'Scan not found' });
+    const deleted = await db('osv_scan_runs').where({ id: req.params.id }).
+delete();
+    if (!deleted) {return res.status(404).json({ error: 'Scan not found' });}
     return res.json({ message: 'Scan deleted' });
   } catch (err) {
     logger.error('deleteScan failed', err);
@@ -269,18 +269,19 @@ export async function exportScan(req, res) {
   }
 
   try {
-    const scan = await db('osv_scan_runs').where({ id: req.params.id }).first();
-    if (!scan) return res.status(404).json({ error: 'Scan not found' });
+    const scan = await db('osv_scan_runs').where({ id: req.params.id }).
+first();
+    if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
 
-    const findings = await db('osv_scan_findings')
-      .where({ scan_id: req.params.id })
-      .orderByRaw(`
+    const findings = await db('osv_scan_findings').
+      where({ scan_id: req.params.id }).
+      orderByRaw(`
         CASE severity
           WHEN 'Critical' THEN 1 WHEN 'High' THEN 2
           WHEN 'Medium'   THEN 3 WHEN 'Low'  THEN 4 ELSE 5
         END
-      `)
-      .orderBy('package_name');
+      `).
+      orderBy('package_name');
 
     const safeName = (scan.name ?? scan.id).replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
 
@@ -296,7 +297,7 @@ export async function exportScan(req, res) {
       res.setHeader('Content-Disposition', `attachment; filename="scan-${safeName}.csv"`);
       const csvEscape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const header = 'Package,Version,Ecosystem,Vuln ID,Title,Severity,CVSS,Fixed Version,Ignored';
-      const rows   = findings.map(f => [
+      const rows = findings.map((f) => [
         csvEscape(f.package_name),
         csvEscape(f.package_version ?? ''),
         csvEscape(f.ecosystem ?? ''),
@@ -337,16 +338,15 @@ export async function exportScan(req, res) {
         ``,
         `| Severity | Count |`,
         `|----------|-------|`,
-        ...['Critical', 'High', 'Medium', 'Low']
-          .filter(s => (bySeverity[s] ?? 0) > 0)
-          .map(s => `| ${s} | ${bySeverity[s]} |`),
+        ...['Critical', 'High', 'Medium', 'Low'].
+          filter((s) => (bySeverity[s] ?? 0) > 0).
+          map((s) => `| ${s} | ${bySeverity[s]} |`),
         ``,
         `## Findings`,
         ``,
         `| Package | Version | Ecosystem | Vuln ID | Title | Severity | CVSS | Fixed In |`,
         `|---------|---------|-----------|---------|-------|----------|------|----------|`,
-        ...findings.map(f =>
-          `| \`${f.package_name}\` | ${f.package_version ?? ''} | ${f.ecosystem ?? ''} | [${f.vuln_id}](https://osv.dev/vulnerability/${f.vuln_id}) | ${(f.title ?? '').replace(/\|/g, '\\|')} | **${f.severity ?? ''}** | ${f.cvss_score ?? ''} | ${f.fixed_version ?? 'n/a'} |`
+        ...findings.map((f) => `| \`${f.package_name}\` | ${f.package_version ?? ''} | ${f.ecosystem ?? ''} | [${f.vuln_id}](https://osv.dev/vulnerability/${f.vuln_id}) | ${(f.title ?? '').replace(/\\/gu, '\\\\').replace(/\|/gu, '\\|')} | **${f.severity ?? ''}** | ${f.cvss_score ?? ''} | ${f.fixed_version ?? 'n/a'} |`
         ),
       ];
       return res.send(lines.join('\n'));
@@ -392,13 +392,14 @@ export async function updatePolicy(req, res) {
     const existing = await db('osv_scanner_policy').first();
     const patch = {
       updated_at: db.fn.now(),
-      ...(ignored_vuln_ids    !== undefined && { ignored_vuln_ids:    JSON.stringify(ignored_vuln_ids) }),
-      ...(severity_threshold  !== undefined && { severity_threshold }),
+      ...(ignored_vuln_ids !== undefined && { ignored_vuln_ids:    JSON.stringify(ignored_vuln_ids) }),
+      ...(severity_threshold !== undefined && { severity_threshold }),
       ...(auto_enrich_threats !== undefined && { auto_enrich_threats }),
     };
 
     if (existing) {
-      await db('osv_scanner_policy').where({ id: existing.id }).update(patch);
+      await db('osv_scanner_policy').where({ id: existing.id }).
+update(patch);
     } else {
       await db('osv_scanner_policy').insert(patch);
     }

@@ -14,7 +14,7 @@
  */
 
 import db from '../db/knex.js';
-import { encryptModel, decryptModel } from '../security/encryption.js';
+import { decryptModel, encryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/threatmodels.pg.js');
@@ -31,7 +31,7 @@ function notFound(res) {
  */
 function scopedQuery(req) {
   const userId = req.user?.id;
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   const q = db('threat_models').where({ is_archived: false });
 
@@ -47,7 +47,7 @@ export async function listThreatModels(req, res) {
   try {
     const showArchived = req.query.archived === 'true';
     const userId = req.user?.id;
-    const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+    const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
     let q = db('threat_models').where({ is_archived: showArchived });
     if (orgId) {
@@ -56,9 +56,9 @@ export async function listThreatModels(req, res) {
       q = q.where({ owner_id: userId });
     }
 
-    const models = await q
-      .select('id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id')
-      .orderBy('updated_at', 'desc');
+    const models = await q.
+      select('id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id').
+      orderBy('updated_at', 'desc');
 
     return res.json({ models });
   } catch (err) {
@@ -71,8 +71,9 @@ export async function listThreatModels(req, res) {
 
 export async function getThreatModel(req, res) {
   try {
-    const row = await scopedQuery(req).where({ id: req.params.id }).first();
-    if (!row) return notFound(res);
+    const row = await scopedQuery(req).where({ id: req.params.id }).
+first();
+    if (!row) {return notFound(res);}
 
     let content = {};
     if (row.content_encrypted) {
@@ -115,21 +116,21 @@ export async function createThreatModel(req, res) {
 
   const userId = req.user?.id;
   // orgId may live in req.provider (set by bearer.config) or req.user — default to null
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   try {
     const encrypted = encryptModel(content);
 
-    const [model] = await db('threat_models')
-      .insert({
+    const [model] = await db('threat_models').
+      insert({
         title:             title.trim(),
         description:       description || null,
         content_encrypted: JSON.stringify(encrypted),
         owner_id:          userId,
         org_id:            orgId !== undefined ? orgId : null,
         version:           1,
-      })
-      .returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
+      }).
+      returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
 
     logger.info(`Threat model created: ${model.id} by user ${userId}`);
     return res.status(201).json({ model });
@@ -145,21 +146,22 @@ export async function updateThreatModel(req, res) {
   const { title, description, content } = req.body || {};
 
   try {
-    const existing = await scopedQuery(req).where({ id: req.params.id }).first();
-    if (!existing) return notFound(res);
+    const existing = await scopedQuery(req).where({ id: req.params.id }).
+first();
+    if (!existing) {return notFound(res);}
 
     const patch = { updated_at: db.fn.now() };
-    if (title !== undefined)       patch.title       = title.trim();
-    if (description !== undefined) patch.description = description;
+    if (title !== undefined) {patch.title = title.trim();}
+    if (description !== undefined) {patch.description = description;}
     if (content !== undefined) {
       patch.content_encrypted = JSON.stringify(encryptModel(content));
-      patch.version           = existing.version + 1;
+      patch.version = existing.version + 1;
     }
 
-    const [model] = await db('threat_models')
-      .where({ id: req.params.id })
-      .update(patch)
-      .returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
+    const [model] = await db('threat_models').
+      where({ id: req.params.id }).
+      update(patch).
+      returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
 
     return res.json({ model });
   } catch (err) {
@@ -174,11 +176,11 @@ export async function updateThreatModel(req, res) {
  * Maps a Threat Dragon mxGraph cell shape string to a CarbonThreat node type.
  */
 function tdShapeToNodeType(shape) {
-  if (!shape) return 'process';
+  if (!shape) {return 'process';}
   const s = shape.toLowerCase();
-  if (s.includes('actor') || s.includes('person')) return 'actor';
-  if (s.includes('store') || s.includes('database')) return 'datastore';
-  if (s.includes('boundary')) return 'boundary';
+  if (s.includes('actor') || s.includes('person')) {return 'actor';}
+  if (s.includes('store') || s.includes('database')) {return 'datastore';}
+  if (s.includes('boundary')) {return 'boundary';}
   return 'process';
 }
 
@@ -197,7 +199,8 @@ function convertTdJson(json) {
       // Edges have source + target
       if (cell.source && cell.target) {
         edges.push({
-          id:     cell.id ?? `e-${Math.random().toString(36).slice(2)}`,
+          id:     cell.id ?? `e-${Math.random().toString(36).
+slice(2)}`,
           source: cell.source,
           target: cell.target,
           data:   { label: cell.attrs?.text?.value ?? cell.value ?? '' },
@@ -231,22 +234,22 @@ export async function importThreatModel(req, res) {
   }
 
   const userId = req.user?.id;
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   try {
-    const content   = convertTdJson(json);
+    const content = convertTdJson(json);
     const encrypted = encryptModel(content);
 
-    const [model] = await db('threat_models')
-      .insert({
+    const [model] = await db('threat_models').
+      insert({
         title:             String(title).trim(),
         description:       json.summary?.description || null,
         content_encrypted: JSON.stringify(encrypted),
         owner_id:          userId,
         org_id:            orgId !== undefined ? orgId : null,
         version:           1,
-      })
-      .returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
+      }).
+      returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
 
     logger.info(`Threat model imported (TD JSON): ${model.id} by user ${userId} — ${content.nodes.length} nodes, ${content.edges.length} edges`);
     return res.status(201).json({
@@ -263,12 +266,13 @@ export async function importThreatModel(req, res) {
 
 export async function archiveThreatModel(req, res) {
   try {
-    const existing = await scopedQuery(req).where({ id: req.params.id }).first();
-    if (!existing) return notFound(res);
+    const existing = await scopedQuery(req).where({ id: req.params.id }).
+first();
+    if (!existing) {return notFound(res);}
 
-    await db('threat_models')
-      .where({ id: req.params.id })
-      .update({ is_archived: true, updated_at: db.fn.now() });
+    await db('threat_models').
+      where({ id: req.params.id }).
+      update({ is_archived: true, updated_at: db.fn.now() });
 
     logger.info(`Threat model archived: ${req.params.id}`);
     return res.json({ message: 'Threat model archived' });
@@ -283,7 +287,7 @@ export async function archiveThreatModel(req, res) {
 export async function restoreThreatModel(req, res) {
   try {
     const userId = req.user?.id;
-    const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+    const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
     let q = db('threat_models').where({ id: req.params.id, is_archived: true });
     if (orgId) {
@@ -293,11 +297,11 @@ export async function restoreThreatModel(req, res) {
     }
 
     const existing = await q.first();
-    if (!existing) return notFound(res);
+    if (!existing) {return notFound(res);}
 
-    await db('threat_models')
-      .where({ id: req.params.id })
-      .update({ is_archived: false, updated_at: db.fn.now() });
+    await db('threat_models').
+      where({ id: req.params.id }).
+      update({ is_archived: false, updated_at: db.fn.now() });
 
     logger.info(`Threat model restored: ${req.params.id}`);
     return res.json({ message: 'Threat model restored' });

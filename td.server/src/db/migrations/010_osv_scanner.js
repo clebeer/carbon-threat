@@ -11,13 +11,15 @@
 export async function up(knex) {
   // ── Scan runs ─────────────────────────────────────────────────────────────
   await knex.schema.createTable('osv_scan_runs', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
 
     t.string('name').notNullable();
     // 'lockfile' | 'sbom' | 'manual'
     t.string('scan_type').notNullable();
     // 'pending' | 'running' | 'complete' | 'error'
-    t.string('status').notNullable().defaultTo('pending');
+    t.string('status').notNullable().
+defaultTo('pending');
 
     // Original filename provided by the client (used for display + format detection)
     t.string('source_filename');
@@ -28,26 +30,30 @@ export async function up(knex) {
     t.integer('vulns_found').defaultTo(0);
     t.text('error_message');
 
-    t.uuid('created_by').references('id').inTable('users').onDelete('SET NULL');
+    t.uuid('created_by').references('id').
+inTable('users').
+onDelete('SET NULL');
 
     t.timestamp('started_at');
     t.timestamp('finished_at');
-    t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+    t.timestamp('created_at').notNullable().
+defaultTo(knex.fn.now());
 
-    t.index('status',     'idx_scan_runs_status');
+    t.index('status', 'idx_scan_runs_status');
     t.index('created_at', 'idx_scan_runs_created_at');
     t.index('created_by', 'idx_scan_runs_created_by');
   });
 
   // ── Scan findings ─────────────────────────────────────────────────────────
   await knex.schema.createTable('osv_scan_findings', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
 
-    t.uuid('scan_id')
-      .notNullable()
-      .references('id')
-      .inTable('osv_scan_runs')
-      .onDelete('CASCADE');
+    t.uuid('scan_id').
+      notNullable().
+      references('id').
+      inTable('osv_scan_runs').
+      onDelete('CASCADE');
 
     t.string('package_name').notNullable();
     t.string('package_version');
@@ -74,30 +80,37 @@ export async function up(knex) {
     t.jsonb('references').defaultTo('[]');
 
     // Set to true when the vuln ID appears in osv_scanner_policy.ignored_vuln_ids
-    t.boolean('is_ignored').notNullable().defaultTo(false);
+    t.boolean('is_ignored').notNullable().
+defaultTo(false);
 
-    t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+    t.timestamp('created_at').notNullable().
+defaultTo(knex.fn.now());
 
-    t.index('scan_id',  'idx_findings_scan_id');
+    t.index('scan_id', 'idx_findings_scan_id');
     t.index('severity', 'idx_findings_severity');
-    t.index('vuln_id',  'idx_findings_vuln_id');
+    t.index('vuln_id', 'idx_findings_vuln_id');
   });
 
   // ── Scanner policy (single-row) ───────────────────────────────────────────
   await knex.schema.createTable('osv_scanner_policy', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
 
     // Array of OSV / CVE IDs that should be marked as ignored in scan results
-    t.jsonb('ignored_vuln_ids').notNullable().defaultTo('[]');
+    t.jsonb('ignored_vuln_ids').notNullable().
+defaultTo('[]');
 
     // Minimum severity level to store findings for
     // Critical | High | Medium | Low  (default: Low = store everything)
-    t.string('severity_threshold').notNullable().defaultTo('Low');
+    t.string('severity_threshold').notNullable().
+defaultTo('Low');
 
     // Automatically link scan findings back to STRIDE threat records
-    t.boolean('auto_enrich_threats').notNullable().defaultTo(false);
+    t.boolean('auto_enrich_threats').notNullable().
+defaultTo(false);
 
-    t.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
+    t.timestamp('updated_at').notNullable().
+defaultTo(knex.fn.now());
   });
 
   // Seed the default policy row so the GET endpoint always returns a value

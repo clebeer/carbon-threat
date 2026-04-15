@@ -9,15 +9,24 @@
 
 export const up = async (knex) => {
   await knex.schema.createTable('threat_models', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('org_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
-    t.uuid('owner_id').notNullable().references('id').inTable('users').onDelete('RESTRICT');
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('org_id').notNullable().
+references('id').
+inTable('organizations').
+onDelete('CASCADE');
+    t.uuid('owner_id').notNullable().
+references('id').
+inTable('users').
+onDelete('RESTRICT');
     t.string('title', 255).notNullable();
     t.text('description');
     // Encrypted payload: { iv, encryptedData, authTag } serialised as JSON text
     t.text('content_encrypted').notNullable();
-    t.integer('version').notNullable().defaultTo(1);
-    t.boolean('is_archived').notNullable().defaultTo(false);
+    t.integer('version').notNullable().
+defaultTo(1);
+    t.boolean('is_archived').notNullable().
+defaultTo(false);
     t.timestamps(true, true);
   });
 

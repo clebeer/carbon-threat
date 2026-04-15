@@ -24,7 +24,7 @@
 
 const required = (key) => {
     const val = process.env[key];
-    if (!val) throw new Error(`Required env var for SAML is not set: ${key}`);
+    if (!val) {throw new Error(`Required env var for SAML is not set: ${key}`);}
     return val;
 };
 

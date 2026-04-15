@@ -16,7 +16,8 @@ const logger = loggerHelper.get('controllers/config.js');
 export async function testDbConnection(req, res) {
   // Only available before the system is configured (setup wizard phase)
   try {
-    const existing = await db('app_config').where({ key: 'auth_type' }).first();
+    const existing = await db('app_config').where({ key: 'auth_type' }).
+first();
     if (existing) {
       return res.status(403).json({ error: 'System is already configured.' });
     }
@@ -103,7 +104,8 @@ export async function submitEnterpriseSetup(req, res) {
     // 2. Guard: reject if the system has already been configured.
     //    This prevents an unauthenticated attacker from overwriting the SAML
     //    config after initial setup (F1 — SAML config takeover).
-    const existingAuthType = await targetDb('app_config').where({ key: 'auth_type' }).first();
+    const existingAuthType = await targetDb('app_config').where({ key: 'auth_type' }).
+first();
     if (existingAuthType) {
       return res.status(403).json({
         error: 'System is already configured. Use the admin settings panel to change configuration.',
@@ -111,9 +113,7 @@ export async function submitEnterpriseSetup(req, res) {
     }
 
     // 3. Persist auth type and optional SAML config.
-    const configs = [
-      { key: 'auth_type', value: JSON.stringify(authType) },
-    ];
+    const configs = [{ key: 'auth_type', value: JSON.stringify(authType) },];
 
     if (authType === 'saml' && saml) {
       configs.push({ key: 'saml_config', value: JSON.stringify({
@@ -153,7 +153,8 @@ export async function submitEnterpriseSetup(req, res) {
         });
       }
 
-      const count = await targetDb('users').count('id as n').first();
+      const count = await targetDb('users').count('id as n').
+first();
       if (parseInt(count.n, 10) === 0) {
         if (admin.password.length < 12) {
           return res.status(400).json({ error: 'Admin password must be at least 12 characters' });
@@ -194,11 +195,11 @@ export async function submitEnterpriseSetup(req, res) {
  */
 export async function config(_req, res) {
   try {
-    const rows = await db('app_config')
-      .whereIn('key', ['auth_type', 'db_config'])
-      .select('key', 'value');
+    const rows = await db('app_config').
+      whereIn('key', ['auth_type', 'db_config']).
+      select('key', 'value');
 
-    const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value]));
     // Only consider the system configured when auth_type has been saved by the wizard
     if (!cfg.auth_type) {
       return res.json({ status: 'unconfigured' });

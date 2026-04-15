@@ -1,5 +1,5 @@
 import db from '../db/knex.js';
-import { encryptModel, decryptModel } from '../security/encryption.js';
+import { decryptModel, encryptModel } from '../security/encryption.js';
 import { createThirdPartyIssue } from '../integrations/third-party.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
@@ -29,7 +29,7 @@ function redactSecrets(configObj) {
   const SECRET_KEYS = ['token', 'password', 'apiKey', 'api_key', 'clientSecret', 'client_secret'];
   const out = { ...configObj };
   for (const key of SECRET_KEYS) {
-    if (out[key]) out[key] = '***';
+    if (out[key]) {out[key] = '***';}
   }
   return out;
 }
@@ -42,9 +42,9 @@ function redactSecrets(configObj) {
  */
 export async function listConfigs(req, res) {
   try {
-    const rows = await db('integration_configs')
-      .where({ org_id: req.user.org_id ?? null })
-      .select('id', 'platform', 'is_enabled', 'updated_at');
+    const rows = await db('integration_configs').
+      where({ org_id: req.user.org_id ?? null }).
+      select('id', 'platform', 'is_enabled', 'updated_at');
 
     // Decrypt each row so the frontend knows which fields are set
     const configs = rows.map((row) => {
@@ -75,11 +75,11 @@ export async function getConfig(req, res) {
   }
 
   try {
-    const row = await db('integration_configs')
-      .where({ platform, org_id: req.user.org_id ?? null })
-      .first();
+    const row = await db('integration_configs').
+      where({ platform, org_id: req.user.org_id ?? null }).
+      first();
 
-    if (!row) return res.status(404).json({ error: 'Integration not configured' });
+    if (!row) {return res.status(404).json({ error: 'Integration not configured' });}
 
     const plain = decryptConfig(row.config_encrypted);
     return res.json({ platform, is_enabled: row.is_enabled, config: redactSecrets(plain) });
@@ -110,14 +110,14 @@ export async function upsertConfig(req, res) {
     const config_encrypted = encryptConfig(configFields);
     const now = db.fn.now();
 
-    const existing = await db('integration_configs')
-      .where({ platform, org_id: req.user.org_id ?? null })
-      .first();
+    const existing = await db('integration_configs').
+      where({ platform, org_id: req.user.org_id ?? null }).
+      first();
 
     if (existing) {
-      await db('integration_configs')
-        .where({ id: existing.id })
-        .update({ config_encrypted, is_enabled, updated_at: now });
+      await db('integration_configs').
+        where({ id: existing.id }).
+        update({ config_encrypted, is_enabled, updated_at: now });
     } else {
       await db('integration_configs').insert({
         platform,
@@ -143,11 +143,11 @@ export async function deleteConfig(req, res) {
   const { platform } = req.params;
 
   try {
-    const deleted = await db('integration_configs')
-      .where({ platform, org_id: req.user.org_id ?? null })
-      .delete();
+    const deleted = await db('integration_configs').
+      where({ platform, org_id: req.user.org_id ?? null }).
+      delete();
 
-    if (!deleted) return res.status(404).json({ error: 'Integration not found' });
+    if (!deleted) {return res.status(404).json({ error: 'Integration not found' });}
 
     logger.info(`Integration config deleted: platform=${platform} by user=${req.user.id}`);
     return res.json({ message: `Integration "${platform}" removed` });
@@ -170,13 +170,13 @@ export async function exportIssue(req, res) {
   if (!VALID_PLATFORMS.includes(platform)) {
     return res.status(400).json({ error: `Unknown platform: ${platform}` });
   }
-  if (!title) return res.status(400).json({ error: 'title is required' });
-  if (!description) return res.status(400).json({ error: 'description is required' });
+  if (!title) {return res.status(400).json({ error: 'title is required' });}
+  if (!description) {return res.status(400).json({ error: 'description is required' });}
 
   try {
-    const row = await db('integration_configs')
-      .where({ platform, org_id: req.user.org_id ?? null, is_enabled: true })
-      .first();
+    const row = await db('integration_configs').
+      where({ platform, org_id: req.user.org_id ?? null, is_enabled: true }).
+      first();
 
     if (!row) {
       return res.status(409).json({ error: `Integration "${platform}" is not enabled or configured` });

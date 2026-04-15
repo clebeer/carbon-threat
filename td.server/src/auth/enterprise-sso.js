@@ -11,9 +11,9 @@ export function setupAuth(app) {
     { usernameField: 'email', passwordField: 'password' },
     async (email, password, done) => {
       try {
-        const user = await db('users')
-          .where({ email: email.toLowerCase().trim(), is_active: true })
-          .first();
+        const user = await db('users').
+          where({ email: email.toLowerCase().trim(), is_active: true }).
+          first();
 
         if (!user) {
           logger.warn(`Login attempt for unknown email: ${email}`);
@@ -39,7 +39,8 @@ export function setupAuth(app) {
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id, done) => {
     try {
-      const user = await db('users').where({ id, is_active: true }).first();
+      const user = await db('users').where({ id, is_active: true }).
+first();
       done(null, user ? { id: user.id, email: user.email, role: user.role } : false);
     } catch (err) {
       done(err);

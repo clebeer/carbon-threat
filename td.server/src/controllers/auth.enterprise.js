@@ -20,9 +20,9 @@ export async function localLogin(req, res) {
   }
 
   try {
-    const user = await db('users')
-      .where({ email: email.toLowerCase().trim(), is_active: true })
-      .first();
+    const user = await db('users').
+      where({ email: email.toLowerCase().trim(), is_active: true }).
+      first();
 
     // Constant-time-ish: always run bcrypt even when no user found to prevent timing attacks
     const dummyHash = '$2b$12$invalidhashplaceholderXXXXXXXXXXXXXXXXXXXXXXXX';
@@ -42,7 +42,9 @@ export async function localLogin(req, res) {
     );
 
     // Update last_login_at without blocking the response
-    db('users').where({ id: user.id }).update({ last_login_at: db.fn.now() }).catch(
+    db('users').where({ id: user.id }).
+update({ last_login_at: db.fn.now() }).
+catch(
       (err) => logger.error('Failed to update last_login_at', err)
     );
 
@@ -68,7 +70,8 @@ export async function localLogin(req, res) {
  */
 export async function bootstrapAdmin(req, res) {
   try {
-    const count = await db('users').count('id as n').first();
+    const count = await db('users').count('id as n').
+first();
     if (parseInt(count.n, 10) > 0) {
       return res.status(403).json({ error: 'Bootstrap is only allowed when no users exist' });
     }
@@ -83,9 +86,9 @@ export async function bootstrapAdmin(req, res) {
     }
 
     const password_hash = await bcrypt.hash(password, 12);
-    const [user] = await db('users')
-      .insert({ email: email.toLowerCase().trim(), password_hash, role: 'admin' })
-      .returning(['id', 'email', 'role']);
+    const [user] = await db('users').
+      insert({ email: email.toLowerCase().trim(), password_hash, role: 'admin' }).
+      returning(['id', 'email', 'role']);
 
     logger.info(`Bootstrap admin created: ${user.email}`);
     return res.status(201).json({ message: 'Admin account created', user });

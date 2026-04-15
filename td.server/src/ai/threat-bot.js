@@ -3,10 +3,10 @@ import { query } from '../config/pg.config.js';
 
 // F8 — allowlist of hostnames permitted for local LLM endpoints.
 // Override with LLM_ALLOWED_HOSTS=host1,host2 in the environment.
-const LLM_ALLOWED_HOSTS = (process.env.LLM_ALLOWED_HOSTS || 'localhost,127.0.0.1,::1')
-  .split(',')
-  .map((h) => h.trim().toLowerCase())
-  .filter(Boolean);
+const LLM_ALLOWED_HOSTS = (process.env.LLM_ALLOWED_HOSTS || 'localhost,127.0.0.1,::1').
+  split(',').
+  map((h) => h.trim().toLowerCase()).
+  filter(Boolean);
 
 function validateLlmUrl(rawUrl) {
   let parsed;
@@ -42,7 +42,7 @@ export async function suggestThreats(nodeData) {
 
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user',   content: userContent },
+      { role: 'user', content: userContent },
     ];
 
     if (providerConfig.provider === 'local') {
@@ -59,7 +59,7 @@ export async function suggestThreats(nodeData) {
       const jsonStr = rawContent.replace(/```json|```/g, '').trim();
       return JSON.parse(jsonStr);
 
-    } else {
+    }
       // OpenAI
       const response = await axios.post('https://api.openai.com/v1/chat/completions', {
         model:           'gpt-4-turbo-preview',
@@ -69,7 +69,7 @@ export async function suggestThreats(nodeData) {
         headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
       });
       return JSON.parse(response.data.choices[0].message.content);
-    }
+
   } catch (error) {
     console.error('Threat Bot AI Failed:', error);
     return [];

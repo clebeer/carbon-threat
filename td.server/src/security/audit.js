@@ -14,8 +14,7 @@ export async function logAudit(action, userId, resourceId, details, ipAddress) {
   }
 }
 
-export const auditMiddleware = (actionProvider) => {
-  return async (req, res, next) => {
+export const auditMiddleware = (actionProvider) => async (req, res, next) => {
     // Fire and forget logging
     const action = typeof actionProvider === 'function' ? actionProvider(req) : actionProvider;
     const userId = req.user ? req.user.id : 'anonymous';
@@ -28,4 +27,3 @@ export const auditMiddleware = (actionProvider) => {
     };
     next();
   };
-};
