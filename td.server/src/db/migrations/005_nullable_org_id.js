@@ -9,8 +9,11 @@
 
 export const up = async (knex) => {
   await knex.schema.alterTable('threat_models', (t) => {
-    t.uuid('org_id').nullable().alter();
-    t.text('content_encrypted').nullable().defaultTo('').alter();
+    t.uuid('org_id').nullable().
+alter();
+    t.text('content_encrypted').nullable().
+defaultTo('').
+alter();
   });
 };
 
@@ -18,6 +21,7 @@ export const down = async (knex) => {
   // Reversing: set org_id back to NOT NULL requires all rows to have a value
   // This migration is intentionally irreversible in practice — only reverse on a clean DB
   await knex.schema.alterTable('threat_models', (t) => {
-    t.uuid('org_id').notNullable().alter();
+    t.uuid('org_id').notNullable().
+alter();
   });
 };

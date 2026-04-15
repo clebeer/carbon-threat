@@ -53,7 +53,7 @@ export function exchangeSsoCode(req, res) {
 let _strategy = null;
 
 function getStrategy() {
-    if (_strategy) return _strategy;
+    if (_strategy) {return _strategy;}
 
     if (!isSamlEnabled()) {
         throw new Error('SAML is not configured. Set SAML_ENTRY_POINT, SAML_ISSUER, SAML_CERT and SAML_CALLBACK_URL.');
@@ -69,7 +69,7 @@ function getStrategy() {
                     profile.nameID
                 )?.toLowerCase().trim();
 
-                if (!email) return done(new Error('SAML assertion did not include an email claim'));
+                if (!email) {return done(new Error('SAML assertion did not include an email claim'));}
 
                 const displayName =
                     profile.displayName ||
@@ -77,25 +77,29 @@ function getStrategy() {
                     null;
 
                 // Upsert: create on first login, update display_name thereafter
-                let user = await db('users').where({ email, is_active: true }).first();
+                let user = await db('users').where({ email, is_active: true }).
+first();
 
                 if (!user) {
-                    [user] = await db('users')
-                        .insert({
+                    [user] = await db('users').
+                        insert({
                             email,
                             display_name: displayName,
                             // SSO users have no password_hash — they authenticate via IdP
                             password_hash: null,
                             role: 'viewer',
-                        })
-                        .returning(['id', 'email', 'role', 'org_id']);
+                        }).
+                        returning(['id', 'email', 'role', 'org_id']);
 
                     logger.info(`SSO: new user provisioned: ${email}`);
                 } else if (displayName && user.display_name !== displayName) {
-                    await db('users').where({ id: user.id }).update({ display_name: displayName, updated_at: db.fn.now() });
+                    await db('users').where({ id: user.id }).
+update({ display_name: displayName, updated_at: db.fn.now() });
                 }
 
-                db('users').where({ id: user.id }).update({ last_login_at: db.fn.now() }).catch(
+                db('users').where({ id: user.id }).
+update({ last_login_at: db.fn.now() }).
+catch(
                     (err) => logger.error('Failed to update last_login_at', err)
                 );
 

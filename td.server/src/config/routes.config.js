@@ -36,7 +36,7 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders:  false,
     message:        { error: 'Too many login attempts. Try again in 15 minutes.' },
-    skipSuccessfulRequests: true,  // only count failures
+    skipSuccessfulRequests: true, // only count failures
 });
 
 // Token refresh: 60 per 15 min per IP
@@ -136,16 +136,16 @@ const routes = (router) => {
     router.delete('/api/users/:id', requireRole('admin'), auditMiddleware('USER_DEACTIVATE'), usersController.deleteUser);
 
     // SMTP configuration (admin only)
-    router.get('/api/config/smtp',        requireRole('admin'), smtpController.getSmtpConfig);
-    router.put('/api/config/smtp',        requireRole('admin'), auditMiddleware('SMTP_CONFIG_UPDATE'), smtpController.saveSmtpConfig);
-    router.post('/api/config/smtp/test',  requireRole('admin'), smtpController.testSmtpConfig);
+    router.get('/api/config/smtp', requireRole('admin'), smtpController.getSmtpConfig);
+    router.put('/api/config/smtp', requireRole('admin'), auditMiddleware('SMTP_CONFIG_UPDATE'), smtpController.saveSmtpConfig);
+    router.post('/api/config/smtp/test', requireRole('admin'), smtpController.testSmtpConfig);
 
     // Audit log (admin only)
     router.get('/api/audit', requireRole('admin'), auditController.listAuditLogs);
 
     // Vulnerability feed sync (admin only)
     router.get('/api/admin/vuln-feeds/status', requireRole('admin'), vulnSyncController.getVulnFeedStatus);
-    router.post('/api/admin/vuln-feeds/sync',  requireRole('admin'), auditMiddleware('VULN_FEED_SYNC'), vulnSyncController.syncVulnFeeds);
+    router.post('/api/admin/vuln-feeds/sync', requireRole('admin'), auditMiddleware('VULN_FEED_SYNC'), vulnSyncController.syncVulnFeeds);
 
     // PostgreSQL-backed threat models (enterprise storage)
     router.get('/api/threatmodels', threatmodelsPg.listThreatModels);
@@ -160,39 +160,39 @@ const routes = (router) => {
     router.get('/api/assets', assetsController.listAssets);
 
     // ── F1: Threats (rule-based STRIDE engine) ────────────────────────────────
-    router.get('/api/threats',       threatsController.listThreats);
-    router.post('/api/threats',      requireRole('admin', 'analyst'), auditMiddleware('THREAT_CREATE'), threatsController.createThreat);
-    router.put('/api/threats/:id',   requireRole('admin', 'analyst'), threatsController.updateThreat);
-    router.delete('/api/threats/:id',requireRole('admin', 'analyst'), auditMiddleware('THREAT_DELETE'), threatsController.deleteThreat);
+    router.get('/api/threats', threatsController.listThreats);
+    router.post('/api/threats', requireRole('admin', 'analyst'), auditMiddleware('THREAT_CREATE'), threatsController.createThreat);
+    router.put('/api/threats/:id', requireRole('admin', 'analyst'), threatsController.updateThreat);
+    router.delete('/api/threats/:id', requireRole('admin', 'analyst'), auditMiddleware('THREAT_DELETE'), threatsController.deleteThreat);
     router.post('/api/threatmodels/:id/analyze', requireRole('admin', 'analyst'), auditMiddleware('MODEL_ANALYZE'), threatsController.analyzeModel);
-    router.get('/api/threatmodels/:id/sarif',   threatsController.exportSarif);
+    router.get('/api/threatmodels/:id/sarif', threatsController.exportSarif);
 
     // ── F3: Domain packs & templates ──────────────────────────────────────────
-    router.get('/api/domain-packs',                                         domainPacksController.listPacks);
-    router.get('/api/domain-packs/:slug',                                   domainPacksController.getPack);
-    router.get('/api/domain-packs/:slug/templates',                         domainPacksController.listTemplates);
-    router.post('/api/domain-packs/:slug/templates/:templateId/apply',      requireRole('admin', 'analyst'), auditMiddleware('TEMPLATE_APPLY'), domainPacksController.applyTemplate);
+    router.get('/api/domain-packs', domainPacksController.listPacks);
+    router.get('/api/domain-packs/:slug', domainPacksController.getPack);
+    router.get('/api/domain-packs/:slug/templates', domainPacksController.listTemplates);
+    router.post('/api/domain-packs/:slug/templates/:templateId/apply', requireRole('admin', 'analyst'), auditMiddleware('TEMPLATE_APPLY'), domainPacksController.applyTemplate);
 
     // ── F4: Cloud storage (Google Drive / OneDrive) ───────────────────────────
-    router.get('/api/cloud-storage/:provider/status',     cloudStorageController.getStatus);
-    router.get('/api/cloud-storage/:provider/auth',       cloudStorageController.getAuthUrl);
-    router.get('/api/cloud-storage/:provider/files',      cloudStorageController.listFiles);
-    router.post('/api/cloud-storage/:provider/import',    requireRole('admin', 'analyst'), auditMiddleware('CLOUD_IMPORT'), cloudStorageController.importFile);
-    router.post('/api/cloud-storage/:provider/export',    requireRole('admin', 'analyst'), auditMiddleware('CLOUD_EXPORT'), cloudStorageController.exportModel);
+    router.get('/api/cloud-storage/:provider/status', cloudStorageController.getStatus);
+    router.get('/api/cloud-storage/:provider/auth', cloudStorageController.getAuthUrl);
+    router.get('/api/cloud-storage/:provider/files', cloudStorageController.listFiles);
+    router.post('/api/cloud-storage/:provider/import', requireRole('admin', 'analyst'), auditMiddleware('CLOUD_IMPORT'), cloudStorageController.importFile);
+    router.post('/api/cloud-storage/:provider/export', requireRole('admin', 'analyst'), auditMiddleware('CLOUD_EXPORT'), cloudStorageController.exportModel);
     router.delete('/api/cloud-storage/:provider/disconnect', cloudStorageController.disconnect);
 
     // AI Threat Bot — analyst+ required to prevent abuse
     router.post('/api/ai/suggest', requireRole('admin', 'analyst'), auditMiddleware('AI_SUGGEST'), aiController.suggest);
 
     // ── OSV Vulnerability Scanner ─────────────────────────────────────────
-    router.get('/api/scanner/scans',                requireRole('admin', 'analyst', 'viewer'), osvScannerController.listScans);
-    router.post('/api/scanner/scans',               requireRole('admin', 'analyst'), auditMiddleware('SCAN_CREATE'), osvScannerController.createScan);
-    router.get('/api/scanner/scans/:id',            requireRole('admin', 'analyst', 'viewer'), osvScannerController.getScan);
-    router.get('/api/scanner/scans/:id/findings',   requireRole('admin', 'analyst', 'viewer'), osvScannerController.getScanFindings);
-    router.delete('/api/scanner/scans/:id',         requireRole('admin', 'analyst'), auditMiddleware('SCAN_DELETE'), osvScannerController.deleteScan);
-    router.get('/api/scanner/scans/:id/export',     requireRole('admin', 'analyst', 'viewer'), osvScannerController.exportScan);
-    router.get('/api/scanner/policy',               requireRole('admin', 'analyst', 'viewer'), osvScannerController.getPolicy);
-    router.put('/api/scanner/policy',               requireRole('admin'), auditMiddleware('SCANNER_POLICY_UPDATE'), osvScannerController.updatePolicy);
+    router.get('/api/scanner/scans', requireRole('admin', 'analyst', 'viewer'), osvScannerController.listScans);
+    router.post('/api/scanner/scans', requireRole('admin', 'analyst'), auditMiddleware('SCAN_CREATE'), osvScannerController.createScan);
+    router.get('/api/scanner/scans/:id', requireRole('admin', 'analyst', 'viewer'), osvScannerController.getScan);
+    router.get('/api/scanner/scans/:id/findings', requireRole('admin', 'analyst', 'viewer'), osvScannerController.getScanFindings);
+    router.delete('/api/scanner/scans/:id', requireRole('admin', 'analyst'), auditMiddleware('SCAN_DELETE'), osvScannerController.deleteScan);
+    router.get('/api/scanner/scans/:id/export', requireRole('admin', 'analyst', 'viewer'), osvScannerController.exportScan);
+    router.get('/api/scanner/policy', requireRole('admin', 'analyst', 'viewer'), osvScannerController.getPolicy);
+    router.put('/api/scanner/policy', requireRole('admin'), auditMiddleware('SCANNER_POLICY_UPDATE'), osvScannerController.updatePolicy);
 
     // Integration configs — admin manages credentials; analyst/viewer can list/export
     router.get('/api/integrations', requireRole('admin', 'analyst', 'viewer'), integrationsController.listConfigs);

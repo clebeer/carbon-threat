@@ -13,7 +13,8 @@ const SAFE_COLUMNS = ['id', 'org_id', 'email', 'display_name', 'role', 'is_activ
  */
 export async function listUsers(req, res) {
   try {
-    const users = await db('users').select(SAFE_COLUMNS).orderBy('created_at', 'desc');
+    const users = await db('users').select(SAFE_COLUMNS).
+orderBy('created_at', 'desc');
     return res.json({ users });
   } catch (err) {
     logger.error('listUsers failed', err);
@@ -33,8 +34,10 @@ export async function getUser(req, res) {
   }
 
   try {
-    const user = await db('users').select(SAFE_COLUMNS).where({ id }).first();
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await db('users').select(SAFE_COLUMNS).
+where({ id }).
+first();
+    if (!user) {return res.status(404).json({ error: 'User not found' });}
     return res.json({ user });
   } catch (err) {
     logger.error('getUser failed', err);
@@ -62,21 +65,22 @@ export async function createUser(req, res) {
   }
 
   try {
-    const existing = await db('users').where({ email: email.toLowerCase().trim() }).first();
+    const existing = await db('users').where({ email: email.toLowerCase().trim() }).
+first();
     if (existing) {
       return res.status(409).json({ error: 'A user with this email already exists' });
     }
 
     const password_hash = await bcrypt.hash(password, 12);
-    const [user] = await db('users')
-      .insert({
+    const [user] = await db('users').
+      insert({
         email: email.toLowerCase().trim(),
         password_hash,
         display_name: display_name || null,
         role,
         org_id: org_id || null,
-      })
-      .returning(SAFE_COLUMNS);
+      }).
+      returning(SAFE_COLUMNS);
 
     logger.info(`User created: ${user.email} (role=${user.role}) by admin ${req.user.id}`);
     return res.status(201).json({ user });
@@ -105,7 +109,7 @@ export async function updateUser(req, res) {
 
   const updates = {};
   for (const field of allowedFields) {
-    if (req.body[field] !== undefined) updates[field] = req.body[field];
+    if (req.body[field] !== undefined) {updates[field] = req.body[field];}
   }
 
   if (req.body.password && (isAdmin || isSelf)) {
@@ -130,8 +134,10 @@ export async function updateUser(req, res) {
   updates.updated_at = db.fn.now();
 
   try {
-    const [user] = await db('users').where({ id }).update(updates).returning(SAFE_COLUMNS);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const [user] = await db('users').where({ id }).
+update(updates).
+returning(SAFE_COLUMNS);
+    if (!user) {return res.status(404).json({ error: 'User not found' });}
 
     logger.info(`User updated: ${user.email} by ${req.user.id}`);
     return res.json({ user });
@@ -154,12 +160,12 @@ export async function deleteUser(req, res) {
   }
 
   try {
-    const [user] = await db('users')
-      .where({ id })
-      .update({ is_active: false, updated_at: db.fn.now() })
-      .returning(['id', 'email']);
+    const [user] = await db('users').
+      where({ id }).
+      update({ is_active: false, updated_at: db.fn.now() }).
+      returning(['id', 'email']);
 
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {return res.status(404).json({ error: 'User not found' });}
 
     logger.info(`User deactivated: ${user.email} by admin ${req.user.id}`);
     return res.json({ message: 'User deactivated', user });

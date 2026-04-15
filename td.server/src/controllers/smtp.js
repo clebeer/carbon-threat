@@ -9,7 +9,7 @@
 
 import nodemailer from 'nodemailer';
 import db from '../db/knex.js';
-import { encryptModel, decryptModel } from '../security/encryption.js';
+import { decryptModel, encryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/smtp.js');
@@ -17,8 +17,9 @@ const logger = loggerHelper.get('controllers/smtp.js');
 const CONFIG_KEY = 'smtp_config';
 
 async function loadSmtp() {
-  const row = await db('app_config').where({ key: CONFIG_KEY }).first();
-  if (!row) return null;
+  const row = await db('app_config').where({ key: CONFIG_KEY }).
+first();
+  if (!row) {return null;}
   try {
     // Stored as AES-256-GCM encrypted JSON (encryptModel output)
     return decryptModel(JSON.parse(row.value));
@@ -35,7 +36,7 @@ async function loadSmtp() {
 export async function getSmtpConfig(_req, res) {
   try {
     const cfg = await loadSmtp();
-    if (!cfg) return res.json({ smtp: null });
+    if (!cfg) {return res.json({ smtp: null });}
     // Never return the password over the API
     const { password: _pw, ...safe } = cfg;
     return res.json({ smtp: safe });
@@ -55,25 +56,25 @@ export async function saveSmtpConfig(req, res) {
   const cfg = {
     host,
     port:     parseInt(port, 10) || 587,
-    user:     user     || '',
+    user:     user || '',
     password: password || '',
-    from:     from     || '',
+    from:     from || '',
     secure:   Boolean(secure),
   };
 
   // If password is blank, keep existing one
   if (!password) {
     const existing = await loadSmtp();
-    if (existing?.password) cfg.password = existing.password;
+    if (existing?.password) {cfg.password = existing.password;}
   }
 
   try {
     // Encrypt the full config (including password) before persisting — F5
     const encrypted = JSON.stringify(encryptModel(cfg));
-    await db('app_config')
-      .insert({ key: CONFIG_KEY, value: encrypted })
-      .onConflict('key')
-      .merge({ value: encrypted, updated_at: db.fn.now() });
+    await db('app_config').
+      insert({ key: CONFIG_KEY, value: encrypted }).
+      onConflict('key').
+      merge({ value: encrypted, updated_at: db.fn.now() });
     logger.info('SMTP config updated');
     return res.json({ ok: true });
   } catch (err) {
@@ -93,7 +94,7 @@ export async function testSmtpConfig(req, res) {
     // Fallback pass: If UI sent config but password was empty (due to data redaction on the client view), retrieve the lost password from DB
     else if (!cfg.password) {
       const existing = await loadSmtp();
-      if (existing?.password) cfg.password = existing.password;
+      if (existing?.password) {cfg.password = existing.password;}
     }
 
     if (!cfg?.host) {

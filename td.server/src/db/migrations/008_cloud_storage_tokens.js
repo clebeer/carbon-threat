@@ -1,7 +1,11 @@
 export const up = async (knex) => {
   await knex.schema.createTable('cloud_storage_tokens', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE');
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('user_id').notNullable().
+references('id').
+inTable('users').
+onDelete('CASCADE');
     t.string('provider', 20).notNullable();
     t.text('access_token_enc').nullable();
     t.text('refresh_token_enc').nullable();

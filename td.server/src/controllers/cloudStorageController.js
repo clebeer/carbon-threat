@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import db from '../db/knex.js';
-import { encryptModel, decryptModel } from '../security/encryption.js';
+import { decryptModel, encryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/cloudStorageController.js');
@@ -32,13 +32,14 @@ function getCallbackUrl() {
 function getStateSecret() {
   // Reuse the JWT signing key; any 32-byte secret from env is acceptable.
   const secret = process.env.ENCRYPTION_JWT_SIGNING_KEY || process.env.ENCRYPTION_KEY;
-  if (!secret) throw new Error('No signing secret available for OAuth state');
+  if (!secret) {throw new Error('No signing secret available for OAuth state');}
   return secret;
 }
 
 function buildState(userId, provider) {
   const payload = JSON.stringify({ userId, provider, nonce: randomBytes(8).toString('hex') });
-  const sig = createHmac('sha256', getStateSecret()).update(payload).digest('hex');
+  const sig = createHmac('sha256', getStateSecret()).update(payload).
+digest('hex');
   return Buffer.from(JSON.stringify({ payload, sig })).toString('base64url');
 }
 
@@ -53,8 +54,9 @@ function parseState(state) {
   if (typeof payload !== 'string' || typeof sig !== 'string') {
     throw new Error('Malformed state parameter');
   }
-  const expected = createHmac('sha256', getStateSecret()).update(payload).digest('hex');
-  const sigBuf = Buffer.from(sig,      'hex');
+  const expected = createHmac('sha256', getStateSecret()).update(payload).
+digest('hex');
+  const sigBuf = Buffer.from(sig, 'hex');
   const expBuf = Buffer.from(expected, 'hex');
   if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
     throw new Error('Invalid state signature');
@@ -83,12 +85,13 @@ function decryptToken(enc) {
 }
 
 async function getStoredToken(userId, provider) {
-  return db('cloud_storage_tokens').where({ user_id: userId, provider }).first();
+  return db('cloud_storage_tokens').where({ user_id: userId, provider }).
+first();
 }
 
 async function refreshAccessToken(row, providerConfig) {
   const refreshToken = decryptToken(row.refresh_token_enc);
-  if (!refreshToken) return null;
+  if (!refreshToken) {return null;}
 
   const params = new URLSearchParams({
     grant_type:    'refresh_token',
@@ -105,7 +108,8 @@ async function refreshAccessToken(row, providerConfig) {
     ? new Date(Date.now() + data.expires_in * 1000)
     : null;
 
-  await db('cloud_storage_tokens').where({ id: row.id }).update({
+  await db('cloud_storage_tokens').where({ id: row.id }).
+update({
     access_token_enc: encryptToken(data.access_token),
     expires_at:       expiresAt,
     updated_at:       db.fn.now(),
@@ -116,7 +120,7 @@ async function refreshAccessToken(row, providerConfig) {
 
 async function getValidAccessToken(userId, provider) {
   const row = await getStoredToken(userId, provider);
-  if (!row) return null;
+  if (!row) {return null;}
 
   const isExpired = row.expires_at && new Date(row.expires_at) <= new Date(Date.now() + 60_000);
   if (isExpired && row.refresh_token_enc) {
@@ -167,7 +171,7 @@ export async function oauthCallback(req, res) {
     return res.status(400).send('<html><body><p>Missing code or state</p></body></html>');
   }
 
-  let userId, provider;
+  let provider, userId;
   try {
     // F6 — verify HMAC signature before trusting state contents
     ({ userId, provider } = parseState(state));
@@ -198,17 +202,17 @@ export async function oauthCallback(req, res) {
       ? new Date(Date.now() + data.expires_in * 1000)
       : null;
 
-    await db('cloud_storage_tokens')
-      .insert({
+    await db('cloud_storage_tokens').
+      insert({
         user_id:           userId,
         provider,
         access_token_enc:  encryptToken(data.access_token),
         refresh_token_enc: data.refresh_token ? encryptToken(data.refresh_token) : null,
         expires_at:        expiresAt,
         scope:             data.scope || null,
-      })
-      .onConflict(['user_id', 'provider'])
-      .merge(['access_token_enc', 'refresh_token_enc', 'expires_at', 'scope', 'updated_at']);
+      }).
+      onConflict(['user_id', 'provider']).
+      merge(['access_token_enc', 'refresh_token_enc', 'expires_at', 'scope', 'updated_at']);
 
     logger.info(`Cloud storage connected: user ${userId} provider ${provider}`);
 
@@ -227,11 +231,11 @@ export async function listFiles(req, res) {
   const { provider } = req.params;
   const { folderId } = req.query;
 
-  if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Unsupported provider' });
+  if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
 
   try {
     const accessToken = await getValidAccessToken(req.user.id, provider);
-    if (!accessToken) return res.status(401).json({ error: 'Not connected to provider' });
+    if (!accessToken) {return res.status(401).json({ error: 'Not connected to provider' });}
 
     let files = [];
 
@@ -243,7 +247,7 @@ export async function listFiles(req, res) {
         headers: { Authorization: `Bearer ${accessToken}` },
         params:  { q, fields: 'files(id,name,mimeType,modifiedTime)', pageSize: 100 },
       });
-      files = (data.files || []).map(f => ({
+      files = (data.files || []).map((f) => ({
         id:           f.id,
         name:         f.name,
         mimeType:     f.mimeType,
@@ -257,7 +261,7 @@ export async function listFiles(req, res) {
         headers: { Authorization: `Bearer ${accessToken}` },
         params:  { $top: 100 },
       });
-      files = (data.value || []).map(f => ({
+      files = (data.value || []).map((f) => ({
         id:           f.id,
         name:         f.name,
         mimeType:     f.file?.mimeType || 'application/octet-stream',
@@ -276,16 +280,16 @@ export async function importFile(req, res) {
   const { provider } = req.params;
   const { fileId, title } = req.body || {};
 
-  if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Unsupported provider' });
-  if (!fileId) return res.status(400).json({ error: 'fileId is required' });
-  if (!title || !title.trim()) return res.status(400).json({ error: 'title is required' });
+  if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
+  if (!fileId) {return res.status(400).json({ error: 'fileId is required' });}
+  if (!title || !title.trim()) {return res.status(400).json({ error: 'title is required' });}
 
   const userId = req.user?.id;
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   try {
     const accessToken = await getValidAccessToken(userId, provider);
-    if (!accessToken) return res.status(401).json({ error: 'Not connected to provider' });
+    if (!accessToken) {return res.status(401).json({ error: 'Not connected to provider' });}
 
     let content;
     if (provider === 'google_drive') {
@@ -304,16 +308,16 @@ export async function importFile(req, res) {
     }
 
     const encrypted = encryptModel(content);
-    const [model] = await db('threat_models')
-      .insert({
+    const [model] = await db('threat_models').
+      insert({
         title:             title.trim(),
         description:       `Imported from ${provider}`,
         content_encrypted: JSON.stringify(encrypted),
         owner_id:          userId,
         org_id:            orgId || null,
         version:           1,
-      })
-      .returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
+      }).
+      returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
 
     logger.info(`Model imported from ${provider} file ${fileId} by user ${userId}`);
     return res.status(201).json({ model });
@@ -327,22 +331,22 @@ export async function exportModel(req, res) {
   const { provider } = req.params;
   const { modelId, folderId } = req.body || {};
 
-  if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Unsupported provider' });
-  if (!modelId) return res.status(400).json({ error: 'modelId is required' });
+  if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
+  if (!modelId) {return res.status(400).json({ error: 'modelId is required' });}
 
   const userId = req.user?.id;
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   try {
     const accessToken = await getValidAccessToken(userId, provider);
-    if (!accessToken) return res.status(401).json({ error: 'Not connected to provider' });
+    if (!accessToken) {return res.status(401).json({ error: 'Not connected to provider' });}
 
     const q = db('threat_models').where({ is_archived: false, id: modelId });
     const row = orgId
       ? await q.where({ org_id: orgId }).first()
       : await q.where({ owner_id: userId }).first();
 
-    if (!row) return res.status(404).json({ error: 'Threat model not found' });
+    if (!row) {return res.status(404).json({ error: 'Threat model not found' });}
 
     let content = {};
     if (row.content_encrypted) {
@@ -356,7 +360,7 @@ export async function exportModel(req, res) {
 
     if (provider === 'google_drive') {
       const metadata = { name: fileName, mimeType: 'application/json' };
-      if (folderId) metadata.parents = [folderId];
+      if (folderId) {metadata.parents = [folderId];}
 
       const FormData = (await import('form-data')).default;
       const form = new FormData();
@@ -368,7 +372,7 @@ export async function exportModel(req, res) {
         form,
         { headers: { Authorization: `Bearer ${accessToken}`, ...form.getHeaders() } }
       );
-      fileId  = data.id;
+      fileId = data.id;
       fileUrl = data.webViewLink;
     } else {
       const uploadUrl = folderId
@@ -378,7 +382,7 @@ export async function exportModel(req, res) {
       const { data } = await axios.put(uploadUrl, fileBody, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       });
-      fileId  = data.id;
+      fileId = data.id;
       fileUrl = data.webUrl;
     }
 
@@ -392,10 +396,11 @@ export async function exportModel(req, res) {
 
 export async function disconnect(req, res) {
   const { provider } = req.params;
-  if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Unsupported provider' });
+  if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
 
   try {
-    await db('cloud_storage_tokens').where({ user_id: req.user.id, provider }).del();
+    await db('cloud_storage_tokens').where({ user_id: req.user.id, provider }).
+del();
     logger.info(`Cloud storage disconnected: user ${req.user.id} provider ${provider}`);
     return res.json({ message: 'Disconnected' });
   } catch (err) {
@@ -406,14 +411,14 @@ export async function disconnect(req, res) {
 
 export async function getStatus(req, res) {
   const { provider } = req.params;
-  if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Unsupported provider' });
+  if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
 
   try {
     const row = await getStoredToken(req.user.id, provider);
-    if (!row) return res.json({ connected: false });
+    if (!row) {return res.json({ connected: false });}
 
     const isExpired = row.expires_at && new Date(row.expires_at) <= new Date();
-    const hasRefresh = !!row.refresh_token_enc;
+    const hasRefresh = Boolean(row.refresh_token_enc);
 
     if (isExpired && !hasRefresh) {
       return res.json({ connected: false });

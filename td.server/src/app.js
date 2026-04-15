@@ -26,7 +26,7 @@ import { openApiSpec } from './config/openapi.js';
  */
 function assertSecretEntropy() {
     const REQUIRED_SECRETS = [
-        { key: 'ENCRYPTION_JWT_SIGNING_KEY',         minLength: 32 },
+        { key: 'ENCRYPTION_JWT_SIGNING_KEY', minLength: 32 },
         { key: 'ENCRYPTION_JWT_REFRESH_SIGNING_KEY', minLength: 32 },
     ];
 
@@ -64,13 +64,14 @@ function assertSecretEntropy() {
  * Idempotent — does nothing if any user already exists.
  */
 async function bootstrapDefaultAdmin(logger) {
-    const email    = process.env.DEFAULT_ADMIN_EMAIL;
+    const email = process.env.DEFAULT_ADMIN_EMAIL;
     const password = process.env.DEFAULT_ADMIN_PASSWORD;
-    if (!email || !password) return;
+    if (!email || !password) {return;}
 
     try {
-        const count = await db('users').count('id as n').first();
-        if (parseInt(count.n, 10) > 0) return;
+        const count = await db('users').count('id as n').
+first();
+        if (parseInt(count.n, 10) > 0) {return;}
 
         const passwordHash = await bcrypt.hash(password, 12);
         await db('users').insert({
@@ -79,9 +80,9 @@ async function bootstrapDefaultAdmin(logger) {
             role:          'admin',
             is_active:     true,
         });
-        if (logger) logger.info(`Default admin bootstrapped: ${email}`);
+        if (logger) {logger.info(`Default admin bootstrapped: ${email}`);}
     } catch (err) {
-        if (logger) logger.warn(`Default admin bootstrap skipped: ${err.message}`);
+        if (logger) {logger.warn(`Default admin bootstrap skipped: ${err.message}`);}
     }
 }
 
