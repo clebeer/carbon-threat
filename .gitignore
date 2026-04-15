@@ -327,3 +327,6 @@
 !ThreatDragonModels/*model.json
 !ThreatDragonModels/test/
 !ThreatDragonModels/test/*.json
+!td.server/test/auth/*.spec.js
+!td.server/test/auth/
+!td.server/test/auth/*.spec.js
