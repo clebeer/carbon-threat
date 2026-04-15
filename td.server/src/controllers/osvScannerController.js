@@ -346,7 +346,7 @@ first();
         ``,
         `| Package | Version | Ecosystem | Vuln ID | Title | Severity | CVSS | Fixed In |`,
         `|---------|---------|-----------|---------|-------|----------|------|----------|`,
-        ...findings.map((f) => `| \`${f.package_name}\` | ${f.package_version ?? ''} | ${f.ecosystem ?? ''} | [${f.vuln_id}](https://osv.dev/vulnerability/${f.vuln_id}) | ${(f.title ?? '').replace(/\|/g, '\\|')} | **${f.severity ?? ''}** | ${f.cvss_score ?? ''} | ${f.fixed_version ?? 'n/a'} |`
+        ...findings.map((f) => `| \`${f.package_name}\` | ${f.package_version ?? ''} | ${f.ecosystem ?? ''} | [${f.vuln_id}](https://osv.dev/vulnerability/${f.vuln_id}) | ${(f.title ?? '').replace(/\\/gu, '\\\\').replace(/\|/gu, '\\|')} | **${f.severity ?? ''}** | ${f.cvss_score ?? ''} | ${f.fixed_version ?? 'n/a'} |`
         ),
       ];
       return res.send(lines.join('\n'));

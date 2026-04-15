@@ -160,7 +160,7 @@ async function upsertAdvisories(trx, vulns) {
   const toInsert = [];
   const updatePromises = [];
 
-  const existingRecordsMap = new Map(existingRecords.map(r => [r.source_id, r.id]));
+  const existingRecordsMap = new Map(existingRecords.map((r) => [r.source_id, r.id]));
 
   for (const [sourceId, data] of validVulns.entries()) {
     if (existingRecordsMap.has(sourceId)) {
