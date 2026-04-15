@@ -1,8 +1,6 @@
 import env from '../env/Env.js';
 
-const middleware = (req, res, next) => {
-    return next();
-};
+const middleware = (req, res, next) => next();
 
 export default {
     middleware

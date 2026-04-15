@@ -21,8 +21,10 @@ export async function suggest(req, res) {
   }
 
   // Sanitise inputs — strip any chars that could be used for prompt injection
-  const safeLabel = label.trim().slice(0, 120).replace(/[`<>]/g, '');
-  const safeType  = (type ?? 'Component').trim().slice(0, 80).replace(/[`<>]/g, '');
+  const safeLabel = label.trim().slice(0, 120).
+replace(/[`<>]/g, '');
+  const safeType = (type ?? 'Component').trim().slice(0, 80).
+replace(/[`<>]/g, '');
 
   logger.info(`AI suggest requested by user ${req.user?.id} for node "${safeLabel}" (${safeType})`);
 
@@ -35,9 +37,9 @@ export async function suggest(req, res) {
     }
 
     // Validate / sanitise each suggestion before forwarding to the client
-    const sanitised = threats
-      .filter((t) => t && typeof t.title === 'string')
-      .map((t) => ({
+    const sanitised = threats.
+      filter((t) => t && typeof t.title === 'string').
+      map((t) => ({
         title:          String(t.title).slice(0, 200),
         severity:       ['High', 'Medium', 'Low'].includes(t.severity) ? t.severity : 'Medium',
         mitigation:     t.mitigation ? String(t.mitigation).slice(0, 500) : '',

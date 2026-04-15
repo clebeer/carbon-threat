@@ -63,10 +63,10 @@ const config = (app, forceSecure) => {
 
                 // ── Other directives ───────────────────────────────────────────────
                 defaultSrc:      ["'none'"],
-                connectSrc:      ["'self'", 'ws:', 'wss:'],   // Yjs WebSocket
+                connectSrc:      ["'self'", 'ws:', 'wss:'], // Yjs WebSocket
                 imgSrc:          ["'self'", 'data:', 'blob:'],
                 fontSrc:         ["'self'", 'https://fonts.gstatic.com', 'data:'],
-                workerSrc:       ["'self'", 'blob:'],          // ReactFlow web workers
+                workerSrc:       ["'self'", 'blob:'], // ReactFlow web workers
                 formAction:      ["'self'"],
                 frameAncestors:  ["'none'"],
                 upgradeInsecureRequests: [],

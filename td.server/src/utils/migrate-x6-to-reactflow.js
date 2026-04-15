@@ -8,7 +8,7 @@ export function migrateX6ToReactFlow(x6Json) {
     return reactFlowData;
   }
 
-  x6Json.cells.forEach(cell => {
+  x6Json.cells.forEach((cell) => {
     if (cell.shape === 'edge' || cell.source || cell.target) {
       // Edge mapping
       reactFlowData.edges.push({

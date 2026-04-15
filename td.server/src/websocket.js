@@ -12,10 +12,10 @@ function extractToken(req) {
   // 1. Query-param: ws://host/doc?token=<jwt>  (primary — easy for WS clients)
   const url = req.url ? new URL(req.url, 'http://localhost') : null;
   const queryToken = url ? url.searchParams.get('token') : null;
-  if (queryToken) return queryToken;
+  if (queryToken) {return queryToken;}
 
   // 2. Authorization header: "Bearer <jwt>"  (preferred for native WS libs)
-  const authHeader = req.headers && req.headers['authorization'];
+  const authHeader = req.headers && req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice(7);
   }
@@ -43,9 +43,9 @@ function validateToken(token) {
 // A single IP is allowed at most MAX_CONNS_PER_IP simultaneous open connections
 // and at most MAX_HANDSHAKES_PER_WINDOW new connections within WINDOW_MS.
 
-const MAX_CONNS_PER_IP      = 10;   // concurrent open connections per IP
-const MAX_HANDSHAKES_PER_WINDOW = 30;   // new connections per IP within window
-const WINDOW_MS             = 60_000; // 1 minute sliding window
+const MAX_CONNS_PER_IP = 10; // concurrent open connections per IP
+const MAX_HANDSHAKES_PER_WINDOW = 30; // new connections per IP within window
+const WINDOW_MS = 60_000; // 1 minute sliding window
 
 // Maps IP → { count: number (open connections), timestamps: number[] }
 const connState = new Map();
@@ -53,9 +53,9 @@ const connState = new Map();
 function getIp(req) {
   // Respect X-Forwarded-For when behind a trusted proxy (app.set('trust proxy', true))
   const forwarded = req.headers && req.headers['x-forwarded-for'];
-  return (forwarded ? forwarded.split(',')[0].trim() : null)
-    || req.socket?.remoteAddress
-    || 'unknown';
+  return (forwarded ? forwarded.split(',')[0].trim() : null) ||
+    req.socket?.remoteAddress ||
+    'unknown';
 }
 
 function isRateLimited(ip) {
@@ -85,7 +85,7 @@ function isRateLimited(ip) {
 
 function releaseConn(ip) {
   const state = connState.get(ip);
-  if (!state) return;
+  if (!state) {return;}
   state.open = Math.max(0, state.open - 1);
   if (state.open === 0 && state.timestamps.length === 0) {
     connState.delete(ip);

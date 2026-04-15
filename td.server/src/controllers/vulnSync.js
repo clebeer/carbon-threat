@@ -29,20 +29,20 @@ const FETCH_LIMIT = 20;
 // ── Keyword → STRIDE mapping ──────────────────────────────────────────────────
 // Used to derive STRIDE categories from advisory title/description.
 const STRIDE_KEYWORDS = [
-  { categories: ['Spoofing'],              words: ['spoof', 'impersonat', 'authenticat', 'identity', 'bypass auth', 'forged', 'fake'] },
-  { categories: ['Tampering'],             words: ['tamper', 'inject', 'sql injection', 'xss', 'csrf', 'code injection', 'rce', 'remote code', 'path traversal', 'deserialization'] },
-  { categories: ['Repudiation'],           words: ['repudiat', 'log', 'audit', 'non-repudiat', 'trace'] },
-  { categories: ['Information Disclosure'],words: ['disclosure', 'information leak', 'sensitive data', 'exposure', 'enumerat', 'directory listing', 'ssrf', 'xxe'] },
-  { categories: ['DoS'],                   words: ['denial of service', 'dos', 'ddos', 'resource exhaust', 'memory leak', 'crash', 'flood', 'amplification', 'integer overflow'] },
-  { categories: ['Elevation of Privilege'],words: ['privilege', 'escalat', 'sudo', 'root', 'admin bypass', 'acl bypass', 'authorization bypass', 'permission'] },
+  { categories: ['Spoofing'], words: ['spoof', 'impersonat', 'authenticat', 'identity', 'bypass auth', 'forged', 'fake'] },
+  { categories: ['Tampering'], words: ['tamper', 'inject', 'sql injection', 'xss', 'csrf', 'code injection', 'rce', 'remote code', 'path traversal', 'deserialization'] },
+  { categories: ['Repudiation'], words: ['repudiat', 'log', 'audit', 'non-repudiat', 'trace'] },
+  { categories: ['Information Disclosure'], words: ['disclosure', 'information leak', 'sensitive data', 'exposure', 'enumerat', 'directory listing', 'ssrf', 'xxe'] },
+  { categories: ['DoS'], words: ['denial of service', 'dos', 'ddos', 'resource exhaust', 'memory leak', 'crash', 'flood', 'amplification', 'integer overflow'] },
+  { categories: ['Elevation of Privilege'], words: ['privilege', 'escalat', 'sudo', 'root', 'admin bypass', 'acl bypass', 'authorization bypass', 'permission'] },
 ];
 
 function mapToStride(title = '', description = '') {
   const text = `${title} ${description}`.toLowerCase();
   const matched = new Set();
   for (const { categories, words } of STRIDE_KEYWORDS) {
-    if (words.some(w => text.includes(w))) {
-      categories.forEach(c => matched.add(c));
+    if (words.some((w) => text.includes(w))) {
+      categories.forEach((c) => matched.add(c));
     }
   }
   // Default to Tampering if nothing matches (most common for unclassified vulns)
@@ -50,15 +50,15 @@ function mapToStride(title = '', description = '') {
 }
 
 function normaliseSeverity(cvssScore, severityText = '') {
-  if (cvssScore >= 9.0) return 'Critical';
-  if (cvssScore >= 7.0) return 'High';
-  if (cvssScore >= 4.0) return 'Medium';
-  if (cvssScore > 0)    return 'Low';
+  if (cvssScore >= 9.0) {return 'Critical';}
+  if (cvssScore >= 7.0) {return 'High';}
+  if (cvssScore >= 4.0) {return 'Medium';}
+  if (cvssScore > 0) {return 'Low';}
   // Fallback to text field
   const t = severityText.toLowerCase();
-  if (t.includes('critical')) return 'Critical';
-  if (t.includes('high'))     return 'High';
-  if (t.includes('medium') || t.includes('moderate')) return 'Medium';
+  if (t.includes('critical')) {return 'Critical';}
+  if (t.includes('high')) {return 'High';}
+  if (t.includes('medium') || t.includes('moderate')) {return 'Medium';}
   return 'Low';
 }
 
@@ -71,7 +71,7 @@ function postJson(url, body) {
       { hostname: parsed.hostname, path: parsed.pathname, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), 'User-Agent': 'CarbonThreat/1.0' } },
       (res) => {
         let raw = '';
-        res.on('data', chunk => { raw += chunk; });
+        res.on('data', (chunk) => { raw += chunk; });
         res.on('end', () => {
           try { resolve(JSON.parse(raw)); }
           catch { reject(new Error(`JSON parse error: ${raw.slice(0, 120)}`)); }
@@ -99,83 +99,118 @@ async function fetchOsvEcosystem(ecosystem) {
   }
 }
 
-// ── Upsert a single advisory ──────────────────────────────────────────────────
-async function upsertAdvisory(trx, vuln) {
-  const sourceId = vuln.id ?? '';
-  if (!sourceId) return false;
+// ── Upsert a batch of advisories ──────────────────────────────────────────────────
+async function upsertAdvisories(trx, vulns) {
+  let insertedCount = 0;
+  let updatedCount = 0;
 
-  const title = vuln.summary ?? vuln.id ?? 'Unknown Advisory';
-  const description = vuln.details ?? '';
+  const validVulns = new Map();
+  for (const vuln of vulns) {
+    const sourceId = vuln.id ?? '';
+    if (!sourceId) {continue;}
 
-  // Extract CVSS score from severity array
-  let cvssScore = null;
-  const severityEntry = (vuln.severity ?? []).find(s => s.type === 'CVSS_V3' || s.type === 'CVSS_V2');
-  if (severityEntry?.score) {
-    // CVSS vector string → base score is not inline; use database_specific if available
-    const dbSpecific = vuln.database_specific ?? {};
-    cvssScore = parseFloat(dbSpecific.cvss ?? dbSpecific.cvss_score ?? 0) || null;
+    const title = vuln.summary ?? vuln.id ?? 'Unknown Advisory';
+    const description = vuln.details ?? '';
+
+    let cvssScore = null;
+    const severityEntry = (vuln.severity ?? []).find((s) => s.type === 'CVSS_V3' || s.type === 'CVSS_V2');
+    if (severityEntry?.score) {
+      const dbSpecific = vuln.database_specific ?? {};
+      cvssScore = parseFloat(dbSpecific.cvss ?? dbSpecific.cvss_score ?? 0) || null;
+    }
+
+    const severityText = vuln.database_specific?.severity ?? '';
+    const severity = normaliseSeverity(cvssScore ?? 0, severityText);
+    const strideCategories = mapToStride(title, description);
+
+    const affected = (vuln.affected ?? []).map((a) => ({
+      ecosystem: a.package?.ecosystem,
+      name: a.package?.name,
+      versions: a.ranges?.[0]?.events?.map((e) => e.fixed ?? e.introduced)?.filter(Boolean) ?? [],
+    }));
+
+    const references = (vuln.references ?? []).map((r) => r.url).filter(Boolean);
+    const publishedAt = vuln.published ? new Date(vuln.published) : null;
+
+    validVulns.set(sourceId, {
+      source_id: sourceId,
+      source: 'osv',
+      title,
+      description,
+      severity,
+      stride_categories: strideCategories,
+      affected: JSON.stringify(affected),
+      references: JSON.stringify(references),
+      cvss_score: cvssScore,
+      published_at: publishedAt,
+    });
   }
 
-  const severityText = vuln.database_specific?.severity ?? '';
-  const severity = normaliseSeverity(cvssScore ?? 0, severityText);
-  const strideCategories = mapToStride(title, description);
+  if (validVulns.size === 0) {return { inserted: 0, updated: 0 };}
 
-  const affected = (vuln.affected ?? []).map(a => ({
-    ecosystem: a.package?.ecosystem,
-    name: a.package?.name,
-    versions: a.ranges?.[0]?.events?.map(e => e.fixed ?? e.introduced)?.filter(Boolean) ?? [],
-  }));
+  const sourceIds = Array.from(validVulns.keys());
 
-  const references = (vuln.references ?? []).map(r => r.url).filter(Boolean);
+  const existingRecords = await trx('vulnerability_advisories').
+    whereIn('source_id', sourceIds).
+    andWhere({ source: 'osv' }).
+    select('id', 'source_id');
 
-  const publishedAt = vuln.published ? new Date(vuln.published) : null;
+  const existingIds = new Set(existingRecords.map((r) => r.source_id));
 
-  const existing = await trx('vulnerability_advisories')
-    .where({ source_id: sourceId, source: 'osv' })
-    .first();
+  const toInsert = [];
+  const updatePromises = [];
 
-  if (existing) {
-    await trx('vulnerability_advisories')
-      .where({ id: existing.id })
-      .update({ title, description, severity, stride_categories: strideCategories, affected: JSON.stringify(affected), references: JSON.stringify(references), cvss_score: cvssScore, synced_at: trx.fn.now() });
-    return 'updated';
+  const existingRecordsMap = new Map(existingRecords.map(r => [r.source_id, r.id]));
+
+  for (const [sourceId, data] of validVulns.entries()) {
+    if (existingRecordsMap.has(sourceId)) {
+      const existingRecordId = existingRecordsMap.get(sourceId);
+      // eslint-disable-next-line no-unused-vars
+      const { source_id, source, published_at, ...updateData } = data;
+      updatePromises.push(
+        trx('vulnerability_advisories').
+          where({ id: existingRecordId }).
+          update({ ...updateData, synced_at: trx.fn.now() })
+      );
+      updatedCount++;
+    } else {
+      toInsert.push(data);
+    }
   }
 
-  await trx('vulnerability_advisories').insert({
-    source_id:        sourceId,
-    source:           'osv',
-    title,
-    description,
-    severity,
-    stride_categories: strideCategories,
-    affected:          JSON.stringify(affected),
-    references:        JSON.stringify(references),
-    cvss_score:        cvssScore,
-    published_at:      publishedAt,
-  });
-  return 'inserted';
+  if (updatePromises.length > 0) {
+    await Promise.all(updatePromises);
+  }
+
+  if (toInsert.length > 0) {
+    await trx('vulnerability_advisories').insert(toInsert);
+    insertedCount += toInsert.length;
+  }
+
+  return { inserted: insertedCount, updated: updatedCount };
 }
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 
 export async function getVulnFeedStatus(req, res) {
   try {
-    const [lastRun] = await db('vuln_feed_runs')
-      .orderBy('started_at', 'desc')
-      .limit(1)
-      .select('status', 'fetched', 'inserted', 'updated', 'error_message', 'started_at', 'finished_at');
+    const [lastRun] = await db('vuln_feed_runs').
+      orderBy('started_at', 'desc').
+      limit(1).
+      select('status', 'fetched', 'inserted', 'updated', 'error_message', 'started_at', 'finished_at');
 
-    const counts = await db('vulnerability_advisories')
-      .select('severity')
-      .count('id as n')
-      .groupBy('severity');
+    const counts = await db('vulnerability_advisories').
+      select('severity').
+      count('id as n').
+      groupBy('severity');
 
-    const total = await db('vulnerability_advisories').count('id as n').first();
+    const total = await db('vulnerability_advisories').count('id as n').
+first();
 
     return res.json({
       lastRun: lastRun ?? null,
       totalAdvisories: parseInt(total?.n ?? 0, 10),
-      bySeverity: Object.fromEntries(counts.map(r => [r.severity, parseInt(r.n, 10)])),
+      bySeverity: Object.fromEntries(counts.map((r) => [r.severity, parseInt(r.n, 10)])),
     });
   } catch (err) {
     logger.error('getVulnFeedStatus failed', err);
@@ -184,9 +219,9 @@ export async function getVulnFeedStatus(req, res) {
 }
 
 export async function syncVulnFeeds(req, res) {
-  const [run] = await db('vuln_feed_runs')
-    .insert({ status: 'running', started_at: db.fn.now() })
-    .returning('id');
+  const [run] = await db('vuln_feed_runs').
+    insert({ status: 'running', started_at: db.fn.now() }).
+    returning('id');
 
   const runId = run.id;
 
@@ -194,31 +229,33 @@ export async function syncVulnFeeds(req, res) {
   // doesn't time out while waiting for multiple external API calls.
   res.json({ message: 'Sync started', runId });
 
-  let fetched = 0, inserted = 0, updated = 0;
+  let fetched = 0,
+inserted = 0,
+updated = 0;
   try {
     for (const ecosystem of OSV_ECOSYSTEMS) {
       const vulns = await fetchOsvEcosystem(ecosystem);
       fetched += vulns.length;
 
       await db.transaction(async (trx) => {
-        for (const vuln of vulns) {
-          const result = await upsertAdvisory(trx, vuln);
-          if (result === 'inserted') inserted++;
-          else if (result === 'updated') updated++;
-        }
+        const result = await upsertAdvisories(trx, vulns);
+        inserted += result.inserted;
+        updated += result.updated;
       });
 
       logger.info(`vuln-sync: ${ecosystem} — ${vulns.length} fetched`);
     }
 
-    await db('vuln_feed_runs').where({ id: runId }).update({
+    await db('vuln_feed_runs').where({ id: runId }).
+update({
       status: 'success', fetched, inserted, updated, finished_at: db.fn.now(),
     });
 
     logger.info(`vuln-sync complete — fetched=${fetched} inserted=${inserted} updated=${updated}`);
   } catch (err) {
     logger.error('vuln-sync failed', err);
-    await db('vuln_feed_runs').where({ id: runId }).update({
+    await db('vuln_feed_runs').where({ id: runId }).
+update({
       status: 'error', fetched, inserted, updated,
       error_message: err.message, finished_at: db.fn.now(),
     });

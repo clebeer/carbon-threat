@@ -18,10 +18,10 @@ const add = async (token) => {
       ? new Date(decoded.exp * 1000)
       : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // fallback: 7 days
 
-    await db('refresh_tokens')
-      .insert({ token, expires_at })
-      .onConflict('token')
-      .ignore();
+    await db('refresh_tokens').
+      insert({ token, expires_at }).
+      onConflict('token').
+      ignore();
   } catch (err) {
     logger.error('Failed to store refresh token', err);
   }
@@ -34,7 +34,8 @@ const add = async (token) => {
 const remove = async (token) => {
   logger.debug('Removing / invalidating refresh token from repository');
   try {
-    await db('refresh_tokens').where({ token }).delete();
+    await db('refresh_tokens').where({ token }).
+delete();
   } catch (err) {
     logger.error('Failed to remove refresh token', err);
   }
@@ -48,7 +49,8 @@ const remove = async (token) => {
  */
 const verify = async (token) => {
   try {
-    const row = await db('refresh_tokens').where({ token }).first();
+    const row = await db('refresh_tokens').where({ token }).
+first();
 
     if (!row) {
       logger.audit('Refresh token not found in repository');
@@ -57,7 +59,8 @@ const verify = async (token) => {
 
     // Opportunistic cleanup of expired tokens
     if (new Date(row.expires_at) < new Date()) {
-      await db('refresh_tokens').where({ token }).delete();
+      await db('refresh_tokens').where({ token }).
+delete();
       logger.audit('Refresh token expired');
       return false;
     }

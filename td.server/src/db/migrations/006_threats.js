@@ -1,19 +1,33 @@
 export const up = async (knex) => {
   await knex.schema.createTable('threats', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('model_id').notNullable().references('id').inTable('threat_models').onDelete('CASCADE');
-    t.uuid('org_id').nullable().references('id').inTable('organizations').onDelete('SET NULL');
-    t.specificType('node_ids', 'text[]').nullable().defaultTo('{}');
-    t.specificType('edge_ids', 'text[]').nullable().defaultTo('{}');
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('model_id').notNullable().
+references('id').
+inTable('threat_models').
+onDelete('CASCADE');
+    t.uuid('org_id').nullable().
+references('id').
+inTable('organizations').
+onDelete('SET NULL');
+    t.specificType('node_ids', 'text[]').nullable().
+defaultTo('{}');
+    t.specificType('edge_ids', 'text[]').nullable().
+defaultTo('{}');
     t.string('title', 255).notNullable();
     t.text('description');
-    t.string('stride_category', 30).notNullable().defaultTo('Tampering');
-    t.string('severity', 10).notNullable().defaultTo('Medium');
-    t.string('status', 30).notNullable().defaultTo('Open');
-    t.string('source', 20).notNullable().defaultTo('manual');
+    t.string('stride_category', 30).notNullable().
+defaultTo('Tampering');
+    t.string('severity', 10).notNullable().
+defaultTo('Medium');
+    t.string('status', 30).notNullable().
+defaultTo('Open');
+    t.string('source', 20).notNullable().
+defaultTo('manual');
     t.string('rule_id', 100).nullable();
     t.text('mitigation');
-    t.jsonb('owasp_refs').notNullable().defaultTo('[]');
+    t.jsonb('owasp_refs').notNullable().
+defaultTo('[]');
     t.timestamps(true, true);
   });
   await knex.schema.table('threats', (t) => {

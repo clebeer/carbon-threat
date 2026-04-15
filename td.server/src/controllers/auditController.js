@@ -11,18 +11,19 @@ import loggerHelper from '../helpers/logger.helper.js';
 const logger = loggerHelper.get('controllers/auditController.js');
 
 export async function listAuditLogs(req, res) {
-  const page  = Math.max(1, parseInt(req.query.page  || '1',  10));
+  const page = Math.max(1, parseInt(req.query.page || '1', 10));
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
   const offset = (page - 1) * limit;
 
   try {
     const [logs, countRow] = await Promise.all([
-      db('audit_logs')
-        .select('id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at')
-        .orderBy('created_at', 'desc')
-        .limit(limit)
-        .offset(offset),
-      db('audit_logs').count('id as n').first(),
+      db('audit_logs').
+        select('id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at').
+        orderBy('created_at', 'desc').
+        limit(limit).
+        offset(offset),
+      db('audit_logs').count('id as n').
+first(),
     ]);
 
     return res.json({

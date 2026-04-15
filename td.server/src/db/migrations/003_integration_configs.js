@@ -11,8 +11,12 @@
  */
 export function up(knex) {
   return knex.schema.createTable('integration_configs', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('org_id').references('id').inTable('organizations').onDelete('CASCADE').nullable();
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('org_id').references('id').
+inTable('organizations').
+onDelete('CASCADE').
+nullable();
 
     // Platform identifier — must match the switch cases in third-party.js
     t.string('platform', 40).notNullable();
@@ -20,10 +24,13 @@ export function up(knex) {
     // AES-256-GCM payload: JSON-serialised { iv, encryptedData, authTag }
     t.text('config_encrypted').notNullable();
 
-    t.boolean('is_enabled').notNullable().defaultTo(false);
+    t.boolean('is_enabled').notNullable().
+defaultTo(false);
 
-    t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
-    t.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
+    t.timestamp('created_at').notNullable().
+defaultTo(knex.fn.now());
+    t.timestamp('updated_at').notNullable().
+defaultTo(knex.fn.now());
 
     t.unique(['org_id', 'platform']);
   });

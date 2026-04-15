@@ -25,9 +25,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
       contact: { name: 'CarbonThreat', url: 'https://github.com/OWASP/threat-dragon' },
       license: { name: 'Apache 2.0', url: 'https://www.apache.org/licenses/LICENSE-2.0' },
     },
-    servers: [
-      { url: '/api', description: 'Current server' },
-    ],
+    servers: [{ url: '/api', description: 'Current server' },],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -64,10 +62,10 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
             model_id:        { type: 'string', format: 'uuid' },
             title:           { type: 'string' },
             description:     { type: 'string', nullable: true },
-            stride_category: { type: 'string', enum: ['Spoofing','Tampering','Repudiation','Information Disclosure','DoS','Elevation of Privilege'] },
-            severity:        { type: 'string', enum: ['Critical','High','Medium','Low'] },
-            status:          { type: 'string', enum: ['Open','Investigating','Mitigated','Not Applicable'] },
-            source:          { type: 'string', enum: ['manual','rule','ai'] },
+            stride_category: { type: 'string', enum: ['Spoofing', 'Tampering', 'Repudiation', 'Information Disclosure', 'DoS', 'Elevation of Privilege'] },
+            severity:        { type: 'string', enum: ['Critical', 'High', 'Medium', 'Low'] },
+            status:          { type: 'string', enum: ['Open', 'Investigating', 'Mitigated', 'Not Applicable'] },
+            source:          { type: 'string', enum: ['manual', 'rule', 'ai'] },
             mitigation:      { type: 'string', nullable: true },
             owasp_refs:      { type: 'array', items: { type: 'object' } },
             node_ids:        { type: 'array', items: { type: 'string' } },
@@ -82,7 +80,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
             id:           { type: 'string', format: 'uuid' },
             email:        { type: 'string', format: 'email' },
             display_name: { type: 'string' },
-            role:         { type: 'string', enum: ['admin','analyst','viewer'] },
+            role:         { type: 'string', enum: ['admin', 'analyst', 'viewer'] },
             is_active:    { type: 'boolean' },
             created_at:   { type: 'string', format: 'date-time' },
           },
@@ -91,16 +89,16 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
     },
     security: [{ bearerAuth: [] }],
     tags: [
-      { name: 'Auth',         description: 'Authentication and token management' },
-      { name: 'Threat Models',description: 'CRUD for threat models (PostgreSQL-backed)' },
-      { name: 'Threats',      description: 'STRIDE threat tracking and OWASP references' },
-      { name: 'Users',        description: 'User management (admin only)' },
+      { name: 'Auth', description: 'Authentication and token management' },
+      { name: 'Threat Models', description: 'CRUD for threat models (PostgreSQL-backed)' },
+      { name: 'Threats', description: 'STRIDE threat tracking and OWASP references' },
+      { name: 'Users', description: 'User management (admin only)' },
       { name: 'Domain Packs', description: 'Threat model templates by technology domain' },
-      { name: 'Cloud Storage',description: 'Google Drive / OneDrive import & export' },
+      { name: 'Cloud Storage', description: 'Google Drive / OneDrive import & export' },
       { name: 'Integrations', description: 'Jira, GitHub Issues, ServiceNow, AI threat bot' },
-      { name: 'Assets',       description: 'Asset registry derived from threat model nodes' },
-      { name: 'Audit',        description: 'Immutable audit trail (admin only)' },
-      { name: 'Config',       description: 'Server configuration and health' },
+      { name: 'Assets', description: 'Asset registry derived from threat model nodes' },
+      { name: 'Audit', description: 'Immutable audit trail (admin only)' },
+      { name: 'Config', description: 'Server configuration and health' },
     ],
     paths: {
       // ── Auth ──────────────────────────────────────────────────────────────
@@ -110,7 +108,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
           summary: 'Login with email and password',
           requestBody: {
             required: true,
-            content: { 'application/json': { schema: { type: 'object', required: ['email','password'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string' } } } } },
+            content: { 'application/json': { schema: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string' } } } } },
           },
           responses: {
             200: { description: 'Login successful', content: { 'application/json': { schema: { type: 'object', properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' }, user: { $ref: '#/components/schemas/User' } } } } } },
@@ -125,7 +123,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
           summary: 'Create the first admin account (one-time, fails when users exist)',
           requestBody: {
             required: true,
-            content: { 'application/json': { schema: { type: 'object', required: ['email','password','displayName'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', minLength: 12 }, displayName: { type: 'string' } } } } },
+            content: { 'application/json': { schema: { type: 'object', required: ['email', 'password', 'displayName'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', minLength: 12 }, displayName: { type: 'string' } } } } },
           },
           responses: {
             201: { description: 'Admin created' },
@@ -246,7 +244,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
           summary: 'List threats (optionally filtered by modelId, status, strideCategory)',
           parameters: [
             { name: 'modelId', in: 'query', schema: { type: 'string', format: 'uuid' } },
-            { name: 'status', in: 'query', schema: { type: 'string', enum: ['Open','Investigating','Mitigated','Not Applicable'] } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['Open', 'Investigating', 'Mitigated', 'Not Applicable'] } },
             { name: 'strideCategory', in: 'query', schema: { type: 'string' } },
           ],
           responses: { 200: { description: 'List of threats', content: { 'application/json': { schema: { type: 'object', properties: { threats: { type: 'array', items: { $ref: '#/components/schemas/Threat' } } } } } } } },
@@ -283,7 +281,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
         post: {
           tags: ['Users'], operationId: 'createUser',
           summary: 'Create a new user (admin only)',
-          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email','password','role'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', minLength: 12 }, displayName: { type: 'string' }, role: { type: 'string', enum: ['admin','analyst','viewer'] } } } } } },
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email', 'password', 'role'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', minLength: 12 }, displayName: { type: 'string' }, role: { type: 'string', enum: ['admin', 'analyst', 'viewer'] } } } } } },
           responses: { 201: { description: 'User created' }, 400: { description: 'Validation error' }, 409: { description: 'Email already exists' } },
         },
       },
@@ -342,8 +340,8 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
         get: { tags: ['Integrations'], operationId: 'listIntegrations', summary: 'List configured integrations', responses: { 200: { description: 'Integrations' } } },
       },
       '/integrations/{platform}': {
-        parameters: [{ name: 'platform', in: 'path', required: true, schema: { type: 'string', enum: ['github','jira','servicenow','openai','ollama'] } }],
-        get:    { tags: ['Integrations'], operationId: 'getIntegration',    summary: 'Get integration config for a platform', responses: { 200: { description: 'Config' } } },
+        parameters: [{ name: 'platform', in: 'path', required: true, schema: { type: 'string', enum: ['github', 'jira', 'servicenow', 'openai', 'ollama'] } }],
+        get:    { tags: ['Integrations'], operationId: 'getIntegration', summary: 'Get integration config for a platform', responses: { 200: { description: 'Config' } } },
         put:    { tags: ['Integrations'], operationId: 'upsertIntegration', summary: 'Save/update integration config (admin only)', requestBody: { content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Saved' } } },
         delete: { tags: ['Integrations'], operationId: 'deleteIntegration', summary: 'Remove integration config (admin only)', responses: { 200: { description: 'Removed' } } },
       },
@@ -352,7 +350,7 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
         post: {
           tags: ['Integrations'], operationId: 'exportIssue',
           summary: 'Export a threat as an issue to the configured tracker',
-          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['title','description'], properties: { title: { type: 'string' }, description: { type: 'string' } } } } } },
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['title', 'description'], properties: { title: { type: 'string' }, description: { type: 'string' } } } } } },
           responses: { 200: { description: 'Issue created' } },
         },
       },
@@ -367,23 +365,23 @@ Obtain a token via \`POST /api/auth/local/login\` and pass it as:
 
       // ── Cloud Storage ────────────────────────────────────────────────────
       '/cloud-storage/{provider}/status': {
-        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google','microsoft'] } }],
+        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }],
         get: { tags: ['Cloud Storage'], operationId: 'cloudStorageStatus', summary: 'Check cloud storage connection status', responses: { 200: { description: 'Status' } } },
       },
       '/cloud-storage/{provider}/auth': {
-        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google','microsoft'] } }],
+        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }],
         get: { tags: ['Cloud Storage'], operationId: 'cloudStorageAuth', summary: 'Get OAuth authorization URL', responses: { 200: { description: 'Auth URL' } } },
       },
       '/cloud-storage/{provider}/files': {
-        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google','microsoft'] } }],
+        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }],
         get: { tags: ['Cloud Storage'], operationId: 'listCloudFiles', summary: 'List threat model files in cloud storage', responses: { 200: { description: 'Files' } } },
       },
       '/cloud-storage/{provider}/import': {
-        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google','microsoft'] } }],
-        post: { tags: ['Cloud Storage'], operationId: 'importFromCloud', summary: 'Import a threat model from cloud storage', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fileId','title'], properties: { fileId: { type: 'string' }, title: { type: 'string' } } } } } }, responses: { 201: { description: 'Imported' } } },
+        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }],
+        post: { tags: ['Cloud Storage'], operationId: 'importFromCloud', summary: 'Import a threat model from cloud storage', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fileId', 'title'], properties: { fileId: { type: 'string' }, title: { type: 'string' } } } } } }, responses: { 201: { description: 'Imported' } } },
       },
       '/cloud-storage/{provider}/export': {
-        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google','microsoft'] } }],
+        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }],
         post: { tags: ['Cloud Storage'], operationId: 'exportToCloud', summary: 'Export a threat model to cloud storage', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['modelId'], properties: { modelId: { type: 'string', format: 'uuid' } } } } } }, responses: { 200: { description: 'Exported' } } },
       },
     },

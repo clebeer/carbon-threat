@@ -12,7 +12,8 @@ export const up = async (knex) => {
   await knex.schema.createTable('refresh_tokens', (t) => {
     t.string('token', 2048).primary();
     t.timestamp('expires_at').notNullable();
-    t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+    t.timestamp('created_at').notNullable().
+defaultTo(knex.fn.now());
   });
 
   await knex.schema.table('refresh_tokens', (t) => {

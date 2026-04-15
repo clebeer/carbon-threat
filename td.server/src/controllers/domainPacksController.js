@@ -6,9 +6,9 @@ const logger = loggerHelper.get('controllers/domainPacksController.js');
 
 export async function listPacks(req, res) {
   try {
-    const packs = await db('domain_packs')
-      .select('id', 'slug', 'name', 'description', 'is_builtin', 'created_at', 'updated_at')
-      .orderBy('name', 'asc');
+    const packs = await db('domain_packs').
+      select('id', 'slug', 'name', 'description', 'is_builtin', 'created_at', 'updated_at').
+      orderBy('name', 'asc');
     return res.json({ packs });
   } catch (err) {
     logger.error('listPacks failed', err);
@@ -19,8 +19,9 @@ export async function listPacks(req, res) {
 export async function getPack(req, res) {
   const { slug } = req.params;
   try {
-    const pack = await db('domain_packs').where({ slug }).first();
-    if (!pack) return res.status(404).json({ error: 'Domain pack not found' });
+    const pack = await db('domain_packs').where({ slug }).
+first();
+    if (!pack) {return res.status(404).json({ error: 'Domain pack not found' });}
     return res.json({ pack });
   } catch (err) {
     logger.error('getPack failed', err);
@@ -31,13 +32,14 @@ export async function getPack(req, res) {
 export async function listTemplates(req, res) {
   const { slug } = req.params;
   try {
-    const pack = await db('domain_packs').where({ slug }).first();
-    if (!pack) return res.status(404).json({ error: 'Domain pack not found' });
+    const pack = await db('domain_packs').where({ slug }).
+first();
+    if (!pack) {return res.status(404).json({ error: 'Domain pack not found' });}
 
-    const templates = await db('domain_templates')
-      .where({ pack_id: pack.id })
-      .select('id', 'pack_id', 'name', 'description', 'diagram_json', 'created_at', 'updated_at')
-      .orderBy('name', 'asc');
+    const templates = await db('domain_templates').
+      where({ pack_id: pack.id }).
+      select('id', 'pack_id', 'name', 'description', 'diagram_json', 'created_at', 'updated_at').
+      orderBy('name', 'asc');
 
     return res.json({ templates });
   } catch (err) {
@@ -55,30 +57,31 @@ export async function applyTemplate(req, res) {
   }
 
   const userId = req.user?.id;
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   try {
-    const pack = await db('domain_packs').where({ slug }).first();
-    if (!pack) return res.status(404).json({ error: 'Domain pack not found' });
+    const pack = await db('domain_packs').where({ slug }).
+first();
+    if (!pack) {return res.status(404).json({ error: 'Domain pack not found' });}
 
-    const template = await db('domain_templates')
-      .where({ id: templateId, pack_id: pack.id })
-      .first();
-    if (!template) return res.status(404).json({ error: 'Template not found' });
+    const template = await db('domain_templates').
+      where({ id: templateId, pack_id: pack.id }).
+      first();
+    if (!template) {return res.status(404).json({ error: 'Template not found' });}
 
     const content = template.diagram_json || {};
     const encrypted = encryptModel(content);
 
-    const [model] = await db('threat_models')
-      .insert({
+    const [model] = await db('threat_models').
+      insert({
         title:             title.trim(),
         description:       `Created from template: ${template.name}`,
         content_encrypted: JSON.stringify(encrypted),
         owner_id:          userId,
         org_id:            orgId || null,
         version:           1,
-      })
-      .returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
+      }).
+      returning(['id', 'title', 'description', 'version', 'is_archived', 'created_at', 'updated_at', 'owner_id', 'org_id']);
 
     logger.info(`Model created from template ${templateId} by user ${userId}`);
     return res.status(201).json({ model });

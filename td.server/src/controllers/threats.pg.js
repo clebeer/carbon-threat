@@ -7,7 +7,7 @@ const logger = loggerHelper.get('controllers/threats.pg.js');
 
 function scopedModelQuery(req) {
   const userId = req.user?.id;
-  const orgId  = req.user?.orgId ?? req.provider?.orgId ?? null;
+  const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
 
   const q = db('threat_models').where({ is_archived: false });
 
@@ -30,7 +30,8 @@ export async function listThreats(req, res) {
     let q = db('threats');
 
     if (modelId) {
-      const model = await scopedModelQuery(req).where({ id: modelId }).first();
+      const model = await scopedModelQuery(req).where({ id: modelId }).
+first();
       if (!model) {
         return res.status(404).json({ error: 'Threat model not found' });
       }
@@ -38,13 +39,13 @@ export async function listThreats(req, res) {
     } else {
       // No modelId — return all threats scoped to this user/org
       const models = await scopedModelQuery(req).select('id');
-      const modelIds = models.map(m => m.id);
-      if (modelIds.length === 0) return res.json({ threats: [] });
+      const modelIds = models.map((m) => m.id);
+      if (modelIds.length === 0) {return res.json({ threats: [] });}
       q = q.whereIn('model_id', modelIds);
     }
 
-    if (status)         q = q.where({ status });
-    if (strideCategory) q = q.where({ stride_category: strideCategory });
+    if (status) {q = q.where({ status });}
+    if (strideCategory) {q = q.where({ stride_category: strideCategory });}
 
     const threats = await q.orderBy('created_at', 'desc');
     return res.json({ threats });
@@ -60,15 +61,16 @@ export async function createThreat(req, res) {
     source, node_ids, edge_ids, mitigation, rule_id, owasp_refs,
   } = req.body || {};
 
-  if (!model_id) return res.status(400).json({ error: 'model_id is required' });
-  if (!title || !title.trim()) return res.status(400).json({ error: 'title is required' });
+  if (!model_id) {return res.status(400).json({ error: 'model_id is required' });}
+  if (!title || !title.trim()) {return res.status(400).json({ error: 'title is required' });}
 
   try {
-    const model = await scopedModelQuery(req).where({ id: model_id }).first();
-    if (!model) return res.status(404).json({ error: 'Threat model not found' });
+    const model = await scopedModelQuery(req).where({ id: model_id }).
+first();
+    if (!model) {return res.status(404).json({ error: 'Threat model not found' });}
 
-    const [threat] = await db('threats')
-      .insert({
+    const [threat] = await db('threats').
+      insert({
         model_id,
         title:           title.trim(),
         description:     description || null,
@@ -82,8 +84,8 @@ export async function createThreat(req, res) {
         rule_id:         rule_id || null,
         owasp_refs:      JSON.stringify(owasp_refs || []),
         org_id:          model.org_id || null,
-      })
-      .returning('*');
+      }).
+      returning('*');
 
     logger.info(`Threat created: ${threat.id} for model ${model_id}`);
     return res.status(201).json({ threat });
@@ -101,24 +103,28 @@ export async function updateThreat(req, res) {
   } = req.body || {};
 
   try {
-    const existing = await db('threats').where({ id }).first();
-    if (!existing) return res.status(404).json({ error: 'Threat not found' });
+    const existing = await db('threats').where({ id }).
+first();
+    if (!existing) {return res.status(404).json({ error: 'Threat not found' });}
 
-    const model = await scopedModelQuery(req).where({ id: existing.model_id }).first();
-    if (!model) return res.status(404).json({ error: 'Threat not found' });
+    const model = await scopedModelQuery(req).where({ id: existing.model_id }).
+first();
+    if (!model) {return res.status(404).json({ error: 'Threat not found' });}
 
     const patch = { updated_at: db.fn.now() };
-    if (title !== undefined)           patch.title           = title.trim();
-    if (description !== undefined)     patch.description     = description;
-    if (stride_category !== undefined) patch.stride_category = stride_category;
-    if (severity !== undefined)        patch.severity        = severity;
-    if (status !== undefined)          patch.status          = status;
-    if (mitigation !== undefined)      patch.mitigation      = mitigation;
-    if (owasp_refs !== undefined)      patch.owasp_refs      = JSON.stringify(owasp_refs);
-    if (node_ids !== undefined)        patch.node_ids        = node_ids;
-    if (edge_ids !== undefined)        patch.edge_ids        = edge_ids;
+    if (title !== undefined) {patch.title = title.trim();}
+    if (description !== undefined) {patch.description = description;}
+    if (stride_category !== undefined) {patch.stride_category = stride_category;}
+    if (severity !== undefined) {patch.severity = severity;}
+    if (status !== undefined) {patch.status = status;}
+    if (mitigation !== undefined) {patch.mitigation = mitigation;}
+    if (owasp_refs !== undefined) {patch.owasp_refs = JSON.stringify(owasp_refs);}
+    if (node_ids !== undefined) {patch.node_ids = node_ids;}
+    if (edge_ids !== undefined) {patch.edge_ids = edge_ids;}
 
-    const [threat] = await db('threats').where({ id }).update(patch).returning('*');
+    const [threat] = await db('threats').where({ id }).
+update(patch).
+returning('*');
     return res.json({ threat });
   } catch (err) {
     logger.error('updateThreat failed', err);
@@ -128,16 +134,19 @@ export async function updateThreat(req, res) {
 
 export async function deleteThreat(req, res) {
   const { id } = req.params;
-  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Invalid threat id' });
+  if (!UUID_RE.test(id)) {return res.status(400).json({ error: 'Invalid threat id' });}
 
   try {
-    const existing = await db('threats').where({ id }).first();
-    if (!existing) return res.status(404).json({ error: 'Threat not found' });
+    const existing = await db('threats').where({ id }).
+first();
+    if (!existing) {return res.status(404).json({ error: 'Threat not found' });}
 
-    const model = await scopedModelQuery(req).where({ id: existing.model_id }).first();
-    if (!model) return res.status(404).json({ error: 'Threat not found' });
+    const model = await scopedModelQuery(req).where({ id: existing.model_id }).
+first();
+    if (!model) {return res.status(404).json({ error: 'Threat not found' });}
 
-    await db('threats').where({ id }).del();
+    await db('threats').where({ id }).
+del();
     logger.info(`Threat deleted: ${id}`);
     return res.json({ message: 'Threat deleted' });
   } catch (err) {
@@ -164,15 +173,17 @@ const SARIF_SEVERITY = {
  */
 export async function exportSarif(req, res) {
   const modelId = req.params.id;
-  if (!UUID_RE.test(modelId)) return res.status(400).json({ error: 'Invalid model id' });
+  if (!UUID_RE.test(modelId)) {return res.status(400).json({ error: 'Invalid model id' });}
 
   try {
-    const model = await scopedModelQuery(req).where({ id: modelId }).first();
-    if (!model) return res.status(404).json({ error: 'Threat model not found' });
+    const model = await scopedModelQuery(req).where({ id: modelId }).
+first();
+    if (!model) {return res.status(404).json({ error: 'Threat model not found' });}
 
-    const threats = await db('threats').where({ model_id: modelId }).orderBy('created_at');
+    const threats = await db('threats').where({ model_id: modelId }).
+orderBy('created_at');
 
-    const results = threats.map(t => {
+    const results = threats.map((t) => {
       const owaspRefs = Array.isArray(t.owasp_refs) ? t.owasp_refs
         : (typeof t.owasp_refs === 'string' ? JSON.parse(t.owasp_refs || '[]') : []);
 
@@ -210,13 +221,14 @@ export async function exportSarif(req, res) {
     const sarif = {
       $schema: 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
       version: '2.1.0',
-      runs: [{
+      runs: [
+{
         tool: {
           driver: {
             name:            'CarbonThreat',
             version:         '1.0.0',
             informationUri:  'https://github.com/OWASP/threat-dragon',
-            rules: threats.map(t => ({
+            rules: threats.map((t) => ({
               id:   t.rule_id ?? `CT-${t.id.slice(0, 8).toUpperCase()}`,
               name: t.title,
               shortDescription: { text: t.title },
@@ -232,11 +244,13 @@ export async function exportSarif(req, res) {
           modelVersion: model.version,
           exportedAt:   new Date().toISOString(),
         },
-      }],
+      }
+],
     };
 
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="carbonthreat-${model.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}.sarif.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="carbonthreat-${model.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').
+slice(0, 40)}.sarif.json"`);
     return res.json(sarif);
   } catch (err) {
     logger.error('exportSarif failed', err);
@@ -246,11 +260,12 @@ export async function exportSarif(req, res) {
 
 export async function analyzeModel(req, res) {
   const modelId = req.params.id;
-  if (!UUID_RE.test(modelId)) return res.status(400).json({ error: 'Invalid model id' });
+  if (!UUID_RE.test(modelId)) {return res.status(400).json({ error: 'Invalid model id' });}
 
   try {
-    const row = await scopedModelQuery(req).where({ id: modelId }).first();
-    if (!row) return res.status(404).json({ error: 'Threat model not found' });
+    const row = await scopedModelQuery(req).where({ id: modelId }).
+first();
+    if (!row) {return res.status(404).json({ error: 'Threat model not found' });}
 
     let content = {};
     if (row.content_encrypted) {
@@ -269,7 +284,8 @@ export async function analyzeModel(req, res) {
     const inserted = [];
     for (const candidate of candidates) {
       const existing = candidate.rule_id
-        ? await db('threats').where({ model_id: modelId, rule_id: candidate.rule_id }).first()
+        ? await db('threats').where({ model_id: modelId, rule_id: candidate.rule_id }).
+first()
         : null;
 
       if (existing) {
@@ -277,8 +293,8 @@ export async function analyzeModel(req, res) {
         continue;
       }
 
-      const [threat] = await db('threats')
-        .insert({
+      const [threat] = await db('threats').
+        insert({
           model_id:        modelId,
           org_id:          row.org_id || null,
           title:           candidate.title,
@@ -292,8 +308,8 @@ export async function analyzeModel(req, res) {
           edge_ids:        candidate.edge_ids || [],
           mitigation:      candidate.mitigation || null,
           owasp_refs:      JSON.stringify(candidate.owasp_refs || []),
-        })
-        .returning('*');
+        }).
+        returning('*');
 
       inserted.push(threat);
     }

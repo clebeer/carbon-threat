@@ -49,10 +49,10 @@ export async function listAssets(req, res) {
   try {
     const orgId = req.user?.org_id ?? null;
 
-    const models = await db('threat_models')
-      .where({ is_archived: false })
-      .modify((q) => { if (orgId) q.where('org_id', orgId); })
-      .select('id', 'title', 'content_encrypted');
+    const models = await db('threat_models').
+      where({ is_archived: false }).
+      modify((q) => { if (orgId) {q.where('org_id', orgId);} }).
+      select('id', 'title', 'content_encrypted');
 
     // Deduplicate by node label — same label across models merges into one asset
     const assetMap = new Map();
@@ -67,16 +67,17 @@ export async function listAssets(req, res) {
         continue;
       }
 
-      const nodes = content?.nodes ?? content?.detail?.diagrams?.flatMap(d => d.cells ?? []) ?? [];
+      const nodes = content?.nodes ?? content?.detail?.diagrams?.flatMap((d) => d.cells ?? []) ?? [];
 
       for (const node of nodes) {
         const label = node?.data?.label || node?.attrs?.label?.text || node?.label || 'Unnamed';
-        const kind  = node?.data?.kind  || node?.type || 'unknown';
-        const key   = `${label}::${kind}`;
+        const kind = node?.data?.kind || node?.type || 'unknown';
+        const key = `${label}::${kind}`;
 
         if (!assetMap.has(key)) {
           assetMap.set(key, {
-            id:               `ast-${Buffer.from(key).toString('base64').slice(0, 8)}`,
+            id:               `ast-${Buffer.from(key).toString('base64').
+slice(0, 8)}`,
             name:             label,
             type:             KIND_LABEL[kind] ?? 'Component',
             confidentiality:  classifyConfidentiality(label),
@@ -86,7 +87,7 @@ export async function listAssets(req, res) {
           // If seen in multiple models, escalate confidentiality rank to highest
           const existing = assetMap.get(key);
           const existingRank = CONF_RANK[existing.confidentiality] ?? 0;
-          const newRank      = CONF_RANK[classifyConfidentiality(label)] ?? 0;
+          const newRank = CONF_RANK[classifyConfidentiality(label)] ?? 0;
           if (newRank > existingRank) {
             existing.confidentiality = classifyConfidentiality(label);
           }
