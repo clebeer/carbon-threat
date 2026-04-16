@@ -90,6 +90,110 @@ Append-only — no UPDATE/DELETE on this table.
 | `started_at` | timestamp | |
 | `finished_at` | timestamp | |
 
+## OSV Scanner tables
+
+### `osv_scan_runs`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `name` | string | User-provided scan label |
+| `scan_type` | string | `lockfile` \| `sbom` \| `git` \| `image` |
+| `status` | string | `pending` \| `running` \| `complete` \| `error` |
+| `source_filename` | string | Original filename (for display and format detection) |
+| `lockfile_type` | string | e.g. `npm-package-lock`, `requirements-txt` |
+| `packages_scanned` | integer | |
+| `vulns_found` | integer | |
+| `error_message` | text | Set on failure |
+| `created_by` | UUID FK → users | |
+| `started_at` | timestamp | |
+| `finished_at` | timestamp | |
+| `created_at` | timestamp | |
+
+### `osv_scan_findings`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `scan_id` | UUID FK → osv_scan_runs | CASCADE on delete |
+| `package_name` | string | |
+| `package_version` | string | |
+| `ecosystem` | string | e.g. `npm`, `PyPI`, `Go` |
+| `vuln_id` | string | OSV / CVE / GHSA identifier |
+| `title` | string | |
+| `description` | text | |
+| `severity` | string | Critical / High / Medium / Low |
+| `cvss_score` | decimal(4,1) | |
+| `stride_categories` | TEXT[] | Derived STRIDE categories |
+| `fixed_version` | string | Earliest fixed version |
+| `affected_versions` | JSONB | Raw affected ranges from OSV |
+| `references` | JSONB | Advisory reference URLs |
+| `is_ignored` | boolean | Matches `osv_scanner_policy.ignored_vuln_ids` |
+| `created_at` | timestamp | |
+
+### `osv_scanner_policy`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | Singleton row |
+| `ignored_vuln_ids` | JSONB | Array of OSV/CVE IDs to suppress |
+| `severity_threshold` | string | Minimum severity to store — default `Low` |
+| `auto_enrich_threats` | boolean | Automatically link findings to STRIDE threats |
+| `updated_at` | timestamp | |
+
+## MITRE ATT&CK tables
+
+### `attack_objects`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `attack_id` | string UNIQUE | External ATT&CK ID, e.g. `TA0001`, `T1059`, `T1059.003` |
+| `type` | string | `tactic` \| `technique` \| `sub-technique` \| `group` \| `mitigation` \| `software` |
+| `name` | string | |
+| `description` | text | |
+| `platforms` | TEXT[] | Operating systems / environments (techniques only) |
+| `kill_chain_phases` | JSONB | `[{ kill_chain_name, phase_name }]` |
+| `parent_id` | UUID FK → attack_objects | Sub-technique parent |
+| `aliases` | TEXT[] | Alternative names (groups / software) |
+| `url` | text | Canonical ATT&CK URL |
+| `stix_id` | string UNIQUE | Original STIX 2.1 identifier |
+| `is_deprecated` | boolean | |
+| `is_revoked` | boolean | |
+| `extra` | JSONB | Additional STIX metadata (detection, data sources, etc.) |
+| `created_at` / `updated_at` | timestamp | |
+
+### `attack_relationships`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `source_id` | UUID FK → attack_objects | |
+| `target_id` | UUID FK → attack_objects | |
+| `relationship_type` | string | `mitigates` \| `subtechnique-of` \| `uses` \| `attributed-to` |
+| `stix_id` | string UNIQUE | |
+
+### `attack_threat_mappings`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `threat_id` | UUID FK → threats | Optional — link to a specific STRIDE threat |
+| `technique_id` | UUID FK → attack_objects | Required |
+| `model_id` | UUID FK → threat_models | Optional — scope to a threat model |
+| `created_by` | UUID FK → users | |
+| `confidence` | string | `high` \| `medium` \| `low` |
+| `notes` | text | |
+| `created_at` | timestamp | |
+
+### `attack_sync_log`
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `domain` | string | `enterprise-attack` \| `mobile-attack` \| `ics-attack` |
+| `attack_version` | string | ATT&CK version from the STIX bundle, e.g. `18.1` |
+| `objects_synced` | integer | |
+| `relationships_synced` | integer | |
+| `status` | string | `pending` \| `running` \| `complete` \| `error` |
+| `error_message` | text | |
+| `triggered_by` | UUID FK → users | |
+| `started_at` | timestamp | |
+| `finished_at` | timestamp | |
+
 ## Other tables
 
 - `templates` — threat model templates (title, content JSONB, tags)

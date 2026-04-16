@@ -10,208 +10,516 @@ import ExportIssuesModal from '../components/ExportIssuesModal';
 
 const SEV_ORDER = ['Critical', 'High', 'Medium', 'Low'] as const;
 
+const STRIDE_ORDER = [
+  'Spoofing', 'Tampering', 'Repudiation',
+  'Information Disclosure', 'Denial of Service', 'Elevation of Privilege',
+] as const;
+
 const SEV_RGB: Record<string, [number, number, number]> = {
   Critical: [239, 68, 68],
   High:     [249, 115, 22],
   Medium:   [245, 158, 11],
-  Low:      [0, 242, 255],
+  Low:      [56, 189, 248],
 };
 
 const STATUS_RGB: Record<string, [number, number, number]> = {
-  Open:            [239, 68, 68],
-  Investigating:   [245, 158, 11],
-  Mitigated:       [34, 197, 94],
-  'Not Applicable':[100, 116, 139],
+  Open:             [239, 68, 68],
+  Investigating:    [245, 158, 11],
+  Mitigated:        [34, 197, 94],
+  'Not Applicable': [100, 116, 139],
 };
 
-function generateModelPDF(model: ThreatModelSummary, threats: Threat[]) {
-  const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const W    = 210;
-  const now  = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
-  let   y    = 20;
+const STRIDE_RGB: Record<string, [number, number, number]> = {
+  'Spoofing':               [168, 85, 247],
+  'Tampering':              [239, 68, 68],
+  'Repudiation':            [249, 115, 22],
+  'Information Disclosure': [56, 189, 248],
+  'Denial of Service':      [245, 158, 11],
+  'Elevation of Privilege': [34, 197, 94],
+};
 
-  // ── Cover header ────────────────────────────────────────────────────────────
-  doc.setFillColor(10, 15, 28);
-  doc.rect(0, 0, W, 44, 'F');
-  doc.setTextColor(0, 242, 255);
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('CarbonThreat', 15, 17);
-  doc.setFontSize(13);
-  doc.setTextColor(220, 230, 245);
-  doc.text(model.title, 15, 28);
-  doc.setFontSize(9);
-  doc.setTextColor(120, 130, 150);
-  doc.text(`v${model.version}  ·  Generated: ${now}`, 15, 38);
-  y = 54;
+// Page dimensions & layout constants
+const W         = 210;
+const MARGIN    = 15;
+const CONTENT_W = W - MARGIN * 2;
+const FOOTER_Y  = 291;
+const PAGE_BOT  = 278;
 
-  // ── Summary stats ───────────────────────────────────────────────────────────
-  const total      = threats.length;
-  const open       = threats.filter(t => t.status === 'Open').length;
-  const mitigated  = threats.filter(t => t.status === 'Mitigated').length;
-  const critical   = threats.filter(t => t.severity === 'Critical').length;
-  const owaspCount = threats.reduce((n, t) => n + (t.owasp_refs?.length ?? 0), 0);
-  const mitigPct   = total > 0 ? Math.round((mitigated / total) * 100) : 0;
-
-  doc.setTextColor(0, 242, 255);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SUMMARY', 15, y);
-  y += 7;
-
-  const summaryItems: [string, string][] = [
-    ['Total Threats',     String(total)],
-    ['Open',             String(open)],
-    ['Mitigated',        `${mitigated} (${mitigPct}%)`],
-    ['Critical',         String(critical)],
-    ['OWASP References', String(owaspCount)],
-  ];
-  const colW = (W - 30) / 2;
-  summaryItems.forEach(([label, value], i) => {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const x   = 15 + col * (colW + 5);
-    const yy  = y + row * 10;
-    doc.setFillColor(col === 0 ? 18 : 24, col === 0 ? 24 : 30, col === 0 ? 40 : 48);
-    doc.roundedRect(x, yy - 5, colW, 9, 1, 1, 'F');
-    doc.setTextColor(160, 170, 190);
+function addFooter(doc: InstanceType<typeof jsPDF>, title: string) {
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    // Footer rule
+    doc.setDrawColor(30, 36, 54);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, FOOTER_Y - 4, W - MARGIN, FOOTER_Y - 4);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(label, x + 3, yy);
-    doc.setTextColor(220, 230, 245);
-    doc.setFont('helvetica', 'bold');
-    doc.text(value, x + colW - 3, yy, { align: 'right' });
+    doc.setFontSize(7);
+    doc.setTextColor(70, 80, 100);
+    doc.text(`CarbonThreat  ·  ${title}`, MARGIN, FOOTER_Y);
+    doc.text(`${p} / ${total}`, W - MARGIN, FOOTER_Y, { align: 'right' });
+  }
+}
+
+function sectionHeader(doc: InstanceType<typeof jsPDF>, label: string, y: number): number {
+  doc.setFillColor(18, 24, 40);
+  doc.rect(MARGIN, y - 5, CONTENT_W, 10, 'F');
+  // Accent bar
+  doc.setFillColor(0, 200, 220);
+  doc.rect(MARGIN, y - 5, 3, 10, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(0, 220, 240);
+  doc.text(label, MARGIN + 6, y + 1);
+  return y + 14;
+}
+
+function badge(
+  doc: InstanceType<typeof jsPDF>,
+  text: string,
+  x: number,
+  y: number,
+  rgb: [number, number, number],
+) {
+  const pad = 3;
+  doc.setFontSize(7.5);
+  const tw = doc.getTextWidth(text);
+  doc.setFillColor(rgb[0], rgb[1], rgb[2], 0.15 as any);
+  // Approximate background with low-opacity fill via a light tint
+  doc.setFillColor(
+    Math.min(255, Math.round(rgb[0] * 0.2 + 12)),
+    Math.min(255, Math.round(rgb[1] * 0.2 + 18)),
+    Math.min(255, Math.round(rgb[2] * 0.2 + 30)),
+  );
+  doc.roundedRect(x, y - 4, tw + pad * 2, 6, 1, 1, 'F');
+  doc.setTextColor(...rgb);
+  doc.setFont('helvetica', 'bold');
+  doc.text(text, x + pad, y);
+  return tw + pad * 2 + 4; // consumed width + gap
+}
+
+function generateModelPDF(model: ThreatModelSummary, threats: Threat[]) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const now = new Date().toLocaleDateString('en-GB', {
+    year: 'numeric', month: 'long', day: 'numeric',
   });
-  y += Math.ceil(summaryItems.length / 2) * 10 + 10;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PAGE 1 — COVER
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Background
+  doc.setFillColor(8, 12, 24);
+  doc.rect(0, 0, W, 297, 'F');
+
+  // Top accent strip
+  doc.setFillColor(0, 180, 200);
+  doc.rect(0, 0, W, 2, 'F');
+
+  // Left sidebar
+  doc.setFillColor(12, 18, 34);
+  doc.rect(0, 2, 6, 295, 'F');
+
+  // Product wordmark
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(28);
+  doc.setTextColor(0, 220, 240);
+  doc.text('Carbon', 22, 45);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Threat', 22 + doc.getTextWidth('Carbon') + 2, 45);
+
+  // Tagline
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80, 100, 130);
+  doc.text('Enterprise Threat Modeling Platform', 22, 53);
+
+  // Divider
+  doc.setDrawColor(0, 180, 200);
+  doc.setLineWidth(0.5);
+  doc.line(22, 58, W - 22, 58);
+
+  // Report type label
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(0, 180, 200);
+  doc.text('THREAT MODEL REPORT', 22, 70);
+
+  // Model title
+  const titleLines = doc.splitTextToSize(model.title, W - 44) as string[];
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(220, 230, 250);
+  let ty = 82;
+  titleLines.slice(0, 3).forEach((line: string) => {
+    doc.text(line, 22, ty);
+    ty += 10;
+  });
+
+  // Meta info
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80, 100, 130);
+  doc.text(`Version  v${model.version}`, 22, ty + 6);
+  doc.text(`Generated  ${now}`, 22, ty + 13);
+  doc.text(
+    `Last updated  ${new Date(model.updated_at).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+    22,
+    ty + 20,
+  );
+
+  // ── Cover summary stats grid ──────────────────────────────────────────────
+  const total     = threats.length;
+  const open      = threats.filter(t => t.status === 'Open').length;
+  const mitigated = threats.filter(t => t.status === 'Mitigated').length;
+  const critical  = threats.filter(t => t.severity === 'Critical').length;
+  const high      = threats.filter(t => t.severity === 'High').length;
+  const mitigPct  = total > 0 ? Math.round((mitigated / total) * 100) : 0;
+
+  const stats: { label: string; value: string; rgb: [number, number, number] }[] = [
+    { label: 'Total Threats',    value: String(total),             rgb: [0, 220, 240] },
+    { label: 'Open',             value: String(open),              rgb: [239, 68, 68] },
+    { label: 'Critical',         value: String(critical),          rgb: [239, 68, 68] },
+    { label: 'High',             value: String(high),              rgb: [249, 115, 22] },
+    { label: 'Mitigated',        value: `${mitigated} (${mitigPct}%)`, rgb: [34, 197, 94] },
+  ];
+
+  const cardW = (CONTENT_W - 8) / 3;
+  const cardH = 22;
+  const startX = 22;
+  let statsY = ty + 38;
+
+  stats.forEach((s, i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cx  = startX + col * (cardW + 4);
+    const cy  = statsY + row * (cardH + 4);
+
+    doc.setFillColor(14, 20, 38);
+    doc.roundedRect(cx, cy, cardW, cardH, 2, 2, 'F');
+    // Top accent
+    doc.setFillColor(...s.rgb);
+    doc.roundedRect(cx, cy, cardW, 2, 1, 1, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(...s.rgb);
+    doc.text(s.value, cx + cardW / 2, cy + 14, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 120, 150);
+    doc.text(s.label.toUpperCase(), cx + cardW / 2, cy + 20, { align: 'center' });
+  });
+
+  // Cover page footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(40, 50, 70);
+  doc.text('CONFIDENTIAL  ·  CarbonThreat', 22, 287);
+  doc.text(now, W - 22, 287, { align: 'right' });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PAGE 2 — EXECUTIVE SUMMARY
+  // ─────────────────────────────────────────────────────────────────────────────
+  doc.addPage();
+  doc.setFillColor(8, 12, 24);
+  doc.rect(0, 0, W, 297, 'F');
+
+  let y = 22;
+
+  // Page heading
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(0, 220, 240);
+  doc.text('Executive Summary', MARGIN, y);
+  y += 14;
 
   // ── Description ─────────────────────────────────────────────────────────────
   if (model.description) {
-    doc.setTextColor(0, 242, 255);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DESCRIPTION', 15, y);
-    y += 6;
+    y = sectionHeader(doc, 'DESCRIPTION', y);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(180, 190, 210);
-    const lines = doc.splitTextToSize(model.description, W - 30) as string[];
-    lines.forEach((line: string) => {
-      if (y > 275) { doc.addPage(); y = 20; }
-      doc.text(line, 15, y);
+    doc.setTextColor(170, 185, 210);
+    const descLines = doc.splitTextToSize(model.description, CONTENT_W) as string[];
+    descLines.forEach((line: string) => {
+      if (y > PAGE_BOT) { doc.addPage(); doc.setFillColor(8, 12, 24); doc.rect(0, 0, W, 297, 'F'); y = 22; }
+      doc.text(line, MARGIN, y);
       y += 5;
     });
-    y += 6;
+    y += 8;
   }
 
-  // ── Severity breakdown ───────────────────────────────────────────────────────
+  // ── Severity distribution ─────────────────────────────────────────────────
   if (total > 0) {
-    if (y > 240) { doc.addPage(); y = 20; }
-    doc.setTextColor(0, 242, 255);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SEVERITY BREAKDOWN', 15, y);
-    y += 7;
+    if (y > PAGE_BOT - 50) { doc.addPage(); doc.setFillColor(8, 12, 24); doc.rect(0, 0, W, 297, 'F'); y = 22; }
+    y = sectionHeader(doc, 'SEVERITY DISTRIBUTION', y);
 
-    const sevCounts = SEV_ORDER.map(s => ({
-      sev: s,
-      count: threats.filter(t => t.severity === s).length,
-    }));
-    const maxCount = Math.max(1, ...sevCounts.map(d => d.count));
+    const sevCounts = SEV_ORDER.map(s => ({ sev: s, count: threats.filter(t => t.severity === s).length }));
+    const maxCount  = Math.max(1, ...sevCounts.map(d => d.count));
+    const barAreaW  = CONTENT_W - 50;
+
     sevCounts.forEach(({ sev, count }) => {
       if (count === 0) return;
-      const barW = ((W - 90) * count) / maxCount;
-      doc.setFillColor(30, 36, 54);
-      doc.roundedRect(15, y - 4, W - 30, 7, 1, 1, 'F');
-      doc.setFillColor(...SEV_RGB[sev]);
-      if (barW > 0) doc.roundedRect(75, y - 4, barW, 7, 1, 1, 'F');
-      doc.setTextColor(160, 170, 190);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(sev, 17, y);
-      doc.setTextColor(...SEV_RGB[sev]);
+      if (y > PAGE_BOT) { doc.addPage(); doc.setFillColor(8, 12, 24); doc.rect(0, 0, W, 297, 'F'); y = 22; }
+
+      const barW = (barAreaW * count) / maxCount;
+      const pct  = Math.round((count / total) * 100);
+
+      // Row background
+      doc.setFillColor(14, 20, 38);
+      doc.roundedRect(MARGIN, y - 5, CONTENT_W, 9, 1, 1, 'F');
+
+      // Label
       doc.setFont('helvetica', 'bold');
-      doc.text(String(count), W - 17, y, { align: 'right' });
-      y += 9;
+      doc.setFontSize(8.5);
+      doc.setTextColor(...SEV_RGB[sev]);
+      doc.text(sev, MARGIN + 3, y);
+
+      // Bar track
+      doc.setFillColor(22, 28, 46);
+      doc.roundedRect(MARGIN + 32, y - 3.5, barAreaW, 6, 1, 1, 'F');
+
+      // Bar fill
+      if (barW > 0) {
+        doc.setFillColor(...SEV_RGB[sev]);
+        doc.roundedRect(MARGIN + 32, y - 3.5, barW, 6, 1, 1, 'F');
+      }
+
+      // Count + pct
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(180, 195, 215);
+      doc.text(`${count}  (${pct}%)`, W - MARGIN - 2, y, { align: 'right' });
+
+      y += 11;
     });
     y += 6;
   }
 
-  // ── Threat table ─────────────────────────────────────────────────────────────
-  if (threats.length > 0) {
-    if (y > 230) { doc.addPage(); y = 20; }
-    doc.setTextColor(0, 242, 255);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('THREAT LIST', 15, y);
-    y += 7;
+  // ── STRIDE distribution ───────────────────────────────────────────────────
+  if (total > 0) {
+    if (y > PAGE_BOT - 70) { doc.addPage(); doc.setFillColor(8, 12, 24); doc.rect(0, 0, W, 297, 'F'); y = 22; }
+    y = sectionHeader(doc, 'STRIDE DISTRIBUTION', y);
 
-    // Table header
-    doc.setFillColor(20, 26, 42);
-    doc.rect(15, y - 4, W - 30, 8, 'F');
-    doc.setTextColor(120, 130, 150);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('THREAT', 17, y);
-    doc.text('STRIDE', 100, y);
-    doc.text('SEVERITY', 130, y);
-    doc.text('STATUS', 162, y);
-    y += 8;
+    const strideCounts = STRIDE_ORDER.map(s => ({
+      stride: s,
+      count: threats.filter(t => t.stride_category === s).length,
+    }));
+    const maxStride  = Math.max(1, ...strideCounts.map(d => d.count));
+    const sBarAreaW  = CONTENT_W - 70;
 
-    const sorted = [...threats].sort(
-      (a, b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity)
-    );
+    strideCounts.forEach(({ stride, count }) => {
+      if (count === 0) return;
+      if (y > PAGE_BOT) { doc.addPage(); doc.setFillColor(8, 12, 24); doc.rect(0, 0, W, 297, 'F'); y = 22; }
 
-    sorted.forEach((t, idx) => {
-      if (y > 275) { doc.addPage(); y = 20; }
-      const bg = idx % 2 === 0 ? [16, 20, 34] : [20, 26, 44];
-      doc.setFillColor(...(bg as [number, number, number]));
-      doc.rect(15, y - 4, W - 30, 9, 'F');
+      const barW = (sBarAreaW * count) / maxStride;
+      const pct  = Math.round((count / total) * 100);
+      const rgb  = STRIDE_RGB[stride] ?? [100, 120, 150];
 
-      // Title (truncated)
-      const titleText = doc.splitTextToSize(t.title, 78)[0] as string;
-      doc.setTextColor(210, 220, 235);
+      doc.setFillColor(14, 20, 38);
+      doc.roundedRect(MARGIN, y - 5, CONTENT_W, 9, 1, 1, 'F');
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text(titleText, 17, y);
+      doc.setTextColor(160, 175, 200);
+      doc.text(stride.length > 20 ? stride.slice(0, 20) + '…' : stride, MARGIN + 3, y);
 
-      // STRIDE
-      doc.setTextColor(160, 170, 190);
-      doc.text(t.stride_category.slice(0, 14), 100, y);
+      doc.setFillColor(22, 28, 46);
+      doc.roundedRect(MARGIN + 52, y - 3.5, sBarAreaW, 6, 1, 1, 'F');
 
-      // Severity badge
-      doc.setTextColor(...(SEV_RGB[t.severity] ?? [160, 170, 190]));
-      doc.setFont('helvetica', 'bold');
-      doc.text(t.severity, 130, y);
-
-      // Status badge
-      doc.setTextColor(...(STATUS_RGB[t.status] ?? [160, 170, 190]));
-      doc.text(t.status, 162, y);
-
-      // Mitigation (if any), indented on next row
-      if (t.mitigation) {
-        y += 6;
-        if (y > 275) { doc.addPage(); y = 20; }
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(7);
-        doc.setTextColor(100, 110, 130);
-        const mitLines = doc.splitTextToSize(`  → ${t.mitigation}`, W - 36) as string[];
-        doc.text(mitLines[0], 19, y);
+      if (barW > 0) {
+        doc.setFillColor(...rgb);
+        doc.roundedRect(MARGIN + 52, y - 3.5, barW, 6, 1, 1, 'F');
       }
 
-      y += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...rgb);
+      doc.text(`${count}  (${pct}%)`, W - MARGIN - 2, y, { align: 'right' });
+
+      y += 11;
+    });
+    y += 6;
+  }
+
+  // ── Status summary ────────────────────────────────────────────────────────
+  if (total > 0) {
+    if (y > PAGE_BOT - 40) { doc.addPage(); doc.setFillColor(8, 12, 24); doc.rect(0, 0, W, 297, 'F'); y = 22; }
+    y = sectionHeader(doc, 'STATUS OVERVIEW', y);
+
+    const statuses = ['Open', 'Investigating', 'Mitigated', 'Not Applicable'] as const;
+    const statusCounts = statuses.map(s => ({
+      status: s,
+      count:  threats.filter(t => t.status === s).length,
+    }));
+    const cardWidth = (CONTENT_W - 6) / 4;
+
+    statusCounts.forEach(({ status, count }, i) => {
+      const cx = MARGIN + i * (cardWidth + 2);
+      doc.setFillColor(14, 20, 38);
+      doc.roundedRect(cx, y, cardWidth, 18, 2, 2, 'F');
+      const rgb = STATUS_RGB[status] ?? [100, 116, 139];
+      doc.setFillColor(...rgb);
+      doc.roundedRect(cx, y + 16, cardWidth, 2, 1, 1, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(...rgb);
+      doc.text(String(count), cx + cardWidth / 2, y + 10, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 120, 150);
+      doc.text(status.toUpperCase(), cx + cardWidth / 2, y + 15, { align: 'center' });
+    });
+    y += 28;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PAGES 3+ — THREAT DETAIL CARDS
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (threats.length > 0) {
+    doc.addPage();
+    doc.setFillColor(8, 12, 24);
+    doc.rect(0, 0, W, 297, 'F');
+    y = 22;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(0, 220, 240);
+    doc.text('Threat Catalog', MARGIN, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(80, 100, 130);
+    doc.text(`${threats.length} threat${threats.length === 1 ? '' : 's'} · sorted by severity`, MARGIN, y);
+    y += 12;
+
+    const sorted = [...threats].sort(
+      (a, b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity),
+    );
+
+    sorted.forEach((t) => {
+      // Estimate card height
+      const titleLines    = doc.splitTextToSize(t.title, CONTENT_W - 10) as string[];
+      const descLines     = t.description
+        ? (doc.splitTextToSize(t.description, CONTENT_W - 10) as string[])
+        : [];
+      const mitLines      = t.mitigation
+        ? (doc.splitTextToSize(t.mitigation, CONTENT_W - 14) as string[])
+        : [];
+      const owaspLines    = t.owasp_refs?.length
+        ? t.owasp_refs.map(r => `  • [${r.ref}] ${r.title}`)
+        : [];
+
+      const titleH  = titleLines.length * 5.5;
+      const descH   = descLines.length > 0 ? descLines.length * 4.8 + 8 : 0;
+      const mitH    = mitLines.length > 0 ? mitLines.length * 4.8 + 8 : 0;
+      const owaspH  = owaspLines.length > 0 ? owaspLines.length * 4.8 + 8 : 0;
+      const cardH   = 8 + titleH + 10 + descH + mitH + owaspH + 4;
+
+      if (y + cardH > PAGE_BOT) {
+        doc.addPage();
+        doc.setFillColor(8, 12, 24);
+        doc.rect(0, 0, W, 297, 'F');
+        y = 22;
+      }
+
+      const sevRgb  = SEV_RGB[t.severity]  ?? [160, 170, 190];
+      const statRgb = STATUS_RGB[t.status] ?? [160, 170, 190];
+
+      // Card background
+      doc.setFillColor(13, 18, 32);
+      doc.roundedRect(MARGIN, y, CONTENT_W, cardH, 2, 2, 'F');
+
+      // Left severity stripe
+      doc.setFillColor(...sevRgb);
+      doc.roundedRect(MARGIN, y, 3, cardH, 1, 1, 'F');
+
+      let cy = y + 7;
+
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(220, 232, 252);
+      titleLines.forEach((line: string) => {
+        doc.text(line, MARGIN + 7, cy);
+        cy += 5.5;
+      });
+
+      // Badge row
+      cy += 2;
+      let bx = MARGIN + 7;
+
+      // Severity badge
+      bx += badge(doc, t.severity.toUpperCase(), bx, cy, sevRgb);
+
+      // Status badge
+      bx += badge(doc, t.status.toUpperCase(), bx, cy, statRgb);
+
+      // STRIDE badge
+      const strideRgb = STRIDE_RGB[t.stride_category] ?? [100, 120, 150];
+      badge(doc, t.stride_category.toUpperCase(), bx, cy, strideRgb);
+
+      cy += 10;
+
+      // Description
+      if (descLines.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 180, 200);
+        doc.text('DESCRIPTION', MARGIN + 7, cy);
+        cy += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(150, 165, 195);
+        descLines.forEach((line: string) => {
+          doc.text(line, MARGIN + 7, cy);
+          cy += 4.8;
+        });
+        cy += 3;
+      }
+
+      // Mitigation
+      if (mitLines.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(34, 197, 94);
+        doc.text('MITIGATION', MARGIN + 7, cy);
+        cy += 5;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 160, 130);
+        mitLines.forEach((line: string) => {
+          doc.text(line, MARGIN + 10, cy);
+          cy += 4.8;
+        });
+        cy += 3;
+      }
+
+      // OWASP references
+      if (owaspLines.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(56, 189, 248);
+        doc.text('OWASP REFERENCES', MARGIN + 7, cy);
+        cy += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 150, 180);
+        owaspLines.forEach((line: string) => {
+          doc.text(line, MARGIN + 7, cy);
+          cy += 4.8;
+        });
+      }
+
+      y += cardH + 5;
     });
   }
 
-  // ── Page footers ─────────────────────────────────────────────────────────────
-  const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(80, 90, 110);
-    doc.text(`CarbonThreat — ${model.title}`, 15, 291);
-    doc.text(`Page ${p} of ${totalPages}`, W - 15, 291, { align: 'right' });
-  }
+  // ── Add footers to all pages ──────────────────────────────────────────────
+  addFooter(doc, model.title);
 
   const slug = model.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
   doc.save(`carbonthreat-${slug}-v${model.version}.pdf`);

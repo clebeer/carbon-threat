@@ -57,7 +57,7 @@ Middleware: `requireRole('admin', 'analyst')` — enforced per-route in `routes.
 
 PostgreSQL managed via Knex.js. Migrations run automatically at startup.
 
-See [database.md](database.md) for the full schema.
+See [schema.md](schema.md) for the full schema.
 
 ## Vulnerability feeds
 
@@ -70,6 +70,59 @@ using keyword analysis. Sync runs are tracked in `vuln_feed_runs`.
 Admin-only routes:
 - `GET /api/admin/vuln-feeds/status`
 - `POST /api/admin/vuln-feeds/sync`
+
+## OSV Vulnerability Scanner
+
+The integrated OSV scanner (`services/osvScanner.js`) allows on-demand scanning of:
+
+- **Lockfiles** — `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `requirements.txt`, `go.sum`, `Cargo.lock`, etc.
+- **SBOMs** — CycloneDX (JSON/XML) and SPDX formats
+- **Git repositories** — clones and scans all lockfiles in the repo
+- **Container images** — pulls the image and scans its dependency manifest
+
+Each scan creates an `osv_scan_runs` record and stores per-vulnerability findings in `osv_scan_findings`. A singleton `osv_scanner_policy` row controls severity thresholds and ignored CVE IDs.
+
+Routes:
+- `GET  /api/scanner/scans` — list scan history
+- `POST /api/scanner/scans` — submit a new scan (multipart or JSON body)
+- `GET  /api/scanner/scans/:id` — scan status + summary
+- `GET  /api/scanner/scans/:id/findings` — paginated vulnerability findings
+- `GET  /api/scanner/scans/:id/export` — export findings as JSON/CSV
+- `DELETE /api/scanner/scans/:id` — delete scan and findings
+- `GET  /api/scanner/policy` — read scanner policy
+- `PUT  /api/scanner/policy` — update policy (admin only)
+
+## MITRE ATT&CK Framework
+
+The ATT&CK integration (`services/attackFramework.js`) downloads the MITRE Enterprise ATT&CK STIX 2.1 bundle from GitHub and stores it in the local database for offline use.
+
+Four integrated modules:
+
+| Tab | Description |
+|---|---|
+| **Analysis** | ATT&CK tactic coverage heatmap for a selected threat model |
+| **Techniques** | Searchable/filterable browser of all 1,700+ techniques and sub-techniques |
+| **Modeling** | Map STRIDE threats to ATT&CK techniques with confidence levels |
+| **Report** | Generate and export ATT&CK coverage reports (JSON or Markdown) |
+
+Data is stored in four tables: `attack_objects`, `attack_relationships`, `attack_threat_mappings`, `attack_sync_log`.
+
+Sync is admin-only and fire-and-forget (responds 202 immediately; runs in background).
+
+Routes:
+- `GET  /api/attack/status` — sync status + object counts
+- `POST /api/attack/sync` — trigger STIX data sync (admin)
+- `GET  /api/attack/tactics` — list all 14 enterprise tactics
+- `GET  /api/attack/techniques` — search/filter techniques
+- `GET  /api/attack/techniques/:attackId` — technique detail + sub-techniques + mitigations
+- `GET  /api/attack/groups` — list/search threat groups
+- `GET  /api/attack/mitigations` — list/search mitigations
+- `GET  /api/attack/analysis/:modelId` — coverage analysis for a model
+- `GET  /api/attack/mappings` — list threat→technique mappings
+- `POST /api/attack/mappings` — create a mapping
+- `DELETE /api/attack/mappings/:id` — delete a mapping
+- `GET  /api/attack/reports/:modelId` — generate report (JSON)
+- `GET  /api/attack/reports/:modelId/export` — export report (json / markdown)
 
 ## Frontend structure
 

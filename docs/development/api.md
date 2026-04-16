@@ -86,6 +86,37 @@ The full interactive API is available at `/api-docs` (Swagger UI) when the serve
 | `GET` | `/api/admin/vuln-feeds/status` | Last sync run + advisory counts by severity |
 | `POST` | `/api/admin/vuln-feeds/sync` | Trigger OSV sync (responds immediately, runs async) |
 
+### OSV Vulnerability Scanner
+
+| Method | Path | Roles | Description |
+|---|---|---|---|
+| `GET` | `/api/scanner/scans` | any | List scan history |
+| `POST` | `/api/scanner/scans` | admin, analyst | Submit a new scan (multipart upload or JSON body with `source_url`/`image`) |
+| `GET` | `/api/scanner/scans/:id` | any | Scan status and summary |
+| `GET` | `/api/scanner/scans/:id/findings` | any | Paginated vulnerability findings |
+| `GET` | `/api/scanner/scans/:id/export` | any | Export findings as JSON or CSV (`?format=csv`) |
+| `DELETE` | `/api/scanner/scans/:id` | admin, analyst | Delete scan and all findings |
+| `GET` | `/api/scanner/policy` | any | Read instance-level scanner policy |
+| `PUT` | `/api/scanner/policy` | admin | Update scanner policy (severity threshold, ignored CVE IDs) |
+
+### MITRE ATT&CK Framework
+
+| Method | Path | Roles | Description |
+|---|---|---|---|
+| `GET` | `/api/attack/status` | any | Sync status + total object counts |
+| `POST` | `/api/attack/sync` | admin | Trigger STIX data sync (responds 202, runs async) |
+| `GET` | `/api/attack/tactics` | any | List all 14 enterprise tactics |
+| `GET` | `/api/attack/techniques` | any | Search/filter techniques (`?tactic=`, `?search=`, `?type=`) |
+| `GET` | `/api/attack/techniques/:attackId` | any | Technique detail + sub-techniques + mitigations |
+| `GET` | `/api/attack/groups` | any | List/search threat groups |
+| `GET` | `/api/attack/mitigations` | any | List/search mitigations |
+| `GET` | `/api/attack/analysis/:modelId` | any | Coverage analysis for a threat model |
+| `GET` | `/api/attack/mappings` | any | List threat→technique mappings |
+| `POST` | `/api/attack/mappings` | admin, analyst | Create a threat→technique mapping |
+| `DELETE` | `/api/attack/mappings/:id` | admin, analyst | Delete a mapping |
+| `GET` | `/api/attack/reports/:modelId` | any | Generate ATT&CK report (JSON) |
+| `GET` | `/api/attack/reports/:modelId/export` | any | Export report (`?format=json` or `?format=markdown`) |
+
 ### Configuration (admin only)
 
 | Method | Path | Description |

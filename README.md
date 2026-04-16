@@ -9,10 +9,37 @@ Enterprise threat modeling platform — built on [OWASP Threat Dragon](https://o
 - Role-based access control (admin / analyst / viewer)
 - AI-assisted threat suggestions (OpenAI or local Ollama)
 - Vulnerability intelligence feed from [OSV](https://osv.dev) with STRIDE mapping
+- **OSV Vulnerability Scanner** — scan lockfiles, SBOMs, git repos, and container images against the OSV database
+- **MITRE ATT&CK Framework** — coverage analysis, technique browser, threat-to-technique mapping, and markdown/JSON reports
 - Archive / restore / remote export of threat models
 - Audit logging for all mutating operations
 - SAML/SSO, OAuth (GitHub, GitLab, Bitbucket, Google), and local auth
+- PDF and SARIF report export
+- Issue tracker export (Jira, GitHub Issues, GitLab Issues)
 - OpenAPI docs at `/api-docs`
+
+## Screenshots
+
+### Security Dashboard
+![Security Dashboard](docs/images/dashboard.png)
+
+### Threat Catalog
+![Threat Catalog](docs/images/threats.png)
+
+### Threat Models
+![Threat Models](docs/images/projects.png)
+
+### OSV Vulnerability Scanner
+![OSV Vulnerability Scanner](docs/images/scanner.png)
+
+### MITRE ATT&CK — Coverage Analysis
+![MITRE ATT&CK Analysis](docs/images/attck.png)
+
+### MITRE ATT&CK — Techniques Browser
+![MITRE ATT&CK Techniques](docs/images/attack_techniques.png)
+
+### Reports
+![Reports](docs/images/reports.png)
 
 ## Quick start (Docker)
 
@@ -43,7 +70,7 @@ Open **https://localhost:3001** — the setup wizard runs on first visit.
 | [docs/install/wizard.md](docs/install/wizard.md) | Setup wizard and default admin |
 | [docs/development/architecture.md](docs/development/architecture.md) | Backend architecture |
 | [docs/development/api.md](docs/development/api.md) | API endpoints reference |
-| [docs/development/database.md](docs/development/database.md) | Database schema |
+| [docs/development/schema.md](docs/development/schema.md) | Database schema |
 | [docs/development/development.md](docs/development/development.md) | Local dev setup |
 
 ## Tech stack
