@@ -7,6 +7,7 @@ import AssetsView from './views/AssetsView';
 import ThreatsView from './views/ThreatsView';
 import ReportsView from './views/ReportsView';
 import ScannerView from './views/ScannerView';
+import AttackView from './views/AttackView';
 import AdminView from './views/AdminView';
 import SettingsView from './views/SettingsView';
 import LoginView from './views/LoginView';
@@ -23,6 +24,7 @@ const IconAdmin = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="no
 const IconSettings = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
 const IconLogout  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
 const IconScanner = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>;
+const IconAttack  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
 const BASE_MENU = [
   { id: 'Dashboard', icon: <IconDashboard /> },
@@ -30,6 +32,7 @@ const BASE_MENU = [
   { id: 'Assets',    icon: <IconFolder />    },
   { id: 'Threats',   icon: <IconShield />    },
   { id: 'Scanner',   icon: <IconScanner />   },
+  { id: 'ATT&CK',   icon: <IconAttack />    },
   { id: 'Reports',   icon: <IconFolder />    },
 ];
 
@@ -102,6 +105,7 @@ export default function App() {
       case 'Assets': return <AssetsView />;
       case 'Threats': return <ThreatsView />;
       case 'Scanner': return <ScannerView />;
+      case 'ATT&CK': return <AttackView />;
       case 'Modeling': return <ThreatFlow modelId={activeModelId} modelTitle={activeModelTitle} />;
       case 'Reports': return <ReportsView />;
       case 'Admin': return <AdminView />;

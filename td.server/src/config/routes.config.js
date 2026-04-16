@@ -24,6 +24,7 @@ import * as domainPacksController from '../controllers/domainPacksController.js'
 import * as cloudStorageController from '../controllers/cloudStorageController.js';
 import * as vulnSyncController from '../controllers/vulnSync.js';
 import * as osvScannerController from '../controllers/osvScannerController.js';
+import * as attackController from '../controllers/attackController.js';
 import { requireRole } from '../auth/rbac.js';
 import { auditMiddleware } from '../security/audit.js';
 
@@ -193,6 +194,30 @@ const routes = (router) => {
     router.get('/api/scanner/scans/:id/export', requireRole('admin', 'analyst', 'viewer'), osvScannerController.exportScan);
     router.get('/api/scanner/policy', requireRole('admin', 'analyst', 'viewer'), osvScannerController.getPolicy);
     router.put('/api/scanner/policy', requireRole('admin'), auditMiddleware('SCANNER_POLICY_UPDATE'), osvScannerController.updatePolicy);
+
+    // ── MITRE ATT&CK Framework ────────────────────────────────────────────
+    // Sync + status (admin only for triggering sync; all roles can read)
+    router.get('/api/attack/status',                requireRole('admin', 'analyst', 'viewer'), attackController.getSyncStatusHandler);
+    router.post('/api/attack/sync',                 requireRole('admin'), auditMiddleware('ATTACK_SYNC'), attackController.triggerSync);
+
+    // Reference data (all authenticated roles)
+    router.get('/api/attack/tactics',               requireRole('admin', 'analyst', 'viewer'), attackController.listTactics);
+    router.get('/api/attack/techniques',            requireRole('admin', 'analyst', 'viewer'), attackController.listTechniques);
+    router.get('/api/attack/techniques/:attackId',  requireRole('admin', 'analyst', 'viewer'), attackController.getTechniqueDetails);
+    router.get('/api/attack/groups',                requireRole('admin', 'analyst', 'viewer'), attackController.listGroups);
+    router.get('/api/attack/mitigations',           requireRole('admin', 'analyst', 'viewer'), attackController.listMitigationsHandler);
+
+    // Analysis — model coverage report
+    router.get('/api/attack/analysis/:modelId',     requireRole('admin', 'analyst', 'viewer'), attackController.analyzeModel);
+
+    // Threat → technique mappings (analyst+ can create/delete; viewer can read)
+    router.get('/api/attack/mappings',              requireRole('admin', 'analyst', 'viewer'), attackController.listMappingsHandler);
+    router.post('/api/attack/mappings',             requireRole('admin', 'analyst'), auditMiddleware('ATTACK_MAPPING_CREATE'), attackController.createMappingHandler);
+    router.delete('/api/attack/mappings/:id',       requireRole('admin', 'analyst'), auditMiddleware('ATTACK_MAPPING_DELETE'), attackController.deleteMappingHandler);
+
+    // Reports
+    router.get('/api/attack/reports/:modelId',         requireRole('admin', 'analyst', 'viewer'), attackController.getReportHandler);
+    router.get('/api/attack/reports/:modelId/export',  requireRole('admin', 'analyst', 'viewer'), attackController.exportReportHandler);
 
     // Integration configs — admin manages credentials; analyst/viewer can list/export
     router.get('/api/integrations', requireRole('admin', 'analyst', 'viewer'), integrationsController.listConfigs);
