@@ -84,6 +84,36 @@ function decryptToken(enc) {
   }
 }
 
+function buildValidatedUrl(baseUrl, folderId, fileName) {
+  try {
+    // Minimal path validation
+    if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
+      throw new Error('Invalid path');
+    }
+    
+    const url = new URL(baseUrl);
+    
+    // Validate path parameters
+    if (folderId && !/^[A-Za-z0-9_-]+$/.test(folderId)) {
+      throw new Error('Invalid parameter');
+    }
+    if (!/^[A-Za-z0-9_.-]+$/.test(fileName)) {
+      throw new Error('Invalid parameter');
+    }
+    
+    // Rebuild pathname from fixed literals + validated segments
+    if (folderId) {
+      url.pathname = `/v1.0/me/drive/items/${folderId}:/${fileName}:/content`;
+    } else {
+      url.pathname = `/v1.0/me/drive/root:/${fileName}:/content`;
+    }
+    
+    return url.href;
+  } catch {
+    throw new Error('Invalid URL');
+  }
+}
+
 async function getStoredToken(userId, provider) {
   return db('cloud_storage_tokens').where({ user_id: userId, provider }).
 first();
@@ -375,9 +405,7 @@ export async function exportModel(req, res) {
       fileId = data.id;
       fileUrl = data.webViewLink;
     } else {
-      const uploadUrl = folderId
-        ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${fileName}:/content`
-        : `https://graph.microsoft.com/v1.0/me/drive/root:/${fileName}:/content`;
+      const uploadUrl = buildValidatedUrl('https://graph.microsoft.com', folderId, fileName);
 
       const { data } = await axios.put(uploadUrl, fileBody, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
