@@ -5,8 +5,8 @@
  * GET /api/assets  — returns a deduplicated list of all assets across models.
  */
 
-import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { scopedThreatModels } from '../helpers/scope.helper.js';
 import { decryptModel } from '../security/encryption.js';
 
 const logger = loggerHelper.get('controllers/assets.js');
@@ -47,11 +47,7 @@ function classifyConfidentiality(label = '') {
 
 export async function listAssets(req, res) {
   try {
-    const orgId = req.user?.org_id ?? null;
-
-    const models = await db('threat_models').
-      where({ is_archived: false }).
-      modify((q) => { if (orgId) {q.where('org_id', orgId);} }).
+    const models = await scopedThreatModels(req).
       select('id', 'title', 'content_encrypted');
 
     // Deduplicate by node label — same label across models merges into one asset

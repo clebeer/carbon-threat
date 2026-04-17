@@ -1,10 +1,44 @@
 import WebSocket from 'ws';
 import yjsConfig from 'y-websocket/bin/utils.js';
 import jsonwebtoken from 'jsonwebtoken';
+import db from './db/knex.js';
 import loggerHelper from './helpers/logger.helper.js';
 
 const { setupWSConnection } = yjsConfig;
 const logger = loggerHelper.get('websocket.js');
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve a Yjs docName to a threat_model row and verify the authenticated
+ * user is allowed to collaborate on it. Returns the row or null.
+ *
+ * docName convention: the UUID of the threat model (optionally prefixed).
+ * Anything that isn't a UUID is treated as unknown and denied.
+ */
+async function authorizeDocAccess(docName, payload) {
+  if (!docName || typeof docName !== 'string') {return null;}
+
+  // Accept either a bare UUID or a "prefix-<UUID>" form; reject anything else.
+  const match = docName.match(UUID_RE) || docName.match(/([0-9a-f-]{36})$/i);
+  const modelId = match ? match[0] : null;
+  if (!modelId || !UUID_RE.test(modelId)) {return null;}
+
+  const userId = payload?.user?.id ?? payload?.sub ?? null;
+  const orgId = payload?.user?.orgId ?? payload?.provider?.orgId ?? null;
+
+  const q = db('threat_models').where({ id: modelId, is_archived: false });
+  if (orgId) {
+    q.where({ org_id: orgId });
+  } else if (userId) {
+    q.where({ owner_id: userId });
+  } else {
+    return null;
+  }
+
+  const row = await q.first();
+  return row ?? null;
+}
 
 // ── Token extraction & validation ─────────────────────────────────────────────
 
@@ -147,13 +181,31 @@ export function startWebsocketServer(server) {
     // 3. Resolve document name from URL path  (e.g. /ws/tm-uuid → 'tm-uuid')
     const currentURL = req.url ? new URL(req.url, 'http://localhost') : null;
     const docName = currentURL
-      ? currentURL.pathname.replace(/^\/+/, '').split('?')[0] || 'carbonthreat'
-      : 'carbonthreat';
+      ? currentURL.pathname.replace(/^\/+/, '').split('?')[0] || ''
+      : '';
 
-    ws._ctDocName = docName; // stored for the close handler above
+    if (!docName) {
+      logger.warn(`[WS] Connection rejected from ${ip}: missing document name`);
+      ws.close(4004, 'Bad Request: missing document');
+      return;
+    }
 
-    setupWSConnection(ws, req, { docName });
-    logger.info(`[Yjs] ${payload.user?.email ?? payload.sub ?? 'user'} connected to document: ${docName} (ip=${ip})`);
+    // 4. Authorize access to the requested document BEFORE handing off to Yjs
+    authorizeDocAccess(docName, payload).then((model) => {
+      if (!model) {
+        logger.warn(`[WS] Connection rejected from ${ip}: user ${payload.user?.email ?? payload.sub} not authorized for doc ${docName}`);
+        ws.close(4003, 'Forbidden: document access denied');
+        return;
+      }
+
+      ws._ctDocName = docName; // stored for the close handler above
+
+      setupWSConnection(ws, req, { docName });
+      logger.info(`[Yjs] ${payload.user?.email ?? payload.sub ?? 'user'} connected to document: ${docName} (ip=${ip})`);
+    }).catch((err) => {
+      logger.error(`[WS] Authorization check failed for ${docName}: ${err.message}`);
+      ws.close(1011, 'Internal Error');
+    });
   });
 
   return wss;

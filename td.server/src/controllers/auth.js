@@ -22,7 +22,15 @@ const login = (req, res) => {
 const oauthReturn = (req, res) => {
     logger.debug(`API oauthReturn request: ${logger.transformToString(req)}`);
 
-    let returnUrl = `/#/oauth-return?code=${req.query.code}`;
+    const rawCode = typeof req.query.code === 'string' ? req.query.code : '';
+    // Accept only characters that OAuth providers actually emit in the code
+    // parameter. Anything else is dropped — prevents URL-structure injection
+    // into the redirect target.
+    if (!/^[A-Za-z0-9._~-]{1,512}$/.test(rawCode)) {
+        return res.status(400).send('Invalid OAuth code');
+    }
+
+    let returnUrl = `/#/oauth-return?code=${encodeURIComponent(rawCode)}`;
     if (env.get().config.NODE_ENV === 'development') {
         returnUrl = `http://localhost:8080${returnUrl}`;
     }
@@ -57,7 +65,23 @@ const logout = (req, res) => responseWrapper.sendResponseAsync(async () => {
         const { refreshToken } = req.body || {};
         if (!refreshToken) {
             logger.audit('Log out without a refresh token');
-            // Return OK, it could be a client error or an expired token
+            return '';
+        }
+
+        // Only invalidate the refresh token if it cryptographically verifies AND
+        // the embedded identity matches the Bearer-authenticated user. This prevents
+        // an unauthenticated attacker from DoS'ing another user's session by posting
+        // their refresh token to /api/logout.
+        const tokenBody = await tokenRepo.verify(refreshToken);
+        if (!tokenBody) {
+            logger.audit('Logout: refresh token failed verification; not removing');
+            return '';
+        }
+
+        const tokenUserId = tokenBody?.user?.id ?? tokenBody?.sub;
+        const requesterId = req.user?.id ?? null;
+        if (!requesterId || tokenUserId !== requesterId) {
+            logger.audit(`Logout: refresh token ownership mismatch (requester=${requesterId} tokenUser=${tokenUserId})`);
             return '';
         }
 

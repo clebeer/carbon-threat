@@ -38,7 +38,7 @@ export async function localLogin(req, res) {
     const { accessToken, refreshToken } = await jwtHelper.createAsync(
       'local',
       { type: 'local', orgId: user.org_id || null },
-      { id: user.id, email: user.email, role: user.role }
+      { id: user.id, email: user.email, role: user.role, orgId: user.org_id || null }
     );
 
     // Update last_login_at without blocking the response

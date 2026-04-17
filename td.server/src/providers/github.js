@@ -99,7 +99,10 @@ const completeLoginAsync = async (code) => {
     const user = {
         username: fullUser.login,
         repos_url: fullUser.repos_url,
-        isAdmin: isAdmin
+        isAdmin: isAdmin,
+        // Map to the canonical role vocabulary used by requireRole() (admin/analyst/viewer/api_key).
+        // Without this, GitHub-authenticated users would be denied by every role-gated route.
+        role: isAdmin ? 'admin' : 'analyst'
     };
     return {
         user,
