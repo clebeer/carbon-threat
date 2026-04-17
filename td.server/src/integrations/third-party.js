@@ -1,5 +1,28 @@
 import axios from 'axios';
 
+function buildValidatedUrl(baseUrl, apiPath) {
+  try {
+    // Minimal path validation
+    if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
+      throw new Error('Invalid path');
+    }
+    
+    const url = new URL(baseUrl);
+    
+    // Protocol checks
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('Invalid protocol');
+    }
+    
+    // Build pathname from fixed literals
+    url.pathname = apiPath;
+    
+    return url.href;
+  } catch {
+    throw new Error('Invalid URL');
+  }
+}
+
 export async function createThirdPartyIssue(platform, issueDetails, config) {
   const { title, description } = issueDetails;
 
@@ -15,7 +38,7 @@ export async function createThirdPartyIssue(platform, issueDetails, config) {
         
       case 'jira':
         await axios.post(
-          `${config.serverUrl}/rest/api/2/issue`,
+          buildValidatedUrl(config.serverUrl, '/rest/api/2/issue'),
           {
             fields: {
               project: { key: config.projectKey },
@@ -30,7 +53,7 @@ export async function createThirdPartyIssue(platform, issueDetails, config) {
 
       case 'servicenow':
         await axios.post(
-          `${config.serverUrl}/api/now/table/incident`,
+          buildValidatedUrl(config.serverUrl, '/api/now/table/incident'),
           { short_description: title, description },
           { headers: { Authorization: `Basic ${Buffer.from(config.username + ':' + config.password).toString('base64')}` } }
         );
