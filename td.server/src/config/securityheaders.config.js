@@ -28,9 +28,31 @@ const config = (app, forceSecure) => {
     app.use(helmet.frameguard({ action: 'deny' }));
     app.use(helmet.hidePoweredBy());
     app.use(helmet.noSniff());
-    app.use(helmet.xssFilter());
+    // helmet.xssFilter() is deprecated — the X-XSS-Protection header is unsafe
+    // on modern browsers and has been removed from the OWASP guidance. CSP
+    // (configured below) is the proper replacement.
     app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
     app.use(helmet.permittedCrossDomainPolicies({ permittedPolicies: 'none' }));
+
+    // Build the connect-src allowlist. In production we restrict WebSocket
+    // targets to the configured app origin so a successful XSS cannot exfiltrate
+    // data to an attacker-controlled ws:// endpoint.
+    const appOrigin = process.env.APP_ORIGIN; // e.g. https://app.example.com
+    const wsAllow = [];
+    if (appOrigin) {
+        try {
+            const u = new URL(appOrigin);
+            const wsScheme = u.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsAllow.push(`${wsScheme}//${u.host}`);
+        } catch {
+            // invalid APP_ORIGIN — fall through to the permissive default below
+        }
+    }
+    if (wsAllow.length === 0) {
+        // Dev/local fallback: keep the old permissive rule so contributors aren't
+        // blocked when running on localhost without APP_ORIGIN configured.
+        wsAllow.push('ws:', 'wss:');
+    }
 
     app.use(
         helmet.contentSecurityPolicy({
@@ -63,7 +85,7 @@ const config = (app, forceSecure) => {
 
                 // ── Other directives ───────────────────────────────────────────────
                 defaultSrc:      ["'none'"],
-                connectSrc:      ["'self'", 'ws:', 'wss:'], // Yjs WebSocket
+                connectSrc:      ["'self'", ...wsAllow], // Yjs WebSocket (restricted in prod via APP_ORIGIN)
                 imgSrc:          ["'self'", 'data:', 'blob:'],
                 fontSrc:         ["'self'", 'https://fonts.gstatic.com', 'data:'],
                 workerSrc:       ["'self'", 'blob:'], // ReactFlow web workers

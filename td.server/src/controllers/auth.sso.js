@@ -103,7 +103,7 @@ catch(
                     (err) => logger.error('Failed to update last_login_at', err)
                 );
 
-                return done(null, { id: user.id, email: user.email, role: user.role });
+                return done(null, { id: user.id, email: user.email, role: user.role, orgId: user.org_id ?? null });
             } catch (err) {
                 logger.error('SAML strategy error', err);
                 return done(err);
@@ -152,8 +152,10 @@ export function samlCallback(req, res, next) {
         try {
             const { accessToken, refreshToken } = await jwtHelper.createAsync(
                 'saml',
-                { type: 'saml' },
-                { id: user.id, email: user.email, role: user.role }
+                // Scope the provider payload to the user's org so scopedQuery() can
+                // fall back to req.provider.orgId when the JWT user claim is absent.
+                { type: 'saml', orgId: user.orgId ?? null },
+                { id: user.id, email: user.email, role: user.role, orgId: user.orgId ?? null }
             );
 
             logger.info(`SSO login successful: ${user.email} (role=${user.role})`);

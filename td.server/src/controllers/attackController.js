@@ -30,6 +30,7 @@
 
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { assertThreatModelAccess } from '../helpers/scope.helper.js';
 import {
   syncAttackData,
   getSyncStatus,
@@ -201,6 +202,9 @@ export async function analyzeModel(req, res) {
   }
 
   try {
+    const allowed = await assertThreatModelAccess(req, modelId);
+    if (!allowed) {return res.status(404).json({ error: 'Threat model not found' });}
+
     const result = await analyzeModelCoverage(modelId);
     return res.json(result);
   } catch (err) {
@@ -238,6 +242,11 @@ export async function createMappingHandler(req, res) {
   }
 
   try {
+    if (model_id) {
+      const allowed = await assertThreatModelAccess(req, model_id);
+      if (!allowed) {return res.status(404).json({ error: 'Threat model not found' });}
+    }
+
     const mapping = await createMapping({
       threatId:    threat_id ?? null,
       techniqueId: technique_id,
@@ -272,6 +281,9 @@ export async function deleteMappingHandler(req, res) {
 export async function getReportHandler(req, res) {
   const { modelId } = req.params;
   try {
+    const allowed = await assertThreatModelAccess(req, modelId);
+    if (!allowed) {return res.status(404).json({ error: 'Threat model not found' });}
+
     const report = await generateReport(modelId, 'json');
     return res.json(report);
   } catch (err) {
@@ -292,7 +304,7 @@ export async function exportReportHandler(req, res) {
   }
 
   try {
-    const model = await db('threat_models').where({ id: modelId }).first();
+    const model = await assertThreatModelAccess(req, modelId);
     if (!model) return res.status(404).json({ error: 'Threat model not found' });
 
     const safeName = (model.title ?? modelId).replace(/[^a-z0-9_-]/gi, '_').toLowerCase();

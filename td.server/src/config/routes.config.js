@@ -71,7 +71,6 @@ const unauthRoutes = (router) => {
 
     // OAuth providers
     router.get('/api/login/:provider', auth.login);
-    router.get('/api/logout', auth.logout);
     router.get('/api/oauth/return', auth.oauthReturn);
     router.get('/api/oauth/:provider', auth.completeLogin);
 
@@ -89,8 +88,9 @@ const unauthRoutes = (router) => {
     // Fixes 401 on favicon.ico request by browser
     router.get('/favicon.ico', (req, res) => res.sendStatus(204));
 
-    // Token management (needs to be unauth to allow refreshing with expired access tokens)
-    router.post('/api/logout', auth.logout);
+    // Token refresh needs to be unauth (client may only hold an expired access token
+    // alongside a still-valid refresh token). /api/logout is moved to the authenticated
+    // section so an attacker cannot anonymously invalidate a victim's refresh token.
     router.post('/api/token/refresh', refreshLimiter, auth.refresh);
 };
 
@@ -101,6 +101,10 @@ const unauthRoutes = (router) => {
  * @returns {express.Router}
  */
 const routes = (router) => {
+    // Authenticated logout: requires a valid Bearer, and the logout handler
+    // additionally verifies that the refresh token belongs to the caller.
+    router.post('/api/logout', auth.logout);
+
     // Template routes
     router.post('/api/templates/bootstrap', requireRole('admin'), auditMiddleware('TEMPLATE_BOOTSTRAP'), templateController.bootstrapTemplateRepository);
     router.get('/api/templates/', templateController.listTemplates);

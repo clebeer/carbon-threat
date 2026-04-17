@@ -72,6 +72,16 @@ function escapeHtml(str) {
   ));
 }
 
+// Google Drive and MS Graph file/folder IDs are opaque tokens from the provider.
+// Google's IDs are URL-safe base64; Graph's are alphanumeric with `!` / `-` / `_`.
+// Reject anything outside a conservative character set so we can never smuggle
+// quote characters into the Drive search query nor path segments into Graph URLs.
+const CLOUD_ID_RE = /^[A-Za-z0-9_!-]{1,256}$/;
+
+function isValidCloudId(id) {
+  return typeof id === 'string' && CLOUD_ID_RE.test(id);
+}
+
 function encryptToken(token) {
   return JSON.stringify(encryptModel({ token }));
 }
@@ -232,6 +242,9 @@ export async function listFiles(req, res) {
   const { folderId } = req.query;
 
   if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
+  if (folderId !== undefined && !isValidCloudId(folderId)) {
+    return res.status(400).json({ error: 'Invalid folderId' });
+  }
 
   try {
     const accessToken = await getValidAccessToken(req.user.id, provider);
@@ -282,6 +295,7 @@ export async function importFile(req, res) {
 
   if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
   if (!fileId) {return res.status(400).json({ error: 'fileId is required' });}
+  if (!isValidCloudId(fileId)) {return res.status(400).json({ error: 'Invalid fileId' });}
   if (!title || !title.trim()) {return res.status(400).json({ error: 'title is required' });}
 
   const userId = req.user?.id;
@@ -333,6 +347,9 @@ export async function exportModel(req, res) {
 
   if (!PROVIDERS[provider]) {return res.status(400).json({ error: 'Unsupported provider' });}
   if (!modelId) {return res.status(400).json({ error: 'modelId is required' });}
+  if (folderId !== undefined && folderId !== null && !isValidCloudId(folderId)) {
+    return res.status(400).json({ error: 'Invalid folderId' });
+  }
 
   const userId = req.user?.id;
   const orgId = req.user?.orgId ?? req.provider?.orgId ?? null;
