@@ -25,6 +25,7 @@ import * as cloudStorageController from '../controllers/cloudStorageController.j
 import * as vulnSyncController from '../controllers/vulnSync.js';
 import * as osvScannerController from '../controllers/osvScannerController.js';
 import * as attackController from '../controllers/attackController.js';
+import * as julesController from '../controllers/jules.controller.js';
 import { requireRole } from '../auth/rbac.js';
 import { auditMiddleware } from '../security/audit.js';
 
@@ -229,6 +230,15 @@ const routes = (router) => {
     router.put('/api/integrations/:platform', requireRole('admin'), auditMiddleware('INTEGRATION_UPSERT'), integrationsController.upsertConfig);
     router.delete('/api/integrations/:platform', requireRole('admin'), auditMiddleware('INTEGRATION_DELETE'), integrationsController.deleteConfig);
     router.post('/api/integrations/:platform/export', requireRole('admin', 'analyst'), auditMiddleware('INTEGRATION_EXPORT'), integrationsController.exportIssue);
+
+    // Jules AI remediation
+    router.get('/api/jules/sources',               requireRole('admin', 'analyst', 'viewer'), julesController.listSources);
+    router.post('/api/jules/sessions',             requireRole('admin', 'analyst'),           julesController.createSession);
+    router.get('/api/jules/sessions',              requireRole('admin', 'analyst', 'viewer'), julesController.listSessions);
+    router.get('/api/jules/sessions/:id',          requireRole('admin', 'analyst', 'viewer'), julesController.getSession);
+    router.post('/api/jules/sessions/:id/approve', requireRole('admin', 'analyst'),           julesController.approveSessionPlan);
+    router.post('/api/jules/sessions/:id/message', requireRole('admin', 'analyst'),           julesController.sendSessionMessage);
+    router.delete('/api/jules/sessions/:id',       requireRole('admin'),                      julesController.deleteSession);
 };
 
 const config = (app) => {

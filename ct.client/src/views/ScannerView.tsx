@@ -12,6 +12,7 @@
 
 import React, { useRef, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { JulesButton } from '../components/Jules/JulesButton';
 import {
   listScans,
   getScanFindings,
@@ -223,7 +224,7 @@ function FindingsTable({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Package', 'Version', 'Ecosystem', 'Vuln ID', 'Summary', 'Sev.', 'CVSS', 'Fixed In'].map(h => (
+                {['Package', 'Version', 'Ecosystem', 'Vuln ID', 'Summary', 'Sev.', 'CVSS', 'Fixed In', ''].map(h => (
                   <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--on-surface-muted)', fontWeight: 500, letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -267,6 +268,9 @@ function FindingsTable({
                   </td>
                   <td style={{ padding: '8px 10px', color: f.fixed_version ? '#52c41a' : 'var(--on-surface-muted)', fontFamily: 'monospace', fontSize: '11px' }}>
                     {f.fixed_version ?? '–'}
+                  </td>
+                  <td style={{ padding: '8px 6px' }}>
+                    <JulesButton finding={f} />
                   </td>
                 </tr>
               ))}

@@ -93,6 +93,8 @@
 !td.server/src/ai/*.js
 !td.server/src/integrations/
 !td.server/src/integrations/*.js
+!td.server/src/integrations/jules/
+!td.server/src/integrations/jules/*.js
 !td.server/src/utils/
 !td.server/src/utils/*.js
 !td.server/src/db/
