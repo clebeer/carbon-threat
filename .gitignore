@@ -132,6 +132,8 @@
 !td.server/test/public/*.ico
 !td.server/test/repositories/
 !td.server/test/repositories/*.spec.js
+!td.server/test/security/
+!td.server/test/security/*.spec.js
 !td.server/.babelrc
 !td.server/.eslintrc.js
 !td.server/README.md
