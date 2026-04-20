@@ -1,9 +1,35 @@
 import * as julesClient from './jules.client.js';
 import * as julesRepo from '../../repositories/jules.repository.js';
+import { decryptModel } from '../../security/encryption.js';
 import db from '../../db/knex.js';
 import loggerHelper from '../../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('integrations/jules/jules.service.js');
+
+/**
+ * Retrieves the Jules API key from the integration_configs table.
+ * Falls back to env var JULES_API_KEY if no DB config exists.
+ * Priority: DB (encrypted) > ENV var.
+ */
+async function getJulesApiKey() {
+  try {
+    const row = await db('integration_configs')
+      .where({ platform: 'jules', is_enabled: true })
+      .first();
+
+    if (row?.config_encrypted) {
+      const payload = JSON.parse(row.config_encrypted);
+      const config = decryptModel(payload);
+      const key = config.apiKey || config.api_key;
+      if (key) return key;
+    }
+  } catch (err) {
+    logger.warn('Failed to read Jules API key from integration_configs, falling back to env var', err.message);
+  }
+
+  // Fallback to env var
+  return process.env.JULES_API_KEY || null;
+}
 
 function buildPrompt(finding, promptOverride) {
   const base = `Fix vulnerability ${finding.vuln_id}: ${finding.title ?? 'security vulnerability'} in package ${finding.package_name}${finding.package_version ? `@${finding.package_version}` : ''}.${finding.fixed_version ? ` The fix is available in version ${finding.fixed_version}.` : ''} ${finding.description ? `Details: ${finding.description}` : ''}`.trim();
@@ -42,7 +68,8 @@ function extractPlanSummary(activities) {
 }
 
 export async function getSources() {
-  const data = await julesClient.getSources();
+  const apiKey = await getJulesApiKey();
+  const data = await julesClient.getSources(apiKey);
   return data.sources ?? [];
 }
 
@@ -56,7 +83,8 @@ export async function createSession({ findingId, sourceName, automationMode, pro
   let status = 'pending';
 
   try {
-    const julesSession = await julesClient.createSession({ sourceName, prompt, automationMode });
+    const apiKey = await getJulesApiKey();
+    const julesSession = await julesClient.createSession({ sourceName, prompt, automationMode }, apiKey);
     julesSessionId = julesSession.name ?? julesSession.id ?? null;
     status = 'planning';
   } catch (err) {
@@ -92,7 +120,8 @@ export async function getSessionWithActivities(id) {
 
   let activities = [];
   try {
-    const data = await julesClient.getSessionActivities(session.jules_session_id);
+    const apiKey = await getJulesApiKey();
+    const data = await julesClient.getSessionActivities(session.jules_session_id, apiKey);
     activities = data.activities ?? [];
 
     const newStatus   = deriveStatus(activities);
@@ -125,7 +154,8 @@ export async function approvePlan(id) {
   if (!session.jules_session_id) throw Object.assign(new Error('Session has no Jules ID'), { statusCode: 409 });
   if (session.status !== 'awaiting_approval') throw Object.assign(new Error('Session is not awaiting approval'), { statusCode: 409 });
 
-  await julesClient.approvePlan(session.jules_session_id);
+  const apiKey = await getJulesApiKey();
+  await julesClient.approvePlan(session.jules_session_id, apiKey);
   return julesRepo.updateSession(id, { status: 'running' });
 }
 
@@ -134,7 +164,8 @@ export async function sendMessage(id, message) {
   if (!session) throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   if (!session.jules_session_id) throw Object.assign(new Error('Session has no Jules ID'), { statusCode: 409 });
 
-  await julesClient.sendMessage(session.jules_session_id, message);
+  const apiKey = await getJulesApiKey();
+  await julesClient.sendMessage(session.jules_session_id, message, apiKey);
   return session;
 }
 

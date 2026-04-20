@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 
-export type Platform = 'github' | 'jira' | 'servicenow' | 'openai' | 'ollama';
+export type Platform = 'github' | 'jira' | 'servicenow' | 'openai' | 'ollama' | 'jules';
 
 export interface IntegrationSummary {
   id: string;
@@ -31,6 +31,7 @@ export async function getIntegration(platform: Platform): Promise<IntegrationSum
  * ServiceNow:  { serverUrl, username, password }
  * OpenAI:      { apiKey, model? }
  * Ollama:      { url, model }
+ * Jules:       { apiKey }                          Google Jules API key
  */
 export async function upsertIntegration(
   platform: Platform,

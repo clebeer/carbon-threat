@@ -73,3 +73,35 @@ export async function sendMessage(id: string, message: string): Promise<void> {
 export async function deleteSession(id: string): Promise<void> {
   await apiClient.delete(`/jules/sessions/${id}`);
 }
+
+// ── Integration config & connection test ───────────────────────────────────
+
+export interface JulesConnectionTestResult {
+  success: boolean;
+  error?: string;
+  sourceCount?: number;
+}
+
+export interface JulesIntegrationStatus {
+  configured: boolean;
+  enabled: boolean;
+  connected: boolean;
+}
+
+/**
+ * Tests a Jules API key by calling the sources endpoint.
+ * Admin only. The key is NOT stored — just validated.
+ */
+export async function testConnection(apiKey: string): Promise<JulesConnectionTestResult> {
+  const { data } = await apiClient.post<JulesConnectionTestResult>('/integrations/jules/test', { apiKey });
+  return data;
+}
+
+/**
+ * Returns whether Jules integration is configured, enabled, and reachable.
+ * Available to all authenticated users (used for menu visibility).
+ */
+export async function getJulesStatus(): Promise<JulesIntegrationStatus> {
+  const { data } = await apiClient.get<JulesIntegrationStatus>('/jules/status');
+  return data;
+}

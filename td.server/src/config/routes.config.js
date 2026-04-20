@@ -25,7 +25,7 @@ import * as cloudStorageController from '../controllers/cloudStorageController.j
 import * as vulnSyncController from '../controllers/vulnSync.js';
 import * as osvScannerController from '../controllers/osvScannerController.js';
 import * as attackController from '../controllers/attackController.js';
-import * as julesController from '../controllers/jules.controller.js';
+import * as julesController from '../controllers/julesController.js';
 import { requireRole } from '../auth/rbac.js';
 import { auditMiddleware } from '../security/audit.js';
 
@@ -230,6 +230,10 @@ const routes = (router) => {
     router.put('/api/integrations/:platform', requireRole('admin'), auditMiddleware('INTEGRATION_UPSERT'), integrationsController.upsertConfig);
     router.delete('/api/integrations/:platform', requireRole('admin'), auditMiddleware('INTEGRATION_DELETE'), integrationsController.deleteConfig);
     router.post('/api/integrations/:platform/export', requireRole('admin', 'analyst'), auditMiddleware('INTEGRATION_EXPORT'), integrationsController.exportIssue);
+
+    // Jules integration — connection test (admin only) + status (all authenticated)
+    router.post('/api/integrations/jules/test', requireRole('admin'), auditMiddleware('JULES_TEST_CONNECTION'), integrationsController.testJulesConnection);
+    router.get('/api/jules/status', integrationsController.getJulesStatus);
 
     // Jules AI remediation
     router.get('/api/jules/sources',               requireRole('admin', 'analyst', 'viewer'), julesController.listSources);

@@ -3,9 +3,13 @@ import axios from 'axios';
 const BASE_URL = 'https://jules.googleapis.com';
 const RETRY_DELAYS = [1000, 2000, 4000];
 
-function getApiKey() {
-  const key = process.env.JULES_API_KEY;
-  if (!key) throw new Error('JULES_API_KEY is not configured');
+/**
+ * Resolves the API key to use for Jules requests.
+ * Priority: explicit override > env var JULES_API_KEY.
+ */
+function resolveApiKey(overrideKey) {
+  const key = overrideKey || process.env.JULES_API_KEY;
+  if (!key) throw new Error('Jules API key is not configured. Configure it in Settings > Integrations or set JULES_API_KEY env var.');
   return key;
 }
 
@@ -17,9 +21,9 @@ function makeClient() {
   });
 }
 
-async function request(method, path, data) {
+async function request(method, path, data, apiKeyOverride) {
   const client = makeClient();
-  const headers = { 'X-Goog-Api-Key': getApiKey() };
+  const headers = { 'X-Goog-Api-Key': resolveApiKey(apiKeyOverride) };
 
   for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
     try {
@@ -35,26 +39,26 @@ async function request(method, path, data) {
   }
 }
 
-export async function getSources() {
-  return request('get', '/v1alpha/sources');
+export async function getSources(apiKey) {
+  return request('get', '/v1alpha/sources', null, apiKey);
 }
 
-export async function createSession({ sourceName, prompt, automationMode }) {
+export async function createSession({ sourceName, prompt, automationMode }, apiKey) {
   return request('post', '/v1alpha/sessions', {
     source: { name: sourceName },
     prompt,
     automationMode,
-  });
+  }, apiKey);
 }
 
-export async function getSessionActivities(julesSessionId) {
-  return request('get', `/v1alpha/${julesSessionId}/activities`);
+export async function getSessionActivities(julesSessionId, apiKey) {
+  return request('get', `/v1alpha/${julesSessionId}/activities`, null, apiKey);
 }
 
-export async function approvePlan(julesSessionId) {
-  return request('post', `/v1alpha/${julesSessionId}:approvePlan`, {});
+export async function approvePlan(julesSessionId, apiKey) {
+  return request('post', `/v1alpha/${julesSessionId}:approvePlan`, {}, apiKey);
 }
 
-export async function sendMessage(julesSessionId, message) {
-  return request('post', `/v1alpha/${julesSessionId}:sendMessage`, { message });
+export async function sendMessage(julesSessionId, message, apiKey) {
+  return request('post', `/v1alpha/${julesSessionId}:sendMessage`, { message }, apiKey);
 }

@@ -376,6 +376,7 @@ const PLATFORM_META: Record<Platform, { label: string; fields: { key: string; la
   servicenow: { label: 'ServiceNow',           fields: [{ key: 'serverUrl', label: 'Instance URL', placeholder: 'https://org.service-now.com' }, { key: 'username', label: 'Username', placeholder: 'admin' }, { key: 'password', label: 'Password', placeholder: '••••••••', type: 'password' }] },
   openai:     { label: 'OpenAI (Threat Bot)',  fields: [{ key: 'apiKey', label: 'API Key', placeholder: 'sk-…', type: 'password' }, { key: 'model', label: 'Model', placeholder: 'gpt-4-turbo-preview' }] },
   ollama:     { label: 'Ollama / LM Studio',   fields: [{ key: 'url', label: 'Endpoint URL', placeholder: 'http://localhost:11434/v1/chat/completions' }, { key: 'model', label: 'Model name', placeholder: 'llama3' }] },
+  jules:      { label: 'Google Jules (AI Agent)', fields: [{ key: 'apiKey', label: 'API Key', placeholder: 'AIza…', type: 'password' }] },
 };
 
 function IntegrationCard({ platform, existing }: { platform: Platform; existing: IntegrationSummary | undefined }) {

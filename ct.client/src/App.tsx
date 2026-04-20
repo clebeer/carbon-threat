@@ -15,6 +15,7 @@ import LoginView from './views/LoginView';
 import { useAuthStore } from './store/authStore';
 import { refreshSession } from './api/auth';
 import { logout } from './api/auth';
+import { useJulesStatus } from './hooks/useJulesStatus';
 import './index.css';
 
 const IconDashboard = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>;
@@ -52,6 +53,10 @@ export default function App() {
   const [activeModelTitle, setActiveModelTitle] = useState<string>('');
 
   const { isAuthenticated, user, refreshToken, setAuth, clearAuth } = useAuthStore();
+
+  // Check if Jules integration is enabled — controls menu visibility
+  const { data: julesStatus } = useJulesStatus();
+  const julesEnabled = julesStatus?.configured && julesStatus?.enabled;
 
   // On mount: if we have a stored refresh token, restore the in-memory access
   // token.  We always attempt this regardless of isAuthenticated because the
@@ -150,8 +155,10 @@ export default function App() {
         </div>
 
         <div style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column' }}>
-          {/* Base menu — all authenticated users */}
-          {BASE_MENU.map(item => (
+          {/* Base menu — all authenticated users, Jules only if integration enabled */}
+          {BASE_MENU.map(item => {
+            if (item.id === 'Jules' && !julesEnabled) return null;
+            return (
             <div
               key={item.id}
               onClick={() => setActiveMenu(item.id)}
@@ -166,7 +173,8 @@ export default function App() {
               {item.icon}
               <span style={{ fontSize: '14px', letterSpacing: '0.5px' }}>{item.id}</span>
             </div>
-          ))}
+            );
+          })}
 
           {/* Admin-only menu — separator + admin items */}
           {user?.role === 'admin' && (
