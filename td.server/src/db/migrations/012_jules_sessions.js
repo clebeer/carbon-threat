@@ -10,12 +10,12 @@ export function up(knex) {
     t.string('status', 30).notNullable().defaultTo('pending');
     t.text('plan_summary').nullable();
     t.string('pr_url', 500).nullable();
-    t.integer('created_by').references('id').inTable('users').onDelete('SET NULL').nullable();
+    t.uuid('created_by').references('id').inTable('users').onDelete('SET NULL').nullable();
     t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
     t.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 
-    t.index('finding_id');
-    t.index('status');
+    t.index('finding_id', 'idx_jules_sessions_finding_id');
+    t.index('status',     'idx_jules_sessions_status');
   });
 }
 
