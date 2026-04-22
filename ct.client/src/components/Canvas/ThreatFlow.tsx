@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
@@ -8,6 +9,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
   type Node,
   type Edge,
   type NodeProps,
@@ -25,6 +27,24 @@ import { useAnalysisStore } from '../../store/analysisStore';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import ThreatPanel from './ThreatPanel';
 import DomainSelector from './DomainSelector';
+
+// ── Theme hook ────────────────────────────────────────────────────────────────
+
+function useTheme() {
+  const [theme, setThemeState] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('ct_theme') as 'dark' | 'light') ?? 'dark';
+  });
+
+  const setTheme = useCallback((t: 'dark' | 'light') => {
+    setThemeState(t);
+    localStorage.setItem('ct_theme', t);
+    document.body.classList.toggle('theme-light', t === 'light');
+  }, []);
+
+  const toggle = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [theme, setTheme]);
+
+  return { theme, setTheme, toggle };
+}
 
 // ── Default node icons (generic pack fallback) ────────────────────────────────
 
@@ -121,7 +141,6 @@ const KIND_COLORS: Record<string, string> = {
 /** MiniMap nodeColor callback — returns a hex color by asset category */
 function miniMapNodeColor(node: Node<CyberNodeData>): string {
   const kind = node.data?.kind ?? 'server';
-  // Resolve CSS var to actual color for MiniMap (SVG doesn't resolve CSS vars)
   return MINIMAP_COLOR_FALLBACK[kind] ?? '#00f2ff';
 }
 
@@ -416,12 +435,17 @@ function AISuggestionsPanel({ node, onClose, onAccept }: AIPanelProps) {
   );
 }
 
-// ── Node stencil ──────────────────────────────────────────────────────────────
+// ── Node stencil (with Drag & Drop) ───────────────────────────────────────────
 
 function NodeStencil({ onAdd, pack }: { onAdd: (kind: string) => void; pack?: DomainPack | null }) {
   const stencilItems = pack?.icon_manifest?.nodeTypes
     ? Object.entries(pack.icon_manifest.nodeTypes).map(([kind, def]) => ({ kind, label: def.label }))
     : DEFAULT_STENCIL;
+
+  const onDragStart = (e: React.DragEvent<HTMLButtonElement>, kind: string) => {
+    e.dataTransfer.setData('application/reactflow-kind', kind);
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
   return (
     <div className="glass-panel" style={{ width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 6px', gap: '6px', borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none', borderRight: '1px solid rgba(255,255,255,0.06)', zIndex: 20, overflowY: 'auto' }}>
@@ -430,8 +454,10 @@ function NodeStencil({ onAdd, pack }: { onAdd: (kind: string) => void; pack?: Do
         <button
           key={kind}
           title={`Add ${label}`}
+          draggable
+          onDragStart={(e) => onDragStart(e, kind)}
           onClick={() => onAdd(kind)}
-          style={{ width: '56px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 4px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--on-surface-muted)', cursor: 'pointer', transition: 'all 0.15s', fontSize: '10px' }}
+          style={{ width: '56px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 4px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--on-surface-muted)', cursor: 'grab', transition: 'all 0.15s', fontSize: '10px' }}
           onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = 'rgba(0,242,255,0.4)'; e.currentTarget.style.color = 'var(--primary)'; }}
           onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--on-surface-muted)'; }}
         >
@@ -498,7 +524,15 @@ function EdgeLabelModal({ current, onConfirm, onCancel }: { current: string; onC
 
 let nodeCounter = INIT_NODES.length;
 
-export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string | null; modelTitle?: string }) {
+export default function ThreatFlow(props: { modelId?: string | null; modelTitle?: string }) {
+  return (
+    <ReactFlowProvider>
+      <ThreatFlowInner {...props} />
+    </ReactFlowProvider>
+  );
+}
+
+function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; modelTitle?: string }) {
   const [nodes, setNodes, onNodesChange] = useNodesState<CyberNodeData>(INIT_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INIT_EDGES);
   const [selectedNode, setSelectedNode] = useState<Node<CyberNodeData> | null>(null);
@@ -512,7 +546,11 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
     return 'generic';
   });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { screenToFlowPosition } = useReactFlow();
   const { highlightedEdgeIds, clearHighlight, setHighlight, setNodeFilter, selectedNodeId } = useAnalysisStore();
+
+  // Theme
+  const { theme, toggle: toggleTheme } = useTheme();
 
   // Undo / Redo
   const { undo, redo, canUndo, canRedo, pushSnapshot } = useUndoRedo(nodes, edges, setNodes, setEdges);
@@ -528,7 +566,6 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
   });
 
   const currentPack = packs.find(p => p.slug === activePack) ?? null;
-  // Sync to module-level ref for nodeTypes (avoid re-creating nodeTypes)
   _activePack = currentPack;
 
   function handlePackChange(slug: string) {
@@ -601,20 +638,39 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
     setNodes((ns: Node<CyberNodeData>[]) => ns.map((n: Node<CyberNodeData>) => ({ ...n, data: { ...n.data, selected: false } })));
   }, [setNodes]);
 
-  const addNode = useCallback((kind: string) => {
+  const addNode = useCallback((kind: string, position?: { x: number; y: number }) => {
     pushSnapshot();
     nodeCounter += 1;
     const id = String(nodeCounter);
-    const offset = (nodeCounter % 5) * 40;
     const label = currentPack?.icon_manifest?.nodeTypes?.[kind]?.label ?? DEFAULT_KIND_LABEL[kind] ?? kind;
     const newNode: Node<CyberNodeData> = {
       id,
       type: 'cyber',
-      position: { x: 280 + offset, y: 220 + offset },
+      position: position ?? { x: 280 + (nodeCounter % 5) * 40, y: 220 + (nodeCounter % 5) * 40 },
       data: { label, kind, selected: false },
     };
     setNodes((ns: Node<CyberNodeData>[]) => [...ns, newNode]);
   }, [setNodes, currentPack, pushSnapshot]);
+
+  // ── Drag & Drop handlers ─────────────────────────────────────────────────────
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    const kind = event.dataTransfer.getData('application/reactflow-kind');
+    if (!kind) return;
+
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    addNode(kind, position);
+  }, [screenToFlowPosition, addNode]);
 
   const handleNodesDelete = useCallback((deleted: Node<CyberNodeData>[]) => {
     pushSnapshot();
@@ -677,7 +733,7 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
   return (
     <div style={{ width: '100%', height: '100%', paddingTop: '64px', position: 'relative', display: 'flex' }}>
       {/* Left stencil */}
-      <NodeStencil onAdd={addNode} pack={currentPack} />
+      <NodeStencil onAdd={(kind) => addNode(kind)} pack={currentPack} />
 
       {/* Canvas */}
       <div ref={reactFlowWrapper} style={{ flex: 1, position: 'relative' }}>
@@ -690,6 +746,11 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
 
           {/* Auto Layout */}
           <button onClick={handleAutoLayout} title="Auto Layout" style={tbBtn}>⬡ Layout</button>
+
+          {/* Theme Toggle */}
+          <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} style={tbBtn}>
+            {theme === 'dark' ? '☀ Light' : '● Dark'}
+          </button>
 
           {modelId && (
             <DomainSelector activePack={activePack} onPackChange={handlePackChange} />
@@ -736,6 +797,8 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
           onEdgeDoubleClick={handleEdgeDoubleClick}
           onPaneClick={handlePaneClick}
           onNodesDelete={handleNodesDelete}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
           deleteKeyCode={['Backspace', 'Delete']}
           snapToGrid
           snapGrid={[16, 16]}
@@ -767,7 +830,7 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
 
         {!aiPanelOpen && !threatPanelOpen && (
           <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--on-surface-muted)', background: 'rgba(0,0,0,0.45)', padding: '5px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10 }}>
-            Drag nodes · Connect handles · Double-click edge to label · Ctrl+Z undo
+            Drag from stencil · Connect handles · Double-click edge to label · Ctrl+Z undo
           </div>
         )}
       </div>
