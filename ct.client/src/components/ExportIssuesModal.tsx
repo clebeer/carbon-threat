@@ -21,6 +21,7 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   servicenow:  'ServiceNow',
   openai:      'OpenAI',
   ollama:      'Ollama',
+  jules:       'Jules',
 };
 
 const PLATFORM_ICONS: Record<Platform, string> = {
@@ -29,6 +30,7 @@ const PLATFORM_ICONS: Record<Platform, string> = {
   servicenow:  '⚙',
   openai:      '◈',
   ollama:      '○',
+  jules:       '◎',
 };
 
 const EXPORTABLE: Platform[] = ['github', 'jira', 'servicenow'];

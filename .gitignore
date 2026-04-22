@@ -101,6 +101,9 @@
 !td.server/src/db/*.js
 !td.server/src/db/migrations/
 !td.server/src/db/migrations/*.js
+!td.server/db/
+!td.server/db/seeds/
+!td.server/db/seeds/*.js
 
 # React frontend (CarbonThreat client)
 !ct.client/

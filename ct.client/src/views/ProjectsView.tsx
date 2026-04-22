@@ -12,9 +12,12 @@ import {
 } from '../api/threatmodels';
 import { listPacks, listTemplates, applyTemplate, type DomainPack, type DomainTemplate } from '../api/domainPacks';
 import CloudStorageBrowser from '../components/CloudStorageBrowser';
+import { convertGliffyToReactFlow, isGliffyDiagram } from '../importers/gliffyImporter';
+import { convertVsdxToReactFlow, isVsdxFile } from '../importers/visioImporter';
 
 const PACK_ICONS: Record<string, string> = {
   generic: '⬡', aws: '☁', azure: '△', iot: '◉', k8s: '⎈',
+  network: '🌐', 'cloud-infra': '🏗', gcp: '🔵',
 };
 
 const btnBase: React.CSSProperties = {
@@ -26,6 +29,8 @@ const btnBase: React.CSSProperties = {
 export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: string, title: string) => void }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gliffyInputRef = useRef<HTMLInputElement>(null);
+  const visioInputRef = useRef<HTMLInputElement>(null);
 
   const [importError, setImportError]       = useState<string | null>(null);
   const [importing, setImporting]           = useState(false);
@@ -145,6 +150,56 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
     }
   }
 
+  async function handleGliffyImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImportError(null);
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const { nodes, edges, stats, warnings } = convertGliffyToReactFlow(json);
+      const title = file.name.replace(/\.[^.]+$/, '');
+      const model = await createThreatModel({
+        title,
+        content: { nodes, edges } as unknown as Record<string, unknown>,
+      });
+      qc.invalidateQueries({ queryKey: ['threatmodels'] });
+      onOpenModel?.(model.id, model.title);
+      if (warnings.length > 0) console.warn('Gliffy import warnings:', warnings);
+      if (stats.skipped > 0) console.info(`Gliffy: skipped ${stats.skipped} objects`);
+    } catch (err: any) {
+      setImportError(err?.message ?? 'Gliffy import failed');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleVisioImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImportError(null);
+    setImporting(true);
+    try {
+      const { nodes, edges, stats, warnings } = await convertVsdxToReactFlow(file);
+      const title = file.name.replace(/\.[^.]+$/, '');
+      const model = await createThreatModel({
+        title,
+        content: { nodes, edges } as unknown as Record<string, unknown>,
+      });
+      qc.invalidateQueries({ queryKey: ['threatmodels'] });
+      onOpenModel?.(model.id, model.title);
+      if (warnings.length > 0) console.warn('Visio import warnings:', warnings);
+      if (stats.skipped > 0) console.info(`Visio: skipped ${stats.skipped} objects`);
+    } catch (err: any) {
+      setImportError(err?.message ?? 'Visio import failed');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function handleCreate() {
     if (!newTitle.trim()) { setFormError('Title is required'); return; }
     createMutation.mutate({ title: newTitle.trim() });
@@ -188,12 +243,30 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <input ref={fileInputRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleImportFile} />
+          <input ref={gliffyInputRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleGliffyImport} />
+          <input ref={visioInputRef} type="file" accept=".vsdx,application/vnd.ms-visio.drawing" style={{ display: 'none' }} onChange={handleVisioImport} />
           <button
             onClick={() => { setImportError(null); fileInputRef.current?.click(); }}
             disabled={importing}
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', padding: '9px 16px', borderRadius: '6px', cursor: importing ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}
           >
             {importing ? '↻ Importing…' : '↑ Import TD'}
+          </button>
+          <button
+            onClick={() => { setImportError(null); gliffyInputRef.current?.click(); }}
+            disabled={importing}
+            title="Import Gliffy diagram (.json)"
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', padding: '9px 16px', borderRadius: '6px', cursor: importing ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}
+          >
+            {importing ? '↻ …' : '◇ Gliffy'}
+          </button>
+          <button
+            onClick={() => { setImportError(null); visioInputRef.current?.click(); }}
+            disabled={importing}
+            title="Import Visio diagram (.vsdx)"
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', padding: '9px 16px', borderRadius: '6px', cursor: importing ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}
+          >
+            {importing ? '↻ …' : '⊞ Visio'}
           </button>
           <button
             onClick={() => setShowCloud(true)}

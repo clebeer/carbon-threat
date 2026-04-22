@@ -32,7 +32,7 @@ function makeQueryClient() {
 function renderAdmin() {
   // Pre-seed authStore with an admin user (no real JWT needed in unit tests)
   useAuthStore.setState({
-    user:            MOCK_USER as Parameters<typeof useAuthStore.getState>['0']['user'],
+    user:            MOCK_USER as ReturnType<typeof useAuthStore.getState>['user'],
     refreshToken:    'mock-rt',
     isAuthenticated: true,
   });

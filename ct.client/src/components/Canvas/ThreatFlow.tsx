@@ -32,11 +32,62 @@ const DefaultIcons: Record<string, React.ReactNode> = {
   api:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 2l-4 5-4-5"/><line x1="12" y1="12" x2="12" y2="17"/></svg>,
   cloud:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>,
   browser: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="8" y1="3" x2="8" y2="9"/></svg>,
+  // Network infrastructure
+  router:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>,
+  switch:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="14" x2="20" y2="14"/></svg>,
+  loadbalancer: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5"><path d="M12 2l8 4v4l-8 4-8-4V6l8-4z"/><path d="M4 14l8 4 8-4"/><path d="M4 18l8 4 8-4"/></svg>,
+  vpn:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
+  dns:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M12 8v8"/><path d="M9 11h6"/></svg>,
+  proxy:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5"><path d="M2 12h6l3-4 3 8 3-4h5"/><path d="M20 12l-3-3"/><path d="M20 12l-3 3"/></svg>,
+  waf:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="10" y1="16" x2="14" y2="16"/></svg>,
+  ids:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+  siem:    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 14l3-4 3 6 3-3 4 1"/></svg>,
+  endpoint: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5"><rect x="4" y="5" width="12" height="10"/><path d="M8 15h4v3H8z"/><line x1="6" y1="18" x2="14" y2="18"/></svg>,
+  mobile:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="10" y1="18" x2="14" y2="18"/></svg>,
+  iot:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>,
+  printer: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/></svg>,
+  bridge:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.5"><path d="M2 12h5l2-4 2 8 2-4h7"/></svg>,
+  // Cloud infrastructure
+  'k8s-cluster': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#326CE5" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></svg>,
+  container: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2496ED" strokeWidth="1.5"><path d="M2 6h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/><path d="M6 6V3h12v3"/></svg>,
+  registry: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2496ED" strokeWidth="1.5"><rect x="4" y="4" width="4" height="16"/><rect x="10" y="4" width="4" height="16"/><rect x="16" y="4" width="4" height="16"/></svg>,
+  cdn:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2c-3 3-3 17 0 20"/><path d="M12 2c3 3 3 17 0 20"/></svg>,
+  'api-gateway': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>,
+  'service-mesh': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg>,
+  queue:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
+  cache:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12v6a9 3 0 0 1-18 0v-6"/><path d="M12 8v4"/><path d="M10 10h4"/></svg>,
+  monitoring: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 16l3-5 3 3 4-6"/></svg>,
+  vault:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/><path d="M9 12l2 2 4-4"/></svg>,
+  iam:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
+  gitops:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5"><circle cx="12" cy="12" r="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>,
+  backup:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/><path d="M12 8v6"/><path d="M9 11l3 3 3-3"/></svg>,
+  // GCP
+  gce:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><rect x="8" y="8" width="8" height="8"/></svg>,
+  gcs:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'cloud-run': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  pubsub:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
+  'cloud-armor': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
+  firestore: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FBBC04" strokeWidth="1.5"><path d="M4 20V4h4l4 8-4 8H4z"/><path d="M10 20l4-8-4-8h10v16H10z"/></svg>,
 };
 
 const DEFAULT_KIND_LABEL: Record<string, string> = {
   db: 'Database', server: 'Server', fw: 'Firewall', user: 'User / Actor',
   api: 'API Gateway', cloud: 'Cloud Service', browser: 'Web Client',
+  // Network
+  router: 'Router', switch: 'Switch', loadbalancer: 'Load Balancer',
+  vpn: 'VPN Gateway', dns: 'DNS Server', proxy: 'Proxy Server',
+  waf: 'Web App Firewall', ids: 'IDS / IPS', siem: 'SIEM',
+  endpoint: 'Endpoint', mobile: 'Mobile Device', iot: 'IoT Device',
+  printer: 'Network Printer', bridge: 'Network Bridge',
+  // Cloud
+  'k8s-cluster': 'Kubernetes', container: 'Container', registry: 'Registry',
+  cdn: 'CDN', 'api-gateway': 'API Gateway', 'service-mesh': 'Service Mesh',
+  queue: 'Message Queue', cache: 'Cache Layer', monitoring: 'Monitoring',
+  vault: 'Secrets Vault', iam: 'IAM / Identity', gitops: 'GitOps / CI-CD',
+  backup: 'Backup Storage',
+  // GCP
+  gce: 'Compute Engine', gcs: 'Cloud Storage', 'cloud-run': 'Cloud Run',
+  pubsub: 'Pub/Sub', 'cloud-armor': 'Cloud Armor', firestore: 'Firestore',
 };
 
 const DEFAULT_STENCIL: { kind: string; label: string }[] = [
@@ -47,6 +98,27 @@ const DEFAULT_STENCIL: { kind: string; label: string }[] = [
   { kind: 'api',    label: 'API' },
   { kind: 'cloud',  label: 'Cloud' },
   { kind: 'browser',label: 'Client' },
+  // Network assets
+  { kind: 'router', label: 'Router' },
+  { kind: 'switch', label: 'Switch' },
+  { kind: 'loadbalancer', label: 'LB' },
+  { kind: 'vpn',    label: 'VPN' },
+  { kind: 'dns',    label: 'DNS' },
+  { kind: 'waf',    label: 'WAF' },
+  { kind: 'ids',    label: 'IDS' },
+  { kind: 'siem',   label: 'SIEM' },
+  { kind: 'endpoint', label: 'Endpoint' },
+  { kind: 'iot',    label: 'IoT' },
+  // Cloud assets
+  { kind: 'k8s-cluster', label: 'K8s' },
+  { kind: 'container', label: 'Container' },
+  { kind: 'queue',   label: 'Queue' },
+  { kind: 'cache',   label: 'Cache' },
+  { kind: 'monitoring', label: 'Monitor' },
+  { kind: 'vault',   label: 'Vault' },
+  { kind: 'iam',     label: 'IAM' },
+  { kind: 'gitops',  label: 'CI/CD' },
+  { kind: 'cdn',     label: 'CDN' },
 ];
 
 // ── Domain icon renderer ──────────────────────────────────────────────────────
@@ -464,6 +536,8 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
           onPaneClick={handlePaneClick}
           onNodesDelete={handleNodesDelete}
           deleteKeyCode={['Backspace', 'Delete']}
+          snapToGrid
+          snapGrid={[16, 16]}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           defaultEdgeOptions={{ type: 'smoothstep' }}
