@@ -94,6 +94,51 @@ const DEFAULT_KIND_LABEL: Record<string, string> = {
   pubsub: 'Pub/Sub', 'cloud-armor': 'Cloud Armor', firestore: 'Firestore',
 };
 
+// ── Kind → Category color map (MiniMap + theme) ──────────────────────────────
+
+const KIND_COLORS: Record<string, string> = {
+  // Generic (cyan)
+  db: 'var(--icon-generic)', server: 'var(--icon-generic)', fw: 'var(--icon-generic)',
+  user: 'var(--icon-generic)', api: 'var(--icon-generic)', cloud: 'var(--icon-generic)',
+  browser: 'var(--icon-generic)',
+  // Network (green)
+  router: 'var(--icon-network)', switch: 'var(--icon-network)', loadbalancer: 'var(--icon-network)',
+  vpn: 'var(--icon-security)', dns: 'var(--icon-network)', proxy: 'var(--icon-network)',
+  waf: 'var(--icon-security)', ids: 'var(--icon-security)', siem: 'var(--icon-security)',
+  endpoint: 'var(--icon-network)', mobile: 'var(--icon-network)', iot: 'var(--icon-network)',
+  printer: 'var(--icon-network)', bridge: 'var(--icon-network)',
+  // Cloud (blue)
+  'k8s-cluster': 'var(--icon-cloud)', container: 'var(--icon-cloud)', registry: 'var(--icon-cloud)',
+  cdn: 'var(--icon-cloud)', 'api-gateway': 'var(--icon-cloud)', 'service-mesh': 'var(--icon-cloud)',
+  queue: 'var(--icon-cloud)', cache: 'var(--icon-cloud)', monitoring: 'var(--icon-cloud)',
+  vault: 'var(--icon-security)', iam: 'var(--icon-security)', gitops: 'var(--icon-cloud)',
+  backup: 'var(--icon-cloud)',
+  // GCP (GCP blue)
+  gce: 'var(--icon-gcp)', gcs: 'var(--icon-gcp)', 'cloud-run': 'var(--icon-gcp)',
+  pubsub: 'var(--icon-gcp)', 'cloud-armor': 'var(--icon-gcp)', firestore: 'var(--icon-gcp)',
+};
+
+/** MiniMap nodeColor callback — returns a hex color by asset category */
+function miniMapNodeColor(node: Node<CyberNodeData>): string {
+  const kind = node.data?.kind ?? 'server';
+  // Resolve CSS var to actual color for MiniMap (SVG doesn't resolve CSS vars)
+  return MINIMAP_COLOR_FALLBACK[kind] ?? '#00f2ff';
+}
+
+// Fallback hex colors for MiniMap (SVG canvas can't resolve CSS vars)
+const MINIMAP_COLOR_FALLBACK: Record<string, string> = {
+  db: '#00f2ff', server: '#00f2ff', fw: '#00f2ff', user: '#00f2ff',
+  api: '#00f2ff', cloud: '#00f2ff', browser: '#00f2ff',
+  router: '#22c55e', switch: '#22c55e', loadbalancer: '#3b82f6', vpn: '#f59e0b',
+  dns: '#8b5cf6', proxy: '#64748b', waf: '#ef4444', ids: '#f97316', siem: '#06b6d4',
+  endpoint: '#94a3b8', mobile: '#94a3b8', iot: '#a855f7', printer: '#64748b', bridge: '#22c55e',
+  'k8s-cluster': '#326CE5', container: '#2496ED', registry: '#2496ED', cdn: '#f97316',
+  'api-gateway': '#f59e0b', 'service-mesh': '#2dd4bf', queue: '#6366f1', cache: '#dc2626',
+  monitoring: '#10b981', vault: '#f59e0b', iam: '#8b5cf6', gitops: '#f97316', backup: '#64748b',
+  gce: '#4285F4', gcs: '#4285F4', 'cloud-run': '#4285F4', pubsub: '#EA4335',
+  'cloud-armor': '#EA4335', firestore: '#FBBC04',
+};
+
 const DEFAULT_STENCIL: { kind: string; label: string }[] = [
   { kind: 'server', label: 'Server' },
   { kind: 'db',     label: 'Database' },
@@ -700,7 +745,7 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
         >
           <Background color="rgba(255,255,255,0.04)" gap={32} size={1} />
           <Controls style={{ background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-          <MiniMap nodeColor={() => 'var(--primary)'} style={{ background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
+          <MiniMap nodeColor={miniMapNodeColor} style={{ background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
         </ReactFlow>
 
         {/* Accepted threats log (AI) */}

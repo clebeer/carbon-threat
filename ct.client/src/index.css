@@ -19,6 +19,55 @@
   --font-display: 'Inter', sans-serif;
   --font-tech: 'JetBrains Mono', monospace;
   --font-label: 'Space Grotesk', sans-serif;
+
+  /* Icon colors by asset category (theme-aware) */
+  --icon-generic:  #00f2ff;
+  --icon-network:  #22c55e;
+  --icon-cloud:    #3b82f6;
+  --icon-security: #f59e0b;
+  --icon-gcp:      #4285F4;
+}
+
+/* ── Light theme (OS preference) ────────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root {
+    --surface-dim: #f8f9fc;
+    --surface-container: #eef0f5;
+    --surface-container-low: rgba(240, 242, 248, 0.9);
+    --surface-container-high: #dde1ea;
+    --primary: #0891b2;
+    --primary-glow: rgba(8, 145, 178, 0.25);
+    --secondary: #7c3aed;
+    --secondary-glow: rgba(124, 58, 237, 0.25);
+    --error: #dc2626;
+    --on-surface: #1e293b;
+    --on-surface-muted: #64748b;
+    --icon-generic:  #0891b2;
+    --icon-network:  #16a34a;
+    --icon-cloud:    #2563eb;
+    --icon-security: #d97706;
+    --icon-gcp:      #3367d6;
+  }
+}
+
+/* Manual light theme toggle (add class "theme-light" to <body>) */
+body.theme-light {
+  --surface-dim: #f8f9fc;
+  --surface-container: #eef0f5;
+  --surface-container-low: rgba(240, 242, 248, 0.9);
+  --surface-container-high: #dde1ea;
+  --primary: #0891b2;
+  --primary-glow: rgba(8, 145, 178, 0.25);
+  --secondary: #7c3aed;
+  --secondary-glow: rgba(124, 58, 237, 0.25);
+  --error: #dc2626;
+  --on-surface: #1e293b;
+  --on-surface-muted: #64748b;
+  --icon-generic:  #0891b2;
+  --icon-network:  #16a34a;
+  --icon-cloud:    #2563eb;
+  --icon-security: #d97706;
+  --icon-gcp:      #3367d6;
 }
 
 body {
