@@ -49,6 +49,9 @@ COPY --from=build /app/td.server/dist ./td.server/dist
 # Pre-compiled rule engine (lives outside src/ — must be copied explicitly)
 COPY td.server/engine/ ./td.server/engine/
 
+# Database seed files (idempotent domain packs)
+COPY td.server/db/seeds/ ./td.server/db/seeds/
+
 # Built React SPA — served as static files from /app/dist
 COPY --from=build /app/ct.client/dist ./dist
 
