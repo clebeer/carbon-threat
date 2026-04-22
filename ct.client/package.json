@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.45.1",
+    "@types/dagre": "^0.7.54",
     "axios": "^1.15.0",
+    "dagre": "^0.8.5",
     "fast-xml-parser": "^5.7.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

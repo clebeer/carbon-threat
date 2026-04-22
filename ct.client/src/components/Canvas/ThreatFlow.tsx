@@ -11,14 +11,18 @@ import ReactFlow, {
   type Node,
   type Edge,
   type NodeProps,
+  type EdgeProps,
   type Connection,
+  getBezierPath,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import dagre from 'dagre';
 import { getThreatModel, updateThreatModel } from '../../api/threatmodels';
 import { suggestThreats, type ThreatSuggestion } from '../../api/ai';
 import { useQuery } from '@tanstack/react-query';
 import { listPacks, type DomainPack } from '../../api/domainPacks';
 import { useAnalysisStore } from '../../store/analysisStore';
+import { useUndoRedo } from '../../hooks/useUndoRedo';
 import ThreatPanel from './ThreatPanel';
 import DomainSelector from './DomainSelector';
 
@@ -56,7 +60,7 @@ const DefaultIcons: Record<string, React.ReactNode> = {
   'service-mesh': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg>,
   queue:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
   cache:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12v6a9 3 0 0 1-18 0v-6"/><path d="M12 8v4"/><path d="M10 10h4"/></svg>,
-  monitoring: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 16l3-5 3 3 4-6"/></svg>,
+  monitoring: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 14l3-5 3 3 4-6"/></svg>,
   vault:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/><path d="M9 12l2 2 4-4"/></svg>,
   iam:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
   gitops:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5"><circle cx="12" cy="12" r="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>,
@@ -175,7 +179,58 @@ const CyberNode = ({ data, id }: NodeProps<CyberNodeData>) => {
   );
 };
 
+// ── Custom edge with label (data flow) ────────────────────────────────────────
+
+function DataFlowEdge({
+  id,
+  sourceX, sourceY, sourcePosition,
+  targetX, targetY, targetPosition,
+  data,
+  style = {},
+  markerEnd,
+}: EdgeProps) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+  });
+
+  const labelText = (data as Record<string, string>)?.label ?? '';
+
+  return (
+    <>
+      <path id={id} style={style} className="react-flow__edge-path" d={edgePath} markerEnd={markerEnd} />
+      {labelText && (
+        <g transform={`translate(${labelX}, ${labelY})`}>
+          <rect
+            x={-labelText.length * 3.2 - 6}
+            y={-9}
+            width={labelText.length * 6.4 + 12}
+            height={18}
+            rx={4}
+            fill="rgba(15,15,25,0.88)"
+            stroke="rgba(0,242,255,0.35)"
+            strokeWidth={1}
+          />
+          <text
+            x={0}
+            y={1}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="var(--primary)"
+            fontSize={10}
+            fontFamily="var(--font-tech)"
+            style={{ pointerEvents: 'all', cursor: 'pointer' }}
+          >
+            {labelText}
+          </text>
+        </g>
+      )}
+    </>
+  );
+}
+
 const nodeTypes = { cyber: CyberNode };
+const edgeTypes = { 'data-flow': DataFlowEdge };
 
 // ── Initial diagram ───────────────────────────────────────────────────────────
 
@@ -186,9 +241,34 @@ const INIT_NODES: Node<CyberNodeData>[] = [
 ];
 
 const INIT_EDGES: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', type: 'smoothstep', animated: true,  style: { stroke: 'var(--primary)',   strokeWidth: 2 } },
-  { id: 'e1-3', source: '1', target: '3', type: 'smoothstep', animated: false, style: { stroke: 'var(--secondary)', strokeWidth: 2 } },
+  { id: 'e1-2', source: '1', target: '2', type: 'data-flow', animated: true,  style: { stroke: 'var(--primary)',   strokeWidth: 2 }, data: { label: 'SQL' } },
+  { id: 'e1-3', source: '1', target: '3', type: 'data-flow', animated: false, style: { stroke: 'var(--secondary)', strokeWidth: 2 }, data: { label: 'HTTPS' } },
 ];
+
+// ── Auto-layout helper (dagre) ────────────────────────────────────────────────
+
+function layoutWithDagre(nodes: Node[], edges: Edge[]): Node[] {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: 'LR', nodesep: 60, ranksep: 120, marginx: 40, marginy: 40 });
+
+  nodes.forEach((n) => {
+    g.setNode(n.id, { width: 100, height: 60 });
+  });
+  edges.forEach((e) => {
+    g.setEdge(e.source, e.target);
+  });
+
+  dagre.layout(g);
+
+  return nodes.map((n) => {
+    const pos = g.node(n.id);
+    return {
+      ...n,
+      position: { x: pos.x - 50, y: pos.y - 30 },
+    };
+  });
+}
 
 // ── Severity badge ────────────────────────────────────────────────────────────
 
@@ -343,6 +423,32 @@ function RenameModal({ current, onConfirm, onCancel }: { current: string; onConf
   );
 }
 
+// ── Edge label edit modal ─────────────────────────────────────────────────────
+
+function EdgeLabelModal({ current, onConfirm, onCancel }: { current: string; onConfirm: (label: string) => void; onCancel: () => void }) {
+  const [val, setVal] = useState(current);
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}>
+      <div className="glass-panel" style={{ padding: '24px', width: '320px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-muted)', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}>EDGE LABEL / DATA FLOW</p>
+        <input
+          autoFocus
+          type="text"
+          value={val}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal(e.target.value)}
+          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') onConfirm(val); if (e.key === 'Escape') onCancel(); }}
+          placeholder="e.g. HTTPS, TCP/443, gRPC, SQL…"
+          style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '4px', fontSize: '14px', outline: 'none' }}
+        />
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-surface-muted)', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={() => onConfirm(val)} style={{ flex: 1, padding: '8px', background: 'var(--primary)', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Apply</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main canvas ───────────────────────────────────────────────────────────────
 
 let nodeCounter = INIT_NODES.length;
@@ -353,6 +459,7 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
   const [selectedNode, setSelectedNode] = useState<Node<CyberNodeData> | null>(null);
   const [acceptedThreats, setAcceptedThreats] = useState<ThreatSuggestion[]>([]);
   const [renaming, setRenaming] = useState<Node<CyberNodeData> | null>(null);
+  const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showThreatPanel, setShowThreatPanel] = useState(false);
   const [activePack, setActivePack] = useState<string>(() => {
@@ -361,6 +468,9 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
   });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { highlightedEdgeIds, clearHighlight, setHighlight, setNodeFilter, selectedNodeId } = useAnalysisStore();
+
+  // Undo / Redo
+  const { undo, redo, canUndo, canRedo, pushSnapshot } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
   // Load active domain pack
   const { data: packs = [] } = useQuery<DomainPack[]>({
@@ -386,11 +496,11 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
     if (!modelId) return;
     setActivePack(localStorage.getItem(`ct_pack_${modelId}`) ?? 'generic');
     getThreatModel(modelId).then(({ content }) => {
-      const loadedNodes = (content as any)?.nodes;
-      const loadedEdges = (content as any)?.edges;
+      const loadedNodes = (content as Record<string, unknown>)?.nodes;
+      const loadedEdges = (content as Record<string, unknown>)?.edges;
       if (Array.isArray(loadedNodes) && loadedNodes.length > 0) {
-        setNodes(loadedNodes);
-        setEdges(Array.isArray(loadedEdges) ? loadedEdges : []);
+        setNodes(loadedNodes as Node<CyberNodeData>[]);
+        setEdges(Array.isArray(loadedEdges) ? (loadedEdges as Edge[]) : []);
       }
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -408,12 +518,18 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
   }));
 
   const onConnect = useCallback((params: Connection) => {
-    setEdges((eds: Edge[]) => addEdge({ ...params, type: 'smoothstep', animated: true, style: { stroke: 'var(--primary)', strokeWidth: 2 } }, eds));
-  }, [setEdges]);
+    pushSnapshot();
+    setEdges((eds: Edge[]) => addEdge({
+      ...params,
+      type: 'data-flow',
+      animated: true,
+      style: { stroke: 'var(--primary)', strokeWidth: 2 },
+      data: { label: '' },
+    }, eds));
+  }, [setEdges, pushSnapshot]);
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node<CyberNodeData>) => {
     if (showThreatPanel) {
-      // F2: when threat panel is open, clicking a node filters threats by that node
       if (selectedNodeId === node.id) {
         clearHighlight();
       } else {
@@ -422,7 +538,6 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
       }
       return;
     }
-    // Normal mode: open AI analysis panel
     clearHighlight();
     setSelectedNode((prev: Node<CyberNodeData> | null) => prev?.id === node.id ? null : node);
     setNodes((ns: Node<CyberNodeData>[]) => ns.map((n: Node<CyberNodeData>) => ({ ...n, data: { ...n.data, selected: n.id === node.id } })));
@@ -432,12 +547,17 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
     setRenaming(node);
   }, []);
 
+  const handleEdgeDoubleClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    setEditingEdge(edge);
+  }, []);
+
   const handlePaneClick = useCallback(() => {
     setSelectedNode(null);
     setNodes((ns: Node<CyberNodeData>[]) => ns.map((n: Node<CyberNodeData>) => ({ ...n, data: { ...n.data, selected: false } })));
   }, [setNodes]);
 
   const addNode = useCallback((kind: string) => {
+    pushSnapshot();
     nodeCounter += 1;
     const id = String(nodeCounter);
     const offset = (nodeCounter % 5) * 40;
@@ -449,22 +569,41 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
       data: { label, kind, selected: false },
     };
     setNodes((ns: Node<CyberNodeData>[]) => [...ns, newNode]);
-  }, [setNodes, currentPack]);
+  }, [setNodes, currentPack, pushSnapshot]);
 
   const handleNodesDelete = useCallback((deleted: Node<CyberNodeData>[]) => {
+    pushSnapshot();
     if (selectedNode && deleted.some((d: Node<CyberNodeData>) => d.id === selectedNode.id)) {
       setSelectedNode(null);
     }
-  }, [selectedNode]);
+  }, [selectedNode, pushSnapshot]);
 
   const handleRenameConfirm = useCallback((name: string) => {
     if (!renaming || !name.trim()) { setRenaming(null); return; }
+    pushSnapshot();
     setNodes((ns: Node<CyberNodeData>[]) => ns.map((n: Node<CyberNodeData>) => n.id === renaming.id ? { ...n, data: { ...n.data, label: name.trim() } } : n));
     if (selectedNode?.id === renaming.id) {
       setSelectedNode((prev: Node<CyberNodeData> | null) => prev ? { ...prev, data: { ...prev.data, label: name.trim() } } : null);
     }
     setRenaming(null);
-  }, [renaming, selectedNode, setNodes]);
+  }, [renaming, selectedNode, setNodes, pushSnapshot]);
+
+  const handleEdgeLabelConfirm = useCallback((label: string) => {
+    if (!editingEdge) { setEditingEdge(null); return; }
+    pushSnapshot();
+    setEdges((es: Edge[]) => es.map((e: Edge) =>
+      e.id === editingEdge.id
+        ? { ...e, data: { ...(e.data as Record<string, unknown>), label }, type: 'data-flow' }
+        : e
+    ));
+    setEditingEdge(null);
+  }, [editingEdge, setEdges, pushSnapshot]);
+
+  const handleAutoLayout = useCallback(() => {
+    pushSnapshot();
+    const laidOut = layoutWithDagre(nodes, edges);
+    setNodes(laidOut);
+  }, [nodes, edges, setNodes, pushSnapshot]);
 
   const handleSave = useCallback(async () => {
     if (!modelId) return;
@@ -482,6 +621,14 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
   const aiPanelOpen = Boolean(selectedNode) && !showThreatPanel;
   const threatPanelOpen = showThreatPanel && Boolean(modelId);
 
+  // Toolbar button style helper
+  const tbBtn: React.CSSProperties = {
+    padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.04)', color: 'var(--on-surface-muted)',
+    fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-label)',
+    letterSpacing: '0.5px', transition: 'all 0.15s',
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', paddingTop: '64px', position: 'relative', display: 'flex' }}>
       {/* Left stencil */}
@@ -491,14 +638,21 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
       <div ref={reactFlowWrapper} style={{ flex: 1, position: 'relative' }}>
 
         {/* Toolbar overlay */}
-        <div style={{ position: 'absolute', top: '12px', right: threatPanelOpen ? '356px' : '12px', zIndex: 30, display: 'flex', gap: '8px', alignItems: 'center', transition: 'right 0.2s' }}>
+        <div style={{ position: 'absolute', top: '12px', right: threatPanelOpen ? '356px' : '12px', zIndex: 30, display: 'flex', gap: '6px', alignItems: 'center', transition: 'right 0.2s', flexWrap: 'wrap' }}>
+          {/* Undo / Redo */}
+          <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{ ...tbBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}>↩</button>
+          <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" style={{ ...tbBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}>↪</button>
+
+          {/* Auto Layout */}
+          <button onClick={handleAutoLayout} title="Auto Layout" style={tbBtn}>⬡ Layout</button>
+
           {modelId && (
             <DomainSelector activePack={activePack} onPackChange={handlePackChange} />
           )}
           {modelId && (
             <button
               onClick={() => { setShowThreatPanel(v => !v); if (!showThreatPanel) { setSelectedNode(null); clearHighlight(); } }}
-              style={{ padding: '5px 12px', borderRadius: '6px', border: `1px solid ${threatPanelOpen ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.15)'}`, background: threatPanelOpen ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)', color: threatPanelOpen ? '#ef4444' : 'var(--on-surface-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.15s' }}
+              style={{ ...tbBtn, border: `1px solid ${threatPanelOpen ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.15)'}`, background: threatPanelOpen ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)', color: threatPanelOpen ? '#ef4444' : 'var(--on-surface-muted)' }}
             >
               {threatPanelOpen ? '× Threats' : '⚡ Threats'}
             </button>
@@ -528,11 +682,13 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
           nodes={nodes}
           edges={displayEdges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={handleNodeClick}
           onNodeDoubleClick={handleNodeDoubleClick}
+          onEdgeDoubleClick={handleEdgeDoubleClick}
           onPaneClick={handlePaneClick}
           onNodesDelete={handleNodesDelete}
           deleteKeyCode={['Backspace', 'Delete']}
@@ -540,7 +696,7 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
           snapGrid={[16, 16]}
           fitView
           fitViewOptions={{ padding: 0.3 }}
-          defaultEdgeOptions={{ type: 'smoothstep' }}
+          defaultEdgeOptions={{ type: 'data-flow' }}
         >
           <Background color="rgba(255,255,255,0.04)" gap={32} size={1} />
           <Controls style={{ background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
@@ -566,7 +722,7 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
 
         {!aiPanelOpen && !threatPanelOpen && (
           <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--on-surface-muted)', background: 'rgba(0,0,0,0.45)', padding: '5px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10 }}>
-            Drag nodes · Connect handles · Double-click to rename · Del to remove
+            Drag nodes · Connect handles · Double-click edge to label · Ctrl+Z undo
           </div>
         )}
       </div>
@@ -591,6 +747,15 @@ export default function ThreatFlow({ modelId, modelTitle }: { modelId?: string |
           current={renaming.data.label}
           onConfirm={handleRenameConfirm}
           onCancel={() => setRenaming(null)}
+        />
+      )}
+
+      {/* Edge label modal */}
+      {editingEdge && (
+        <EdgeLabelModal
+          current={(editingEdge.data as Record<string, string>)?.label ?? ''}
+          onConfirm={handleEdgeLabelConfirm}
+          onCancel={() => setEditingEdge(null)}
         />
       )}
     </div>

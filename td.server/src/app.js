@@ -12,6 +12,7 @@ import parsers from './config/parsers.config.js';
 import routes from './config/routes.config.js';
 import securityHeaders from './config/securityheaders.config.js';
 import { runMigrations } from './db/migrate.js';
+import { runSeeds } from './db/seed.js';
 import db from './db/knex.js';
 import bcrypt from 'bcrypt';
 import { upDir } from './helpers/path.helper.js';
@@ -111,6 +112,9 @@ const create = async () => {
 
         // Run pending database migrations before accepting any requests
         await runMigrations();
+
+        // Run domain-pack seeds (idempotent — safe on every boot)
+        await runSeeds();
 
         // Auto-bootstrap default admin when no users exist and env vars are set
         await bootstrapDefaultAdmin(logger);
