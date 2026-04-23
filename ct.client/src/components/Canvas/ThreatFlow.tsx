@@ -19,6 +19,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
+import { toPng, toSvg } from 'html-to-image';
 import { getThreatModel, updateThreatModel } from '../../api/threatmodels';
 import { suggestThreats, type ThreatSuggestion } from '../../api/ai';
 import { useQuery } from '@tanstack/react-query';
@@ -549,6 +550,24 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   const { screenToFlowPosition } = useReactFlow();
   const { highlightedEdgeIds, clearHighlight, setHighlight, setNodeFilter, selectedNodeId } = useAnalysisStore();
 
+  // Export diagram as PNG or SVG
+  const exportImage = useCallback(async (format: 'png' | 'svg') => {
+    const el = document.querySelector('.react-flow') as HTMLElement | null;
+    if (!el) return;
+    try {
+      const fn = format === 'png' ? toPng : toSvg;
+      const dataUrl = await fn(el, { backgroundColor: '#0a0a14' });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${modelTitle ?? 'diagram'}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  }, [modelTitle]);
+
   // Theme
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -751,6 +770,10 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} style={tbBtn}>
             {theme === 'dark' ? '☀ Light' : '● Dark'}
           </button>
+
+          {/* Export */}
+          <button onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
+          <button onClick={() => exportImage('svg')} title="Export as SVG" style={tbBtn}>⬇ SVG</button>
 
           {modelId && (
             <DomainSelector activePack={activePack} onPackChange={handlePackChange} />

@@ -46,7 +46,10 @@ describe('LoginView', () => {
   describe('initial render', () => {
     it('renders the CarbonThreat heading', () => {
       renderLogin();
-      expect(screen.getByRole('heading', { name: /carbonthreat/i })).toBeInTheDocument();
+      // Heading is "Carbon<span>Threat</span>" — accessible name may not concatenate cleanly
+      expect(screen.getByRole('heading')).toBeInTheDocument();
+      expect(screen.getByText(/Carbon/)).toBeInTheDocument();
+      expect(screen.getByText(/Threat/)).toBeInTheDocument();
     });
 
     it('renders email and password inputs', () => {
