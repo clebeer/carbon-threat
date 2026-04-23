@@ -41,7 +41,7 @@ export function JulesSessionDetail({ onClose }: { onClose: () => void }) {
               {session.finding_id} · {session.source_name.split('/').pop()}
             </p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '20px' }}>×</button>
+          <button aria-label="Close" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '20px' }}>×</button>
         </div>
 
         {/* Status + PR link */}

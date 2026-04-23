@@ -237,7 +237,7 @@ export default function CloudStorageBrowser({ onClose, onImported }: Props) {
             <div style={{ fontSize: '10px', color: 'var(--secondary)', letterSpacing: '1px' }}>CLOUD STORAGE</div>
             <div style={{ fontSize: '16px', color: '#fff', fontWeight: 600, marginTop: '2px' }}>Import / Export Models</div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}>×</button>
+          <button aria-label="Close" onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}>×</button>
         </div>
 
         {/* Provider tabs */}
