@@ -19,6 +19,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
+import ELK from 'elkjs/lib/elk.bundled.js';
 import { toPng, toSvg } from 'html-to-image';
 import { getThreatModel, updateThreatModel } from '../../api/threatmodels';
 import { suggestThreats, type ThreatSuggestion } from '../../api/ai';
@@ -310,9 +311,24 @@ let _activePack: DomainPack | null = null;
 const CyberNode = ({ data, id }: NodeProps<CyberNodeData>) => {
   const highlightedNodeIds = useAnalysisStore(s => s.highlightedNodeIds);
   const isHighlighted = highlightedNodeIds.has(id);
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+    <div
+      style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Mini-toolbar on hover */}
+      {hovered && _toolbarActions && (
+        <NodeToolbar
+          nodeId={id}
+          onDelete={_toolbarActions.onDelete}
+          onDuplicate={_toolbarActions.onDuplicate}
+          onRename={_toolbarActions.onRename}
+          onConnect={_toolbarActions.onConnect}
+        />
+      )}
       <div
         className="ct-node"
         style={{
@@ -384,8 +400,16 @@ function DataFlowEdge({
   );
 }
 
-const nodeTypes = { cyber: CyberNode };
+const nodeTypes = { cyber: CyberNode, 'trust-boundary': TrustBoundaryNode };
 const edgeTypes = { 'data-flow': DataFlowEdge };
+
+// Shared toolbar action callbacks (set by ThreatFlowInner)
+let _toolbarActions: {
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onRename: (id: string) => void;
+  onConnect: (id: string) => void;
+} | null = null;
 
 // ── Initial diagram ───────────────────────────────────────────────────────────
 
@@ -399,6 +423,64 @@ const INIT_EDGES: Edge[] = [
   { id: 'e1-2', source: '1', target: '2', type: 'data-flow', animated: true,  style: { stroke: 'var(--primary)',   strokeWidth: 2 }, data: { label: 'SQL' } },
   { id: 'e1-3', source: '1', target: '3', type: 'data-flow', animated: false, style: { stroke: 'var(--secondary)', strokeWidth: 2 }, data: { label: 'HTTPS' } },
 ];
+
+// ── Trust Boundary Group Node ────────────────────────────────────────────────
+
+function TrustBoundaryNode({ data, id }: NodeProps<CyberNodeData>) {
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      border: '2px dashed #f59e0b',
+      borderRadius: '12px',
+      background: 'rgba(245, 158, 11, 0.06)',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
+      padding: '8px 14px',
+      minHeight: '120px', minWidth: '200px',
+    }}>
+      <span style={{
+        fontSize: '11px', fontWeight: 600, color: '#f59e0b',
+        letterSpacing: '0.5px', textTransform: 'uppercase',
+        background: 'rgba(15,15,25,0.7)', padding: '2px 8px', borderRadius: '4px',
+      }}>
+        ⬡ {data.label}
+      </span>
+      <Handle type="target" position={Position.Top} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} id="r" />
+      <Handle type="target" position={Position.Left} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} id="l" />
+    </div>
+  );
+}
+
+// ── Mini-toolbar (appears on node hover) ──────────────────────────────────────
+
+function NodeToolbar({ nodeId, onDelete, onDuplicate, onRename, onConnect }: {
+  nodeId: string;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onRename: (id: string) => void;
+  onConnect: (id: string) => void;
+}) {
+  const btnStyle: React.CSSProperties = {
+    width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(20,20,35,0.92)', color: 'var(--on-surface-muted)',
+    cursor: 'pointer', fontSize: '12px', transition: 'all 0.15s',
+  };
+  return (
+    <div style={{
+      position: 'absolute', top: '-36px', left: '50%', transform: 'translateX(-50%)',
+      display: 'flex', gap: '4px', zIndex: 40,
+      background: 'rgba(15,15,30,0.95)', padding: '4px 6px', borderRadius: '8px',
+      border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+    }}>
+      <button title="Connect" onClick={() => onConnect(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🔗</button>
+      <button title="Rename" onClick={() => onRename(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--secondary)'; e.currentTarget.style.borderColor = 'var(--secondary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>✏️</button>
+      <button title="Duplicate" onClick={() => onDuplicate(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = '#22c55e'; e.currentTarget.style.borderColor = '#22c55e'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>📋</button>
+      <button title="Delete" onClick={() => onDelete(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--error)'; e.currentTarget.style.borderColor = 'var(--error)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🗑</button>
+    </div>
+  );
+}
 
 // ── Auto-layout helper (dagre) ────────────────────────────────────────────────
 
@@ -423,6 +505,103 @@ function layoutWithDagre(nodes: Node[], edges: Edge[]): Node[] {
       position: { x: pos.x - 50, y: pos.y - 30 },
     };
   });
+}
+
+// ── Auto-layout with ELK (layered, more sophisticated) ────────────────────────
+
+async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+  const elk = new ELK();
+
+  const graph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'RIGHT',
+      'elk.spacing.nodeNode': '60',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      'elk.edgeRouting': 'ORTHOGONAL',
+    },
+    children: nodes.map(n => ({
+      id: n.id,
+      width: 100,
+      height: 60,
+    })),
+    edges: edges.map(e => ({
+      id: e.id,
+      sources: [e.source],
+      targets: [e.target],
+    })),
+  };
+
+  const layouted = await elk.layout(graph);
+
+  return nodes.map(n => {
+    const elkNode = layouted.children?.find(c => c.id === n.id);
+    if (elkNode) {
+      return {
+        ...n,
+        position: { x: elkNode.x ?? n.position.x, y: elkNode.y ?? n.position.y },
+      };
+    }
+    return n;
+  });
+}
+
+// ── Alignment helpers ─────────────────────────────────────────────────────────
+
+function alignNodes(nodes: Node[], direction: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v'): Node[] {
+  if (nodes.length < 2) return nodes;
+
+  const positions = nodes.map(n => n.position);
+
+  switch (direction) {
+    case 'left': {
+      const minX = Math.min(...positions.map(p => p.x));
+      return nodes.map(n => ({ ...n, position: { ...n.position, x: minX } }));
+    }
+    case 'center-h': {
+      const avgX = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+      return nodes.map(n => ({ ...n, position: { ...n.position, x: avgX } }));
+    }
+    case 'right': {
+      const maxX = Math.max(...positions.map(p => p.x));
+      return nodes.map(n => ({ ...n, position: { ...n.position, x: maxX } }));
+    }
+    case 'top': {
+      const minY = Math.min(...positions.map(p => p.y));
+      return nodes.map(n => ({ ...n, position: { ...n.position, y: minY } }));
+    }
+    case 'center-v': {
+      const avgY = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+      return nodes.map(n => ({ ...n, position: { ...n.position, y: avgY } }));
+    }
+    case 'bottom': {
+      const maxY = Math.max(...positions.map(p => p.y));
+      return nodes.map(n => ({ ...n, position: { ...n.position, y: maxY } }));
+    }
+    case 'distribute-h': {
+      const sorted = [...nodes].sort((a, b) => a.position.x - b.position.x);
+      const minX = sorted[0].position.x;
+      const maxX = sorted[sorted.length - 1].position.x;
+      const step = (maxX - minX) / (sorted.length - 1);
+      return nodes.map(n => {
+        const idx = sorted.indexOf(n);
+        return { ...n, position: { ...n.position, x: minX + idx * step } };
+      });
+    }
+    case 'distribute-v': {
+      const sorted = [...nodes].sort((a, b) => a.position.y - b.position.y);
+      const minY = sorted[0].position.y;
+      const maxY = sorted[sorted.length - 1].position.y;
+      const step = (maxY - minY) / (sorted.length - 1);
+      return nodes.map(n => {
+        const idx = sorted.indexOf(n);
+        return { ...n, position: { ...n.position, y: minY + idx * step } };
+      });
+    }
+    default: return nodes;
+  }
 }
 
 // ── Severity badge ────────────────────────────────────────────────────────────
@@ -817,6 +996,31 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     setNodes(laidOut);
   }, [nodes, edges, setNodes, pushSnapshot]);
 
+  const handleElkLayout = useCallback(async () => {
+    pushSnapshot();
+    const laidOut = await layoutWithElk(nodes, edges);
+    setNodes(laidOut);
+  }, [nodes, edges, setNodes, pushSnapshot]);
+
+  const handleAlign = useCallback((dir: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v') => {
+    pushSnapshot();
+    const sel = nodes.filter(n => n.data?.selected);
+    if (sel.length < 2) return;
+    const aligned = alignNodes(sel, dir);
+    setNodes((ns: Node<CyberNodeData>[]) => ns.map(n => {
+      const a = aligned.find(al => al.id === n.id);
+      return a ? { ...n, position: a.position } : n;
+    }));
+  }, [nodes, setNodes, pushSnapshot]);
+
+  // Wire toolbar actions for mini-toolbar
+  _toolbarActions = {
+    onDelete: (id: string) => { pushSnapshot(); setNodes((ns: Node<CyberNodeData>[]) => ns.filter(n => n.id !== id)); },
+    onDuplicate: (id: string) => { const n = nodes.find(n => n.id === id); if (n) addNode(n.data.kind, { x: n.position.x + 120, y: n.position.y + 40 }); },
+    onRename: (id: string) => { const n = nodes.find(n => n.id === id); if (n) setRenaming(n); },
+    onConnect: (id: string) => { setSelectedNode(nodes.find(n => n.id === id) ?? null); },
+  };
+
   const handleSave = useCallback(async () => {
     if (!modelId) return;
     setSaveStatus('saving');
@@ -855,8 +1059,27 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{ ...tbBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}>↩</button>
           <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" style={{ ...tbBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}>↪</button>
 
-          {/* Auto Layout */}
-          <button onClick={handleAutoLayout} title="Auto Layout" style={tbBtn}>⬡ Layout</button>
+          {/* Auto Layout (Dagre) */}
+          <button onClick={handleAutoLayout} title="Auto Layout (Dagre)" style={tbBtn}>⬡ Layout</button>
+          {/* ELK Layout (Layered) */}
+          <button onClick={handleElkLayout} title="ELK Layered Layout (Orthogonal)" style={tbBtn}>⬢ ELK</button>
+          {/* Alignment dropdown */}
+          <select
+            title="Align selected nodes"
+            defaultValue=""
+            onChange={e => { if (e.target.value) { handleAlign(e.target.value as any); e.target.value = ''; } }}
+            style={{ ...tbBtn, appearance: 'none', paddingRight: '8px', textAlign: 'center', background: 'rgba(255,255,255,0.06)' }}
+          >
+            <option value="" disabled style={{ background: '#1a1a2e', color: '#e2e8f0' }}>⌗ Align</option>
+            <option value="left" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>← Left</option>
+            <option value="center-h" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↔ Center H</option>
+            <option value="right" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>→ Right</option>
+            <option value="top" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↑ Top</option>
+            <option value="center-v" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↕ Center V</option>
+            <option value="bottom" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↓ Bottom</option>
+            <option value="distribute-h" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>━ Distrib H</option>
+            <option value="distribute-v" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>┃ Distrib V</option>
+          </select>
 
           {/* Theme Toggle */}
           <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} style={tbBtn}>
