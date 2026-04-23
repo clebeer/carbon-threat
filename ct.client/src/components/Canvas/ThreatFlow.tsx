@@ -30,24 +30,6 @@ import { useUndoRedo } from '../../hooks/useUndoRedo';
 import ThreatPanel from './ThreatPanel';
 import DomainSelector from './DomainSelector';
 
-// ── Theme hook ────────────────────────────────────────────────────────────────
-
-function useTheme() {
-  const [theme, setThemeState] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('ct_theme') as 'dark' | 'light') ?? 'dark';
-  });
-
-  const setTheme = useCallback((t: 'dark' | 'light') => {
-    setThemeState(t);
-    localStorage.setItem('ct_theme', t);
-    document.body.classList.toggle('theme-light', t === 'light');
-  }, []);
-
-  const toggle = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [theme, setTheme]);
-
-  return { theme, setTheme, toggle };
-}
-
 // ── Default node icons (generic pack fallback) ────────────────────────────────
 
 const DefaultIcons: Record<string, React.ReactNode> = {
@@ -838,9 +820,6 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     }
   }, [modelTitle]);
 
-  // Theme
-  const { theme, toggle: toggleTheme } = useTheme();
-
   // Undo / Redo
   const { undo, redo, canUndo, canRedo, pushSnapshot } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
@@ -1080,11 +1059,6 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
             <option value="distribute-h" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>━ Distrib H</option>
             <option value="distribute-v" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>┃ Distrib V</option>
           </select>
-
-          {/* Theme Toggle */}
-          <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} style={tbBtn}>
-            {theme === 'dark' ? '☀ Light' : '● Dark'}
-          </button>
 
           {/* Export */}
           <button onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
