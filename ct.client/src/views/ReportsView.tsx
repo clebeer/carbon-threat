@@ -599,7 +599,7 @@ export default function ReportsView() {
       {downloadError && (
         <div style={{ padding: '12px 16px', background: 'rgba(255,77,79,0.08)', border: '1px solid var(--error)', borderRadius: '8px', color: 'var(--error)', fontSize: '13px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{downloadError}</span>
-          <button onClick={() => setDownloadError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
+          <button aria-label="Dismiss error" onClick={() => setDownloadError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
         </div>
       )}
 

@@ -392,7 +392,7 @@ function AISuggestionsPanel({ node, onClose, onAccept }: AIPanelProps) {
           <div style={{ fontSize: '15px', color: '#fff', fontFamily: 'var(--font-tech)' }}>{node.data.label}</div>
           <div style={{ fontSize: '11px', color: 'var(--on-surface-muted)', marginTop: '2px' }}>{kindLabel} component</div>
         </div>
-        <button onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '24px', height: '24px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>×</button>
+        <button aria-label="Close" onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '24px', height: '24px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>×</button>
       </div>
       <div style={{ padding: '14px 18px', flexShrink: 0 }}>
         <button onClick={handleAnalyse} disabled={loading} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(179,102,255,0.3)', background: loading ? 'rgba(179,102,255,0.3)' : 'rgba(179,102,255,0.12)', color: 'var(--secondary)', fontSize: '13px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.5px' }}>

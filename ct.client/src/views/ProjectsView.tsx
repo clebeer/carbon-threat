@@ -293,7 +293,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       {importError && (
         <div style={{ padding: '12px 16px', background: 'rgba(255,77,79,0.08)', border: '1px solid var(--error)', borderRadius: '8px', color: 'var(--error)', fontSize: '13px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Import failed: {importError}</span>
-          <button onClick={() => setImportError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px' }}>×</button>
+          <button aria-label="Dismiss error" onClick={() => setImportError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px' }}>×</button>
         </div>
       )}
 
@@ -332,7 +332,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
                 <div style={{ fontSize: '10px', color: 'var(--secondary)', letterSpacing: '1px' }}>DOMAIN TEMPLATES</div>
                 <div style={{ fontSize: '16px', color: '#fff', fontWeight: 600, marginTop: '2px' }}>New Model from Template</div>
               </div>
-              <button onClick={() => setShowTemplates(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}>×</button>
+              <button aria-label="Close templates" onClick={() => setShowTemplates(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}>×</button>
             </div>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '8px', flexShrink: 0, overflowX: 'auto' }}>
               {packs.map(p => (

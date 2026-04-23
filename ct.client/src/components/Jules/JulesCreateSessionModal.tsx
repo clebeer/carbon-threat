@@ -66,7 +66,7 @@ export function JulesCreateSessionModal({ finding, onClose, onCreated }: Props) 
           <h3 style={{ margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-label)', letterSpacing: '1px', fontSize: '14px' }}>
             REMEDIAR COM JULES
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '18px' }}>×</button>
+          <button aria-label="Close" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '18px' }}>×</button>
         </div>
 
         <div style={{ marginBottom: '16px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--on-surface-muted)' }}>
