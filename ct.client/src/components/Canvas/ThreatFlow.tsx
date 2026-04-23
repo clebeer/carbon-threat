@@ -93,6 +93,35 @@ const DefaultIcons: Record<string, React.ReactNode> = {
   pubsub:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
   'cloud-armor': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
   firestore: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FBBC04" strokeWidth="1.5"><path d="M4 20V4h4l4 8-4 8H4z"/><path d="M10 20l4-8-4-8h10v16H10z"/></svg>,
+  // AWS
+  ec2:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9900" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><rect x="8" y="8" width="8" height="8"/></svg>,
+  s3:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3F8624" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  rds:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C925D1" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  lambda:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9900" strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  vpc:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><rect x="6" y="6" width="12" height="12"/></svg>,
+  cloudfront: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2c-3 3-3 17 0 20"/><path d="M12 2c3 3 3 17 0 20"/></svg>,
+  alb:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><path d="M12 2l8 4v4l-8 4-8-4V6l8-4z"/><path d="M4 14l8 4 8-4"/><path d="M4 18l8 4 8-4"/></svg>,
+  dynamodb: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4081D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  sqs:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
+  eks:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9900" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></svg>,
+  'waf-aws': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
+  'aws-iam': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
+  cloudwatch: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 14l3-5 3 3 4-6"/></svg>,
+  guardduty: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>,
+  // Azure
+  vm:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><rect x="8" y="8" width="8" height="8"/></svg>,
+  'blob-storage': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'sql-database': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'azure-functions': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  'app-gateway': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 2l8 4v4l-8 4-8-4V6l8-4z"/><path d="M4 14l8 4 8-4"/><path d="M4 18l8 4 8-4"/></svg>,
+  'cosmos-db': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#50B7E0" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'service-bus': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
+  aks:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></svg>,
+  'azure-firewall': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  'entra-id': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
+  'front-door': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2c-3 3-3 17 0 20"/><path d="M12 2c3 3 3 17 0 20"/></svg>,
+  // Trust boundary
+  'trust-boundary': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4 2"><rect x="2" y="2" width="20" height="20" rx="4"/><line x1="7" y1="2" x2="7" y2="7"/><line x1="2" y1="7" x2="7" y2="7"/></svg>,
 };
 
 const DEFAULT_KIND_LABEL: Record<string, string> = {
@@ -113,6 +142,21 @@ const DEFAULT_KIND_LABEL: Record<string, string> = {
   // GCP
   gce: 'Compute Engine', gcs: 'Cloud Storage', 'cloud-run': 'Cloud Run',
   pubsub: 'Pub/Sub', 'cloud-armor': 'Cloud Armor', firestore: 'Firestore',
+  // AWS
+  ec2: 'EC2 Instance', s3: 'S3 Bucket', rds: 'RDS Database', lambda: 'Lambda',
+  vpc: 'VPC', cloudfront: 'CloudFront', alb: 'App Load Balancer', dynamodb: 'DynamoDB',
+  sqs: 'SQS Queue', eks: 'EKS Cluster', 'waf-aws': 'WAF', 'aws-iam': 'AWS IAM',
+  cloudwatch: 'CloudWatch', guardduty: 'GuardDuty', sns: 'SNS Topic',
+  elasticache: 'ElastiCache', 'api-gw-aws': 'API Gateway', 'secrets-manager': 'Secrets Mgr',
+  // Azure
+  vm: 'Virtual Machine', 'blob-storage': 'Blob Storage', 'sql-database': 'SQL Database',
+  'azure-functions': 'Functions', vnet: 'Virtual Network', 'app-gateway': 'App Gateway',
+  'api-management': 'API Management', 'cosmos-db': 'Cosmos DB', 'service-bus': 'Service Bus',
+  aks: 'AKS Cluster', 'redis-cache': 'Azure Cache', 'azure-firewall': 'Azure Firewall',
+  sentinel: 'Sentinel', 'azure-monitor': 'Monitor', 'entra-id': 'Entra ID',
+  'key-vault': 'Key Vault', 'front-door': 'Front Door',
+  // Trust boundary
+  'trust-boundary': 'Trust Boundary',
 };
 
 // ── Kind → Category color map (MiniMap + theme) ──────────────────────────────
@@ -137,6 +181,21 @@ const KIND_COLORS: Record<string, string> = {
   // GCP (GCP blue)
   gce: 'var(--icon-gcp)', gcs: 'var(--icon-gcp)', 'cloud-run': 'var(--icon-gcp)',
   pubsub: 'var(--icon-gcp)', 'cloud-armor': 'var(--icon-gcp)', firestore: 'var(--icon-gcp)',
+  // AWS (orange)
+  ec2: '#FF9900', s3: '#3F8624', rds: '#C925D1', lambda: '#FF9900', vpc: '#DD344C',
+  cloudfront: '#8C4FFF', alb: '#8C4FFF', dynamodb: '#4081D4', sqs: '#DD344C',
+  eks: '#FF9900', 'waf-aws': '#DD344C', 'aws-iam': '#DD344C', cloudwatch: '#8C4FFF',
+  guardduty: '#DD344C', sns: '#DD344C', elasticache: '#DD344C', 'api-gw-aws': '#DD344C',
+  'secrets-manager': '#DD344C',
+  // Azure (blue)
+  vm: '#0078D4', 'blob-storage': '#0078D4', 'sql-database': '#0078D4',
+  'azure-functions': '#0078D4', vnet: '#0078D4', 'app-gateway': '#0078D4',
+  'api-management': '#0078D4', 'cosmos-db': '#50B7E0', 'service-bus': '#0078D4',
+  aks: '#0078D4', 'redis-cache': '#DD344C', 'azure-firewall': '#0078D4',
+  sentinel: '#0078D4', 'azure-monitor': '#50B7E0', 'entra-id': '#0078D4',
+  'key-vault': '#0078D4', 'front-door': '#0078D4',
+  // Trust boundary
+  'trust-boundary': '#f59e0b',
 };
 
 /** MiniMap nodeColor callback — returns a hex color by asset category */
@@ -157,6 +216,21 @@ const MINIMAP_COLOR_FALLBACK: Record<string, string> = {
   monitoring: '#10b981', vault: '#f59e0b', iam: '#8b5cf6', gitops: '#f97316', backup: '#64748b',
   gce: '#4285F4', gcs: '#4285F4', 'cloud-run': '#4285F4', pubsub: '#EA4335',
   'cloud-armor': '#EA4335', firestore: '#FBBC04',
+  // AWS
+  ec2: '#FF9900', s3: '#3F8624', rds: '#C925D1', lambda: '#FF9900', vpc: '#DD344C',
+  cloudfront: '#8C4FFF', alb: '#8C4FFF', dynamodb: '#4081D4', sqs: '#DD344C',
+  eks: '#FF9900', 'waf-aws': '#DD344C', 'aws-iam': '#DD344C', cloudwatch: '#8C4FFF',
+  guardduty: '#DD344C', sns: '#DD344C', elasticache: '#DD344C', 'api-gw-aws': '#DD344C',
+  'secrets-manager': '#DD344C',
+  // Azure
+  vm: '#0078D4', 'blob-storage': '#0078D4', 'sql-database': '#0078D4',
+  'azure-functions': '#0078D4', vnet: '#0078D4', 'app-gateway': '#0078D4',
+  'api-management': '#0078D4', 'cosmos-db': '#50B7E0', 'service-bus': '#0078D4',
+  aks: '#0078D4', 'redis-cache': '#DD344C', 'azure-firewall': '#0078D4',
+  sentinel: '#0078D4', 'azure-monitor': '#50B7E0', 'entra-id': '#0078D4',
+  'key-vault': '#0078D4', 'front-door': '#0078D4',
+  // Trust boundary
+  'trust-boundary': '#f59e0b',
 };
 
 const DEFAULT_STENCIL: { kind: string; label: string }[] = [
@@ -188,7 +262,23 @@ const DEFAULT_STENCIL: { kind: string; label: string }[] = [
   { kind: 'iam',     label: 'IAM' },
   { kind: 'gitops',  label: 'CI/CD' },
   { kind: 'cdn',     label: 'CDN' },
+  // Trust boundary
+  { kind: 'trust-boundary', label: 'Boundary' },
 ];
+
+// ── Edge / connection types ──────────────────────────────────────────────────
+
+const EDGE_TYPES_LIST = [
+  { type: 'data-flow', label: 'Data Flow', color: 'var(--primary)', icon: '→' },
+  { type: 'trust-crossing', label: 'Trust Crossing', color: '#f59e0b', icon: '⇢' },
+  { type: 'control-flow', label: 'Control Flow', color: '#22c55e', icon: '⟿' },
+] as const;
+
+const EDGE_TYPE_STYLES: Record<string, { stroke: string; strokeDasharray?: string; strokeWidth: number }> = {
+  'data-flow':     { stroke: 'var(--primary)', strokeWidth: 2 },
+  'trust-crossing': { stroke: '#f59e0b', strokeDasharray: '8 4', strokeWidth: 2 },
+  'control-flow':  { stroke: '#22c55e', strokeDasharray: '4 4', strokeWidth: 2 },
+};
 
 // ── Domain icon renderer ──────────────────────────────────────────────────────
 
@@ -541,6 +631,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   const [renaming, setRenaming] = useState<Node<CyberNodeData> | null>(null);
   const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [activeEdgeType, setActiveEdgeType] = useState<string>('data-flow');
   const [showThreatPanel, setShowThreatPanel] = useState(false);
   const [activePack, setActivePack] = useState<string>(() => {
     if (modelId) return localStorage.getItem(`ct_pack_${modelId}`) ?? 'generic';
@@ -620,14 +711,15 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
 
   const onConnect = useCallback((params: Connection) => {
     pushSnapshot();
+    const style = EDGE_TYPE_STYLES[activeEdgeType] ?? EDGE_TYPE_STYLES['data-flow'];
     setEdges((eds: Edge[]) => addEdge({
       ...params,
       type: 'data-flow',
-      animated: true,
-      style: { stroke: 'var(--primary)', strokeWidth: 2 },
-      data: { label: '' },
+      animated: activeEdgeType === 'data-flow',
+      style: { ...style },
+      data: { label: '', edgeType: activeEdgeType },
     }, eds));
-  }, [setEdges, pushSnapshot]);
+  }, [setEdges, pushSnapshot, activeEdgeType]);
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node<CyberNodeData>) => {
     if (showThreatPanel) {
@@ -775,6 +867,20 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           <button onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
           <button onClick={() => exportImage('svg')} title="Export as SVG" style={tbBtn}>⬇ SVG</button>
 
+          {/* Connection type selector */}
+          <select
+            value={activeEdgeType}
+            onChange={e => setActiveEdgeType(e.target.value)}
+            title="Edge type for new connections"
+            style={{ ...tbBtn, appearance: 'none', paddingRight: '8px', textAlign: 'center', background: 'rgba(255,255,255,0.06)' }}
+          >
+            {EDGE_TYPES_LIST.map(et => (
+              <option key={et.type} value={et.type} style={{ background: '#1a1a2e', color: '#e2e8f0' }}>
+                {et.icon} {et.label}
+              </option>
+            ))}
+          </select>
+
           {modelId && (
             <DomainSelector activePack={activePack} onPackChange={handlePackChange} />
           )}
@@ -823,6 +929,9 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           onDrop={onDrop}
           onDragOver={onDragOver}
           deleteKeyCode={['Backspace', 'Delete']}
+          selectionOnDrag
+          selectionKeyCode="Shift"
+          multiSelectionKeyCode="Shift"
           snapToGrid
           snapGrid={[16, 16]}
           fitView
@@ -853,7 +962,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
 
         {!aiPanelOpen && !threatPanelOpen && (
           <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--on-surface-muted)', background: 'rgba(0,0,0,0.45)', padding: '5px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10 }}>
-            Drag from stencil · Connect handles · Double-click edge to label · Ctrl+Z undo
+            Drag from stencil · Shift+drag to select · Shift+click multi-select · Connect handles · Ctrl+Z undo
           </div>
         )}
       </div>

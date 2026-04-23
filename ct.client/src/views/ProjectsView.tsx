@@ -16,7 +16,7 @@ import { convertGliffyToReactFlow, isGliffyDiagram } from '../importers/gliffyIm
 import { convertVsdxToReactFlow, isVsdxFile } from '../importers/visioImporter';
 
 const PACK_ICONS: Record<string, string> = {
-  generic: '⬡', aws: '☁', azure: '△', iot: '◉', k8s: '⎈',
+  generic: '⬡', aws: '🟧', azure: '🔷', iot: '◉', k8s: '⎈',
   network: '🌐', 'cloud-infra': '🏗', gcp: '🔵',
 };
 
