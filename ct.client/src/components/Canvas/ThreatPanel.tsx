@@ -174,7 +174,7 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
               {threats.length} threat{threats.length !== 1 ? 's' : ''} identified
             </div>
           </div>
-          <button onClick={() => { clearHighlight(); onClose(); }} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>×</button>
+          <button aria-label="Close" onClick={() => { clearHighlight(); onClose(); }} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Stats */}

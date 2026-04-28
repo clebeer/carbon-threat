@@ -83,8 +83,7 @@ export default function ExportIssuesModal({
             <div style={{ fontSize: '10px', letterSpacing: '1px', color: 'var(--secondary)', marginBottom: '4px' }}>EXPORT THREAT</div>
             <h2 style={{ margin: 0, fontSize: '20px', color: '#fff', fontFamily: 'var(--font-display)' }}>Create Issue</h2>
           </div>
-          <button aria-label="Close"
-            onClick={onClose}
+          <button aria-label="Close" onClick={onClose}
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
           >×</button>
         </div>

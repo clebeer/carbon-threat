@@ -1266,7 +1266,7 @@ export default function AttackView() {
           fontSize: '13px', color: 'var(--error)',
         }}>
           <span>Sync failed: {syncError}</span>
-          <button onClick={() => setSyncError(null)}
+          <button aria-label="Dismiss sync error" onClick={() => setSyncError(null)}
             style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>
             ×
           </button>

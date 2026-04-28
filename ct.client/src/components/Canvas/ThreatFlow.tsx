@@ -456,10 +456,10 @@ function NodeToolbar({ nodeId, onDelete, onDuplicate, onRename, onConnect }: {
       background: 'rgba(15,15,30,0.95)', padding: '4px 6px', borderRadius: '8px',
       border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
     }}>
-      <button title="Connect" onClick={() => onConnect(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🔗</button>
-      <button title="Rename" onClick={() => onRename(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--secondary)'; e.currentTarget.style.borderColor = 'var(--secondary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>✏️</button>
-      <button title="Duplicate" onClick={() => onDuplicate(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = '#22c55e'; e.currentTarget.style.borderColor = '#22c55e'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>📋</button>
-      <button title="Delete" onClick={() => onDelete(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--error)'; e.currentTarget.style.borderColor = 'var(--error)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🗑</button>
+      <button aria-label="Connect" title="Connect" onClick={() => onConnect(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🔗</button>
+      <button aria-label="Rename" title="Rename" onClick={() => onRename(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--secondary)'; e.currentTarget.style.borderColor = 'var(--secondary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>✏️</button>
+      <button aria-label="Duplicate" title="Duplicate" onClick={() => onDuplicate(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = '#22c55e'; e.currentTarget.style.borderColor = '#22c55e'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>📋</button>
+      <button aria-label="Delete" title="Delete" onClick={() => onDelete(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--error)'; e.currentTarget.style.borderColor = 'var(--error)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🗑</button>
     </div>
   );
 }
@@ -1035,13 +1035,13 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
         {/* Toolbar overlay */}
         <div style={{ position: 'absolute', top: '12px', right: threatPanelOpen ? '356px' : '12px', zIndex: 30, display: 'flex', gap: '6px', alignItems: 'center', transition: 'right 0.2s', flexWrap: 'wrap' }}>
           {/* Undo / Redo */}
-          <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{ ...tbBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}>↩</button>
-          <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" style={{ ...tbBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}>↪</button>
+          <button aria-label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{ ...tbBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}>↩</button>
+          <button aria-label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" style={{ ...tbBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}>↪</button>
 
           {/* Auto Layout (Dagre) */}
-          <button onClick={handleAutoLayout} title="Auto Layout (Dagre)" style={tbBtn}>⬡ Layout</button>
+          <button aria-label="Auto Layout (Dagre)" onClick={handleAutoLayout} title="Auto Layout (Dagre)" style={tbBtn}>⬡ Layout</button>
           {/* ELK Layout (Layered) */}
-          <button onClick={handleElkLayout} title="ELK Layered Layout (Orthogonal)" style={tbBtn}>⬢ ELK</button>
+          <button aria-label="ELK Layered Layout (Orthogonal)" onClick={handleElkLayout} title="ELK Layered Layout (Orthogonal)" style={tbBtn}>⬢ ELK</button>
           {/* Alignment dropdown */}
           <select
             title="Align selected nodes"
@@ -1061,8 +1061,8 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           </select>
 
           {/* Export */}
-          <button onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
-          <button onClick={() => exportImage('svg')} title="Export as SVG" style={tbBtn}>⬇ SVG</button>
+          <button aria-label="Export as PNG" onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
+          <button aria-label="Export as SVG" onClick={() => exportImage('svg')} title="Export as SVG" style={tbBtn}>⬇ SVG</button>
 
           {/* Connection type selector */}
           <select
