@@ -214,6 +214,7 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
               onClick={clearNodeFilter}
               style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '13px', lineHeight: 1, padding: '0 2px' }}
               title="Clear node filter"
+              aria-label="Clear node filter"
             >×</button>
           </div>
         )}
