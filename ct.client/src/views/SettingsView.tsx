@@ -354,7 +354,7 @@ function UsersTab() {
               {u.is_active && u.id !== currentUser?.id && (
                 <button
                   onClick={() => { if (confirm(`Deactivate ${u.email}?`)) deactivateMutation.mutate(u.id); }}
-                  title="Deactivate"
+                  aria-label="Deactivate" title="Deactivate"
                   style={{ background: 'transparent', border: 'none', color: 'rgba(255,77,79,0.6)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
                 >
                   ×

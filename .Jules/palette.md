@@ -1,3 +1,3 @@
-## 2024-04-28 - Missing ARIA Labels on Icon Buttons
-**Learning:** Found a systemic pattern where icon-only buttons (like `×` close buttons or emojis like `🗑` and `🔗`) lacked `aria-label`s, rendering them inaccessible to screen readers.
-**Action:** Applied a script to bulk-add `aria-label` based on visual context or existing `title` tags across views and components. I will continue to enforce checking icon-only buttons for missing ARIA properties.
+## 2025-01-20 - Adding aria-label to icon-only buttons
+**Learning:** Found several components where `×` character was used as a close or dismiss button, which is inaccessible to screen readers without an explicit label.
+**Action:** Always verify icon-only buttons have descriptive aria-labels (e.g. 'Close', 'Dismiss Error', 'Deactivate') when creating or modifying them.

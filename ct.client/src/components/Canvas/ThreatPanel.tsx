@@ -210,7 +210,8 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
                 {selectedNodeLabel ?? selectedNodeId}
               </span>
             </div>
-            <button aria-label="Close" onClick={clearNodeFilter}
+            <button aria-label="Close"
+              onClick={clearNodeFilter}
               style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '13px', lineHeight: 1, padding: '0 2px' }}
               title="Clear node filter"
             >×</button>

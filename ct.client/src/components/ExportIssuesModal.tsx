@@ -85,9 +85,7 @@ export default function ExportIssuesModal({
           </div>
           <button aria-label="Close" onClick={onClose}
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
-          >
-            ×
-          </button>
+          >×</button>
         </div>
 
         {/* Success state */}
