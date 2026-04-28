@@ -19,6 +19,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
+import ELK from 'elkjs/lib/elk.bundled.js';
 import { toPng, toSvg } from 'html-to-image';
 import { getThreatModel, updateThreatModel } from '../../api/threatmodels';
 import { suggestThreats, type ThreatSuggestion } from '../../api/ai';
@@ -28,24 +29,6 @@ import { useAnalysisStore } from '../../store/analysisStore';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import ThreatPanel from './ThreatPanel';
 import DomainSelector from './DomainSelector';
-
-// ── Theme hook ────────────────────────────────────────────────────────────────
-
-function useTheme() {
-  const [theme, setThemeState] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('ct_theme') as 'dark' | 'light') ?? 'dark';
-  });
-
-  const setTheme = useCallback((t: 'dark' | 'light') => {
-    setThemeState(t);
-    localStorage.setItem('ct_theme', t);
-    document.body.classList.toggle('theme-light', t === 'light');
-  }, []);
-
-  const toggle = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [theme, setTheme]);
-
-  return { theme, setTheme, toggle };
-}
 
 // ── Default node icons (generic pack fallback) ────────────────────────────────
 
@@ -93,6 +76,35 @@ const DefaultIcons: Record<string, React.ReactNode> = {
   pubsub:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
   'cloud-armor': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
   firestore: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FBBC04" strokeWidth="1.5"><path d="M4 20V4h4l4 8-4 8H4z"/><path d="M10 20l4-8-4-8h10v16H10z"/></svg>,
+  // AWS
+  ec2:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9900" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><rect x="8" y="8" width="8" height="8"/></svg>,
+  s3:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3F8624" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  rds:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C925D1" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  lambda:  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9900" strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  vpc:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><rect x="6" y="6" width="12" height="12"/></svg>,
+  cloudfront: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2c-3 3-3 17 0 20"/><path d="M12 2c3 3 3 17 0 20"/></svg>,
+  alb:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><path d="M12 2l8 4v4l-8 4-8-4V6l8-4z"/><path d="M4 14l8 4 8-4"/><path d="M4 18l8 4 8-4"/></svg>,
+  dynamodb: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4081D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  sqs:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
+  eks:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9900" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></svg>,
+  'waf-aws': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
+  'aws-iam': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
+  cloudwatch: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 14l3-5 3 3 4-6"/></svg>,
+  guardduty: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>,
+  // Azure
+  vm:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><rect x="8" y="8" width="8" height="8"/></svg>,
+  'blob-storage': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'sql-database': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'azure-functions': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  'app-gateway': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 2l8 4v4l-8 4-8-4V6l8-4z"/><path d="M4 14l8 4 8-4"/><path d="M4 18l8 4 8-4"/></svg>,
+  'cosmos-db': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#50B7E0" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
+  'service-bus': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="3" y="5" width="4" height="14"/><rect x="9" y="5" width="4" height="14"/><rect x="15" y="5" width="4" height="14"/></svg>,
+  aks:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></svg>,
+  'azure-firewall': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  'entra-id': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
+  'front-door': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2c-3 3-3 17 0 20"/><path d="M12 2c3 3 3 17 0 20"/></svg>,
+  // Trust boundary
+  'trust-boundary': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4 2"><rect x="2" y="2" width="20" height="20" rx="4"/><line x1="7" y1="2" x2="7" y2="7"/><line x1="2" y1="7" x2="7" y2="7"/></svg>,
 };
 
 const DEFAULT_KIND_LABEL: Record<string, string> = {
@@ -113,6 +125,21 @@ const DEFAULT_KIND_LABEL: Record<string, string> = {
   // GCP
   gce: 'Compute Engine', gcs: 'Cloud Storage', 'cloud-run': 'Cloud Run',
   pubsub: 'Pub/Sub', 'cloud-armor': 'Cloud Armor', firestore: 'Firestore',
+  // AWS
+  ec2: 'EC2 Instance', s3: 'S3 Bucket', rds: 'RDS Database', lambda: 'Lambda',
+  vpc: 'VPC', cloudfront: 'CloudFront', alb: 'App Load Balancer', dynamodb: 'DynamoDB',
+  sqs: 'SQS Queue', eks: 'EKS Cluster', 'waf-aws': 'WAF', 'aws-iam': 'AWS IAM',
+  cloudwatch: 'CloudWatch', guardduty: 'GuardDuty', sns: 'SNS Topic',
+  elasticache: 'ElastiCache', 'api-gw-aws': 'API Gateway', 'secrets-manager': 'Secrets Mgr',
+  // Azure
+  vm: 'Virtual Machine', 'blob-storage': 'Blob Storage', 'sql-database': 'SQL Database',
+  'azure-functions': 'Functions', vnet: 'Virtual Network', 'app-gateway': 'App Gateway',
+  'api-management': 'API Management', 'cosmos-db': 'Cosmos DB', 'service-bus': 'Service Bus',
+  aks: 'AKS Cluster', 'redis-cache': 'Azure Cache', 'azure-firewall': 'Azure Firewall',
+  sentinel: 'Sentinel', 'azure-monitor': 'Monitor', 'entra-id': 'Entra ID',
+  'key-vault': 'Key Vault', 'front-door': 'Front Door',
+  // Trust boundary
+  'trust-boundary': 'Trust Boundary',
 };
 
 // ── Kind → Category color map (MiniMap + theme) ──────────────────────────────
@@ -137,6 +164,21 @@ const KIND_COLORS: Record<string, string> = {
   // GCP (GCP blue)
   gce: 'var(--icon-gcp)', gcs: 'var(--icon-gcp)', 'cloud-run': 'var(--icon-gcp)',
   pubsub: 'var(--icon-gcp)', 'cloud-armor': 'var(--icon-gcp)', firestore: 'var(--icon-gcp)',
+  // AWS (orange)
+  ec2: '#FF9900', s3: '#3F8624', rds: '#C925D1', lambda: '#FF9900', vpc: '#DD344C',
+  cloudfront: '#8C4FFF', alb: '#8C4FFF', dynamodb: '#4081D4', sqs: '#DD344C',
+  eks: '#FF9900', 'waf-aws': '#DD344C', 'aws-iam': '#DD344C', cloudwatch: '#8C4FFF',
+  guardduty: '#DD344C', sns: '#DD344C', elasticache: '#DD344C', 'api-gw-aws': '#DD344C',
+  'secrets-manager': '#DD344C',
+  // Azure (blue)
+  vm: '#0078D4', 'blob-storage': '#0078D4', 'sql-database': '#0078D4',
+  'azure-functions': '#0078D4', vnet: '#0078D4', 'app-gateway': '#0078D4',
+  'api-management': '#0078D4', 'cosmos-db': '#50B7E0', 'service-bus': '#0078D4',
+  aks: '#0078D4', 'redis-cache': '#DD344C', 'azure-firewall': '#0078D4',
+  sentinel: '#0078D4', 'azure-monitor': '#50B7E0', 'entra-id': '#0078D4',
+  'key-vault': '#0078D4', 'front-door': '#0078D4',
+  // Trust boundary
+  'trust-boundary': '#f59e0b',
 };
 
 /** MiniMap nodeColor callback — returns a hex color by asset category */
@@ -157,6 +199,21 @@ const MINIMAP_COLOR_FALLBACK: Record<string, string> = {
   monitoring: '#10b981', vault: '#f59e0b', iam: '#8b5cf6', gitops: '#f97316', backup: '#64748b',
   gce: '#4285F4', gcs: '#4285F4', 'cloud-run': '#4285F4', pubsub: '#EA4335',
   'cloud-armor': '#EA4335', firestore: '#FBBC04',
+  // AWS
+  ec2: '#FF9900', s3: '#3F8624', rds: '#C925D1', lambda: '#FF9900', vpc: '#DD344C',
+  cloudfront: '#8C4FFF', alb: '#8C4FFF', dynamodb: '#4081D4', sqs: '#DD344C',
+  eks: '#FF9900', 'waf-aws': '#DD344C', 'aws-iam': '#DD344C', cloudwatch: '#8C4FFF',
+  guardduty: '#DD344C', sns: '#DD344C', elasticache: '#DD344C', 'api-gw-aws': '#DD344C',
+  'secrets-manager': '#DD344C',
+  // Azure
+  vm: '#0078D4', 'blob-storage': '#0078D4', 'sql-database': '#0078D4',
+  'azure-functions': '#0078D4', vnet: '#0078D4', 'app-gateway': '#0078D4',
+  'api-management': '#0078D4', 'cosmos-db': '#50B7E0', 'service-bus': '#0078D4',
+  aks: '#0078D4', 'redis-cache': '#DD344C', 'azure-firewall': '#0078D4',
+  sentinel: '#0078D4', 'azure-monitor': '#50B7E0', 'entra-id': '#0078D4',
+  'key-vault': '#0078D4', 'front-door': '#0078D4',
+  // Trust boundary
+  'trust-boundary': '#f59e0b',
 };
 
 const DEFAULT_STENCIL: { kind: string; label: string }[] = [
@@ -188,7 +245,23 @@ const DEFAULT_STENCIL: { kind: string; label: string }[] = [
   { kind: 'iam',     label: 'IAM' },
   { kind: 'gitops',  label: 'CI/CD' },
   { kind: 'cdn',     label: 'CDN' },
+  // Trust boundary
+  { kind: 'trust-boundary', label: 'Boundary' },
 ];
+
+// ── Edge / connection types ──────────────────────────────────────────────────
+
+const EDGE_TYPES_LIST = [
+  { type: 'data-flow', label: 'Data Flow', color: 'var(--primary)', icon: '→' },
+  { type: 'trust-crossing', label: 'Trust Crossing', color: '#f59e0b', icon: '⇢' },
+  { type: 'control-flow', label: 'Control Flow', color: '#22c55e', icon: '⟿' },
+] as const;
+
+const EDGE_TYPE_STYLES: Record<string, { stroke: string; strokeDasharray?: string; strokeWidth: number }> = {
+  'data-flow':     { stroke: 'var(--primary)', strokeWidth: 2 },
+  'trust-crossing': { stroke: '#f59e0b', strokeDasharray: '8 4', strokeWidth: 2 },
+  'control-flow':  { stroke: '#22c55e', strokeDasharray: '4 4', strokeWidth: 2 },
+};
 
 // ── Domain icon renderer ──────────────────────────────────────────────────────
 
@@ -220,9 +293,24 @@ let _activePack: DomainPack | null = null;
 const CyberNode = ({ data, id }: NodeProps<CyberNodeData>) => {
   const highlightedNodeIds = useAnalysisStore(s => s.highlightedNodeIds);
   const isHighlighted = highlightedNodeIds.has(id);
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+    <div
+      style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Mini-toolbar on hover */}
+      {hovered && _toolbarActions && (
+        <NodeToolbar
+          nodeId={id}
+          onDelete={_toolbarActions.onDelete}
+          onDuplicate={_toolbarActions.onDuplicate}
+          onRename={_toolbarActions.onRename}
+          onConnect={_toolbarActions.onConnect}
+        />
+      )}
       <div
         className="ct-node"
         style={{
@@ -294,8 +382,16 @@ function DataFlowEdge({
   );
 }
 
-const nodeTypes = { cyber: CyberNode };
+const nodeTypes = { cyber: CyberNode, 'trust-boundary': TrustBoundaryNode };
 const edgeTypes = { 'data-flow': DataFlowEdge };
+
+// Shared toolbar action callbacks (set by ThreatFlowInner)
+let _toolbarActions: {
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onRename: (id: string) => void;
+  onConnect: (id: string) => void;
+} | null = null;
 
 // ── Initial diagram ───────────────────────────────────────────────────────────
 
@@ -309,6 +405,64 @@ const INIT_EDGES: Edge[] = [
   { id: 'e1-2', source: '1', target: '2', type: 'data-flow', animated: true,  style: { stroke: 'var(--primary)',   strokeWidth: 2 }, data: { label: 'SQL' } },
   { id: 'e1-3', source: '1', target: '3', type: 'data-flow', animated: false, style: { stroke: 'var(--secondary)', strokeWidth: 2 }, data: { label: 'HTTPS' } },
 ];
+
+// ── Trust Boundary Group Node ────────────────────────────────────────────────
+
+function TrustBoundaryNode({ data, id }: NodeProps<CyberNodeData>) {
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      border: '2px dashed #f59e0b',
+      borderRadius: '12px',
+      background: 'rgba(245, 158, 11, 0.06)',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
+      padding: '8px 14px',
+      minHeight: '120px', minWidth: '200px',
+    }}>
+      <span style={{
+        fontSize: '11px', fontWeight: 600, color: '#f59e0b',
+        letterSpacing: '0.5px', textTransform: 'uppercase',
+        background: 'rgba(15,15,25,0.7)', padding: '2px 8px', borderRadius: '4px',
+      }}>
+        ⬡ {data.label}
+      </span>
+      <Handle type="target" position={Position.Top} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} id="r" />
+      <Handle type="target" position={Position.Left} style={{ background: '#f59e0b', width: 8, height: 8, border: 'none' }} id="l" />
+    </div>
+  );
+}
+
+// ── Mini-toolbar (appears on node hover) ──────────────────────────────────────
+
+function NodeToolbar({ nodeId, onDelete, onDuplicate, onRename, onConnect }: {
+  nodeId: string;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onRename: (id: string) => void;
+  onConnect: (id: string) => void;
+}) {
+  const btnStyle: React.CSSProperties = {
+    width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(20,20,35,0.92)', color: 'var(--on-surface-muted)',
+    cursor: 'pointer', fontSize: '12px', transition: 'all 0.15s',
+  };
+  return (
+    <div style={{
+      position: 'absolute', top: '-36px', left: '50%', transform: 'translateX(-50%)',
+      display: 'flex', gap: '4px', zIndex: 40,
+      background: 'rgba(15,15,30,0.95)', padding: '4px 6px', borderRadius: '8px',
+      border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+    }}>
+      <button aria-label="Connect" title="Connect" onClick={() => onConnect(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🔗</button>
+      <button aria-label="Rename" title="Rename" onClick={() => onRename(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--secondary)'; e.currentTarget.style.borderColor = 'var(--secondary)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>✏️</button>
+      <button aria-label="Duplicate" title="Duplicate" onClick={() => onDuplicate(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = '#22c55e'; e.currentTarget.style.borderColor = '#22c55e'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>📋</button>
+      <button aria-label="Delete" title="Delete" onClick={() => onDelete(nodeId)} style={btnStyle} onMouseEnter={e => { e.currentTarget.style.color = 'var(--error)'; e.currentTarget.style.borderColor = 'var(--error)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--on-surface-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>🗑</button>
+    </div>
+  );
+}
 
 // ── Auto-layout helper (dagre) ────────────────────────────────────────────────
 
@@ -333,6 +487,103 @@ function layoutWithDagre(nodes: Node[], edges: Edge[]): Node[] {
       position: { x: pos.x - 50, y: pos.y - 30 },
     };
   });
+}
+
+// ── Auto-layout with ELK (layered, more sophisticated) ────────────────────────
+
+async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+  const elk = new ELK();
+
+  const graph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'RIGHT',
+      'elk.spacing.nodeNode': '60',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      'elk.edgeRouting': 'ORTHOGONAL',
+    },
+    children: nodes.map(n => ({
+      id: n.id,
+      width: 100,
+      height: 60,
+    })),
+    edges: edges.map(e => ({
+      id: e.id,
+      sources: [e.source],
+      targets: [e.target],
+    })),
+  };
+
+  const layouted = await elk.layout(graph);
+
+  return nodes.map(n => {
+    const elkNode = layouted.children?.find(c => c.id === n.id);
+    if (elkNode) {
+      return {
+        ...n,
+        position: { x: elkNode.x ?? n.position.x, y: elkNode.y ?? n.position.y },
+      };
+    }
+    return n;
+  });
+}
+
+// ── Alignment helpers ─────────────────────────────────────────────────────────
+
+function alignNodes(nodes: Node[], direction: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v'): Node[] {
+  if (nodes.length < 2) return nodes;
+
+  const positions = nodes.map(n => n.position);
+
+  switch (direction) {
+    case 'left': {
+      const minX = Math.min(...positions.map(p => p.x));
+      return nodes.map(n => ({ ...n, position: { ...n.position, x: minX } }));
+    }
+    case 'center-h': {
+      const avgX = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+      return nodes.map(n => ({ ...n, position: { ...n.position, x: avgX } }));
+    }
+    case 'right': {
+      const maxX = Math.max(...positions.map(p => p.x));
+      return nodes.map(n => ({ ...n, position: { ...n.position, x: maxX } }));
+    }
+    case 'top': {
+      const minY = Math.min(...positions.map(p => p.y));
+      return nodes.map(n => ({ ...n, position: { ...n.position, y: minY } }));
+    }
+    case 'center-v': {
+      const avgY = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+      return nodes.map(n => ({ ...n, position: { ...n.position, y: avgY } }));
+    }
+    case 'bottom': {
+      const maxY = Math.max(...positions.map(p => p.y));
+      return nodes.map(n => ({ ...n, position: { ...n.position, y: maxY } }));
+    }
+    case 'distribute-h': {
+      const sorted = [...nodes].sort((a, b) => a.position.x - b.position.x);
+      const minX = sorted[0].position.x;
+      const maxX = sorted[sorted.length - 1].position.x;
+      const step = (maxX - minX) / (sorted.length - 1);
+      return nodes.map(n => {
+        const idx = sorted.indexOf(n);
+        return { ...n, position: { ...n.position, x: minX + idx * step } };
+      });
+    }
+    case 'distribute-v': {
+      const sorted = [...nodes].sort((a, b) => a.position.y - b.position.y);
+      const minY = sorted[0].position.y;
+      const maxY = sorted[sorted.length - 1].position.y;
+      const step = (maxY - minY) / (sorted.length - 1);
+      return nodes.map(n => {
+        const idx = sorted.indexOf(n);
+        return { ...n, position: { ...n.position, y: minY + idx * step } };
+      });
+    }
+    default: return nodes;
+  }
 }
 
 // ── Severity badge ────────────────────────────────────────────────────────────
@@ -392,7 +643,7 @@ function AISuggestionsPanel({ node, onClose, onAccept }: AIPanelProps) {
           <div style={{ fontSize: '15px', color: '#fff', fontFamily: 'var(--font-tech)' }}>{node.data.label}</div>
           <div style={{ fontSize: '11px', color: 'var(--on-surface-muted)', marginTop: '2px' }}>{kindLabel} component</div>
         </div>
-        <button aria-label="Close" onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '24px', height: '24px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>×</button>
+        <button aria-label="Close"  onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '24px', height: '24px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>×</button>
       </div>
       <div style={{ padding: '14px 18px', flexShrink: 0 }}>
         <button onClick={handleAnalyse} disabled={loading} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(179,102,255,0.3)', background: loading ? 'rgba(179,102,255,0.3)' : 'rgba(179,102,255,0.12)', color: 'var(--secondary)', fontSize: '13px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.5px' }}>
@@ -541,6 +792,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   const [renaming, setRenaming] = useState<Node<CyberNodeData> | null>(null);
   const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [activeEdgeType, setActiveEdgeType] = useState<string>('data-flow');
   const [showThreatPanel, setShowThreatPanel] = useState(false);
   const [activePack, setActivePack] = useState<string>(() => {
     if (modelId) return localStorage.getItem(`ct_pack_${modelId}`) ?? 'generic';
@@ -567,9 +819,6 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
       console.error('Export failed:', err);
     }
   }, [modelTitle]);
-
-  // Theme
-  const { theme, toggle: toggleTheme } = useTheme();
 
   // Undo / Redo
   const { undo, redo, canUndo, canRedo, pushSnapshot } = useUndoRedo(nodes, edges, setNodes, setEdges);
@@ -620,14 +869,15 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
 
   const onConnect = useCallback((params: Connection) => {
     pushSnapshot();
+    const style = EDGE_TYPE_STYLES[activeEdgeType] ?? EDGE_TYPE_STYLES['data-flow'];
     setEdges((eds: Edge[]) => addEdge({
       ...params,
       type: 'data-flow',
-      animated: true,
-      style: { stroke: 'var(--primary)', strokeWidth: 2 },
-      data: { label: '' },
+      animated: activeEdgeType === 'data-flow',
+      style: { ...style },
+      data: { label: '', edgeType: activeEdgeType },
     }, eds));
-  }, [setEdges, pushSnapshot]);
+  }, [setEdges, pushSnapshot, activeEdgeType]);
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node<CyberNodeData>) => {
     if (showThreatPanel) {
@@ -725,6 +975,31 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     setNodes(laidOut);
   }, [nodes, edges, setNodes, pushSnapshot]);
 
+  const handleElkLayout = useCallback(async () => {
+    pushSnapshot();
+    const laidOut = await layoutWithElk(nodes, edges);
+    setNodes(laidOut);
+  }, [nodes, edges, setNodes, pushSnapshot]);
+
+  const handleAlign = useCallback((dir: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v') => {
+    pushSnapshot();
+    const sel = nodes.filter(n => n.data?.selected);
+    if (sel.length < 2) return;
+    const aligned = alignNodes(sel, dir);
+    setNodes((ns: Node<CyberNodeData>[]) => ns.map(n => {
+      const a = aligned.find(al => al.id === n.id);
+      return a ? { ...n, position: a.position } : n;
+    }));
+  }, [nodes, setNodes, pushSnapshot]);
+
+  // Wire toolbar actions for mini-toolbar
+  _toolbarActions = {
+    onDelete: (id: string) => { pushSnapshot(); setNodes((ns: Node<CyberNodeData>[]) => ns.filter(n => n.id !== id)); },
+    onDuplicate: (id: string) => { const n = nodes.find(n => n.id === id); if (n) addNode(n.data.kind, { x: n.position.x + 120, y: n.position.y + 40 }); },
+    onRename: (id: string) => { const n = nodes.find(n => n.id === id); if (n) setRenaming(n); },
+    onConnect: (id: string) => { setSelectedNode(nodes.find(n => n.id === id) ?? null); },
+  };
+
   const handleSave = useCallback(async () => {
     if (!modelId) return;
     setSaveStatus('saving');
@@ -760,20 +1035,48 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
         {/* Toolbar overlay */}
         <div style={{ position: 'absolute', top: '12px', right: threatPanelOpen ? '356px' : '12px', zIndex: 30, display: 'flex', gap: '6px', alignItems: 'center', transition: 'right 0.2s', flexWrap: 'wrap' }}>
           {/* Undo / Redo */}
-          <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{ ...tbBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}>↩</button>
-          <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" style={{ ...tbBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}>↪</button>
+          <button aria-label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{ ...tbBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}>↩</button>
+          <button aria-label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" style={{ ...tbBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}>↪</button>
 
-          {/* Auto Layout */}
-          <button onClick={handleAutoLayout} title="Auto Layout" style={tbBtn}>⬡ Layout</button>
-
-          {/* Theme Toggle */}
-          <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} style={tbBtn}>
-            {theme === 'dark' ? '☀ Light' : '● Dark'}
-          </button>
+          {/* Auto Layout (Dagre) */}
+          <button aria-label="Auto Layout (Dagre)" onClick={handleAutoLayout} title="Auto Layout (Dagre)" style={tbBtn}>⬡ Layout</button>
+          {/* ELK Layout (Layered) */}
+          <button aria-label="ELK Layered Layout (Orthogonal)" onClick={handleElkLayout} title="ELK Layered Layout (Orthogonal)" style={tbBtn}>⬢ ELK</button>
+          {/* Alignment dropdown */}
+          <select
+            title="Align selected nodes"
+            defaultValue=""
+            onChange={e => { if (e.target.value) { handleAlign(e.target.value as any); e.target.value = ''; } }}
+            style={{ ...tbBtn, appearance: 'none', paddingRight: '8px', textAlign: 'center', background: 'rgba(255,255,255,0.06)' }}
+          >
+            <option value="" disabled style={{ background: '#1a1a2e', color: '#e2e8f0' }}>⌗ Align</option>
+            <option value="left" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>← Left</option>
+            <option value="center-h" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↔ Center H</option>
+            <option value="right" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>→ Right</option>
+            <option value="top" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↑ Top</option>
+            <option value="center-v" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↕ Center V</option>
+            <option value="bottom" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>↓ Bottom</option>
+            <option value="distribute-h" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>━ Distrib H</option>
+            <option value="distribute-v" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>┃ Distrib V</option>
+          </select>
 
           {/* Export */}
-          <button onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
-          <button onClick={() => exportImage('svg')} title="Export as SVG" style={tbBtn}>⬇ SVG</button>
+          <button aria-label="Export as PNG" onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
+          <button aria-label="Export as SVG" onClick={() => exportImage('svg')} title="Export as SVG" style={tbBtn}>⬇ SVG</button>
+
+          {/* Connection type selector */}
+          <select
+            value={activeEdgeType}
+            onChange={e => setActiveEdgeType(e.target.value)}
+            title="Edge type for new connections"
+            style={{ ...tbBtn, appearance: 'none', paddingRight: '8px', textAlign: 'center', background: 'rgba(255,255,255,0.06)' }}
+          >
+            {EDGE_TYPES_LIST.map(et => (
+              <option key={et.type} value={et.type} style={{ background: '#1a1a2e', color: '#e2e8f0' }}>
+                {et.icon} {et.label}
+              </option>
+            ))}
+          </select>
 
           {modelId && (
             <DomainSelector activePack={activePack} onPackChange={handlePackChange} />
@@ -823,6 +1126,9 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           onDrop={onDrop}
           onDragOver={onDragOver}
           deleteKeyCode={['Backspace', 'Delete']}
+          selectionOnDrag
+          selectionKeyCode="Shift"
+          multiSelectionKeyCode="Shift"
           snapToGrid
           snapGrid={[16, 16]}
           fitView
@@ -853,7 +1159,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
 
         {!aiPanelOpen && !threatPanelOpen && (
           <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--on-surface-muted)', background: 'rgba(0,0,0,0.45)', padding: '5px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10 }}>
-            Drag from stencil · Connect handles · Double-click edge to label · Ctrl+Z undo
+            Drag from stencil · Shift+drag to select · Shift+click multi-select · Connect handles · Ctrl+Z undo
           </div>
         )}
       </div>

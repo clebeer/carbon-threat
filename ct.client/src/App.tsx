@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import SetupWizard from './components/Wizard/SetupWizard';
 import ThreatFlow from './components/Canvas/ThreatFlow';
 import DashboardView from './views/DashboardView';
@@ -17,6 +17,26 @@ import { refreshSession } from './api/auth';
 import { logout } from './api/auth';
 import { useJulesStatus } from './hooks/useJulesStatus';
 import './index.css';
+
+// ── Global theme hook ────────────────────────────────────────────────────────
+
+function useGlobalTheme() {
+  const [theme, setThemeState] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('ct_theme') as 'dark' | 'light') ?? 'dark';
+  });
+
+  useEffect(() => {
+    document.body.classList.toggle('theme-light', theme === 'light');
+    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+    localStorage.setItem('ct_theme', theme);
+  }, [theme]);
+
+  const toggle = useCallback(() => {
+    setThemeState(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
+
+  return { theme, toggle };
+}
 
 const IconDashboard = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>;
 const IconFolder = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>;
@@ -51,6 +71,7 @@ export default function App() {
   const [bootstrapping, setBootstrapping] = useState(true);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [activeModelTitle, setActiveModelTitle] = useState<string>('');
+  const { theme, toggle: toggleTheme } = useGlobalTheme();
 
   const { isAuthenticated, user, refreshToken, setAuth, clearAuth } = useAuthStore();
 
@@ -223,12 +244,12 @@ export default function App() {
 
       {/* Main content */}
       <div style={{ flex: 1, position: 'relative' }}>
-        <div className="glass-panel" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '64px', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}>
+        <div className="ct-navbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {activeMenu === 'Modeling' && (
               <button
                 onClick={() => setActiveMenu('Projects')}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-surface-muted)', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.2s' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: '1px solid var(--border-medium)', color: 'var(--on-surface-muted)', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.2s' }}
               >
                 ← Projects
               </button>
@@ -237,10 +258,13 @@ export default function App() {
               {activeMenu === 'Modeling' && activeModelTitle ? activeModelTitle : activeMenu}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', fontSize: '13px', color: 'var(--on-surface-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', color: 'var(--on-surface-muted)' }}>
+            <button className="ct-theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <IconAdmin /> {user?.email}
-              {user?.role === 'admin' && <span style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(0,242,255,0.12)', color: 'var(--primary)', fontWeight: 600, letterSpacing: '0.5px' }}>ADMIN</span>}
+              {user?.role === 'admin' && <span style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'var(--primary-glow)', color: 'var(--primary)', fontWeight: 600, letterSpacing: '0.5px' }}>ADMIN</span>}
             </span>
           </div>
         </div>

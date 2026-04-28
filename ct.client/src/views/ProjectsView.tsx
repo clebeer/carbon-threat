@@ -14,9 +14,10 @@ import { listPacks, listTemplates, applyTemplate, type DomainPack, type DomainTe
 import CloudStorageBrowser from '../components/CloudStorageBrowser';
 import { convertGliffyToReactFlow, isGliffyDiagram } from '../importers/gliffyImporter';
 import { convertVsdxToReactFlow, isVsdxFile } from '../importers/visioImporter';
+import { convertDrawioToReactFlow, isDrawioFile } from '../importers/drawioImporter';
 
 const PACK_ICONS: Record<string, string> = {
-  generic: '⬡', aws: '☁', azure: '△', iot: '◉', k8s: '⎈',
+  generic: '⬡', aws: '🟧', azure: '🔷', iot: '◉', k8s: '⎈',
   network: '🌐', 'cloud-infra': '🏗', gcp: '🔵',
 };
 
@@ -31,6 +32,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gliffyInputRef = useRef<HTMLInputElement>(null);
   const visioInputRef = useRef<HTMLInputElement>(null);
+  const drawioInputRef = useRef<HTMLInputElement>(null);
 
   const [importError, setImportError]       = useState<string | null>(null);
   const [importing, setImporting]           = useState(false);
@@ -200,6 +202,31 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
     }
   }
 
+  async function handleDrawioImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImportError(null);
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const { nodes, edges, stats, warnings } = convertDrawioToReactFlow(text);
+      const title = file.name.replace(/\.[^.]+$/, '');
+      const model = await createThreatModel({
+        title,
+        content: { nodes, edges } as unknown as Record<string, unknown>,
+      });
+      qc.invalidateQueries({ queryKey: ['threatmodels'] });
+      onOpenModel?.(model.id, model.title);
+      if (warnings.length > 0) console.warn('Draw.io import warnings:', warnings);
+      if (stats.skipped > 0) console.info(`Draw.io: skipped ${stats.skipped} objects`);
+    } catch (err: any) {
+      setImportError(err?.message ?? 'Draw.io import failed');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function handleCreate() {
     if (!newTitle.trim()) { setFormError('Title is required'); return; }
     createMutation.mutate({ title: newTitle.trim() });
@@ -220,7 +247,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
               This model will be moved to the archive. You can restore it at any time from the Archived section.
             </p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setConfirmArchive(null)}
+              <button aria-label="Cancel archive" onClick={() => setConfirmArchive(null)}
                 style={{ ...btnBase, background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'var(--on-surface-muted)', padding: '9px 18px' }}>
                 Cancel
               </button>
@@ -245,6 +272,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
           <input ref={fileInputRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleImportFile} />
           <input ref={gliffyInputRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleGliffyImport} />
           <input ref={visioInputRef} type="file" accept=".vsdx,application/vnd.ms-visio.drawing" style={{ display: 'none' }} onChange={handleVisioImport} />
+          <input ref={drawioInputRef} type="file" accept=".drawio,.xml" style={{ display: 'none' }} onChange={handleDrawioImport} />
           <button
             onClick={() => { setImportError(null); fileInputRef.current?.click(); }}
             disabled={importing}
@@ -267,6 +295,14 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', padding: '9px 16px', borderRadius: '6px', cursor: importing ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}
           >
             {importing ? '↻ …' : '⊞ Visio'}
+          </button>
+          <button
+            onClick={() => { setImportError(null); drawioInputRef.current?.click(); }}
+            disabled={importing}
+            title="Import Draw.io diagram (.drawio)"
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', padding: '9px 16px', borderRadius: '6px', cursor: importing ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}
+          >
+            {importing ? '↻ …' : '✎ Draw.io'}
           </button>
           <button
             onClick={() => setShowCloud(true)}
@@ -293,6 +329,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       {importError && (
         <div style={{ padding: '12px 16px', background: 'rgba(255,77,79,0.08)', border: '1px solid var(--error)', borderRadius: '8px', color: 'var(--error)', fontSize: '13px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Import failed: {importError}</span>
+          <button aria-label="Dismiss Error" onClick={() => setImportError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px' }}>×</button>
           <button aria-label="Dismiss error" onClick={() => setImportError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px' }}>×</button>
         </div>
       )}

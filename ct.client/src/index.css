@@ -1,26 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap');
 
 :root {
-  /* Synthetic Sentinel Color System */
+  /* ── Dark theme (default) ─────────────────────────────────────────────────── */
   --surface-dim: #0a0d14;
   --surface-container: #12161f;
   --surface-container-low: rgba(21, 24, 30, 0.85);
   --surface-container-high: #1c222e;
-  
+  --surface-glass: rgba(16, 20, 26, 0.65);
+  --surface-glass-border: rgba(255, 255, 255, 0.08);
+  --surface-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --surface-node: rgba(16, 20, 26, 0.8);
+  --surface-body-from: #161b26;
+  --surface-body-to: #0a0d14;
+
   --primary: #00f2ff;
   --primary-glow: rgba(0, 242, 255, 0.4);
   --secondary: #b366ff;
   --secondary-glow: rgba(179, 102, 255, 0.4);
   --error: #ff4d4f;
-  
+  --success: #22c55e;
+
   --on-surface: #e2e8f0;
-  --on-surface-muted: #94a3b8;
-  
+  --on-surface-muted: #a8b8cc;
+  --on-surface-hint: #6b7a8d;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-strong: rgba(255, 255, 255, 0.25);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --text-contrast-bg: #000000;
+
   --font-display: 'Inter', sans-serif;
   --font-tech: 'JetBrains Mono', monospace;
   --font-label: 'Space Grotesk', sans-serif;
 
-  /* Icon colors by asset category (theme-aware) */
+  /* Icon colors by asset category */
   --icon-generic:  #00f2ff;
   --icon-network:  #22c55e;
   --icon-cloud:    #3b82f6;
@@ -28,20 +42,76 @@
   --icon-gcp:      #4285F4;
 }
 
-/* ── Light theme (OS preference) ────────────────────────────────────────────── */
+/* ── Light theme ───────────────────────────────────────────────────────────── */
+
+/* Manual toggle (add class "theme-light" to <body>) — takes priority over OS */
+body.theme-light {
+  --surface-dim: #f5f7fa;
+  --surface-container: #e8ecf2;
+  --surface-container-low: rgba(240, 243, 248, 0.92);
+  --surface-container-high: #d5dae4;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-glass-border: rgba(0, 0, 0, 0.08);
+  --surface-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --surface-node: rgba(255, 255, 255, 0.85);
+  --surface-body-from: #e8ecf2;
+  --surface-body-to: #f5f7fa;
+
+  --primary: #0891b2;
+  --primary-glow: rgba(8, 145, 178, 0.2);
+  --secondary: #7c3aed;
+  --secondary-glow: rgba(124, 58, 237, 0.2);
+  --error: #dc2626;
+  --success: #16a34a;
+
+  --on-surface: #1e293b;
+  --on-surface-muted: #5b6578;
+  --on-surface-hint: #8896a7;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --text-contrast-bg: #ffffff;
+
+  --icon-generic:  #0891b2;
+  --icon-network:  #16a34a;
+  --icon-cloud:    #2563eb;
+  --icon-security: #d97706;
+  --icon-gcp:      #3367d6;
+}
+
+/* OS preference (only when no manual override) */
 @media (prefers-color-scheme: light) {
-  :root {
-    --surface-dim: #f8f9fc;
-    --surface-container: #eef0f5;
-    --surface-container-low: rgba(240, 242, 248, 0.9);
-    --surface-container-high: #dde1ea;
+  :root:not(.theme-dark) {
+    --surface-dim: #f5f7fa;
+    --surface-container: #e8ecf2;
+    --surface-container-low: rgba(240, 243, 248, 0.92);
+    --surface-container-high: #d5dae4;
+    --surface-glass: rgba(255, 255, 255, 0.72);
+    --surface-glass-border: rgba(0, 0, 0, 0.08);
+    --surface-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --surface-node: rgba(255, 255, 255, 0.85);
+    --surface-body-from: #e8ecf2;
+    --surface-body-to: #f5f7fa;
+
     --primary: #0891b2;
-    --primary-glow: rgba(8, 145, 178, 0.25);
+    --primary-glow: rgba(8, 145, 178, 0.2);
     --secondary: #7c3aed;
-    --secondary-glow: rgba(124, 58, 237, 0.25);
+    --secondary-glow: rgba(124, 58, 237, 0.2);
     --error: #dc2626;
+    --success: #16a34a;
+
     --on-surface: #1e293b;
-    --on-surface-muted: #64748b;
+    --on-surface-muted: #5b6578;
+    --on-surface-hint: #8896a7;
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-medium: rgba(0, 0, 0, 0.12);
+    --border-strong: rgba(0, 0, 0, 0.2);
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+    --text-contrast-bg: #ffffff;
+
     --icon-generic:  #0891b2;
     --icon-network:  #16a34a;
     --icon-cloud:    #2563eb;
@@ -50,43 +120,31 @@
   }
 }
 
-/* Manual light theme toggle (add class "theme-light" to <body>) */
-body.theme-light {
-  --surface-dim: #f8f9fc;
-  --surface-container: #eef0f5;
-  --surface-container-low: rgba(240, 242, 248, 0.9);
-  --surface-container-high: #dde1ea;
-  --primary: #0891b2;
-  --primary-glow: rgba(8, 145, 178, 0.25);
-  --secondary: #7c3aed;
-  --secondary-glow: rgba(124, 58, 237, 0.25);
-  --error: #dc2626;
-  --on-surface: #1e293b;
-  --on-surface-muted: #64748b;
-  --icon-generic:  #0891b2;
-  --icon-network:  #16a34a;
-  --icon-cloud:    #2563eb;
-  --icon-security: #d97706;
-  --icon-gcp:      #3367d6;
-}
+/* ── Global body ───────────────────────────────────────────────────────────── */
 
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at 50% 50%, #161b26 0%, var(--surface-dim) 100%);
+  background: radial-gradient(circle at 50% 50%, var(--surface-body-from) 0%, var(--surface-body-to) 100%);
   color: var(--on-surface);
   font-family: var(--font-display);
   overflow: hidden;
+  transition: background 0.3s ease, color 0.2s ease;
 }
 
+/* ── Glass panel (theme-aware) ─────────────────────────────────────────────── */
+
 .glass-panel {
-  background: rgba(16, 20, 26, 0.65);
+  background: var(--surface-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--surface-glass-border);
+  box-shadow: var(--surface-glass-shadow);
   border-radius: 12px;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
+
+/* ── Glow effects ──────────────────────────────────────────────────────────── */
 
 .glow-text-cyan {
   color: var(--primary);
@@ -100,12 +158,13 @@ body {
 
 .glow-text-error {
   color: var(--error);
-  text-shadow: 0 0 10px rgba(255, 77, 79, 0.5);
+  text-shadow: 0 0 10px var(--primary-glow);
 }
 
-/* React Flow custom node styles */
+/* ── React Flow custom node ────────────────────────────────────────────────── */
+
 .ct-node {
-  background: rgba(16, 20, 26, 0.8);
+  background: var(--surface-node);
   border: 2px solid var(--primary);
   border-radius: 50%;
   width: 65px;
@@ -115,6 +174,7 @@ body {
   justify-content: center;
   box-shadow: 0 0 15px var(--primary-glow), inset 0 0 10px var(--primary-glow);
   color: var(--primary);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .ct-node-label {
@@ -129,11 +189,92 @@ body {
   color: var(--on-surface);
 }
 
-/* Scrollbars */
+/* ── Scrollbars ────────────────────────────────────────────────────────────── */
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+/* ── Navbar (top bar) ──────────────────────────────────────────────────────── */
+
+.ct-navbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+/* ── Theme toggle button ───────────────────────────────────────────────────── */
+
+.ct-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-medium);
+  background: transparent;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+}
+
+.ct-theme-toggle:hover {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ── Sidebar active indicator ──────────────────────────────────────────────── */
+
+.ct-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--on-surface-muted);
+  font-weight: 400;
+}
+
+.ct-sidebar-item:hover {
+  background: rgba(0, 242, 255, 0.06);
+  color: var(--on-surface);
+}
+
+.ct-sidebar-item--active {
+  background: rgba(0, 242, 255, 0.1);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Utility classes ───────────────────────────────────────────────────────── */
+
+.label-text {
+  color: var(--on-surface-muted);
+  font-family: var(--font-label);
+}
+
+.tech-text {
+  font-family: var(--font-tech);
+}
 
 @keyframes jules-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
