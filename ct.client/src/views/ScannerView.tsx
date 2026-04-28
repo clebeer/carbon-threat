@@ -520,6 +520,7 @@ function NewScanPanel({ onScanStarted }: { onScanStarted: (id: string) => void }
                   onClick={() => removeManualRow(idx)}
                   disabled={manualPkgs.length === 1}
                   style={{ background: 'transparent', border: 'none', color: manualPkgs.length === 1 ? 'rgba(255,255,255,0.1)' : 'var(--on-surface-muted)', cursor: manualPkgs.length === 1 ? 'default' : 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
+                  aria-label="Remove package"
                 >
                   ×
                 </button>
@@ -682,6 +683,7 @@ function HistoryPanel({
                   onClick={e => { e.stopPropagation(); if (window.confirm(`Delete scan "${scan.name}"?`)) onDelete(scan.id); }}
                   style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}
                   title="Delete scan"
+                  aria-label={`Delete scan "${scan.name}"`}
                 >
                   ×
                 </button>
@@ -840,6 +842,7 @@ function PolicyPanel({ isAdmin }: { isAdmin: boolean }) {
                 <button
                   onClick={() => removeIgnoredId(id)}
                   style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: 0, marginLeft: '2px' }}
+                  aria-label={`Remove ignored ID ${id}`}
                 >
                   ×
                 </button>
