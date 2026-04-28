@@ -174,7 +174,7 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
               {threats.length} threat{threats.length !== 1 ? 's' : ''} identified
             </div>
           </div>
-          <button onClick={() => { clearHighlight(); onClose(); }} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>×</button>
+          <button aria-label="Close" onClick={() => { clearHighlight(); onClose(); }} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Stats */}
@@ -210,8 +210,7 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
                 {selectedNodeLabel ?? selectedNodeId}
               </span>
             </div>
-            <button
-              onClick={clearNodeFilter}
+            <button aria-label="Close" onClick={clearNodeFilter}
               style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '13px', lineHeight: 1, padding: '0 2px' }}
               title="Clear node filter"
             >×</button>
