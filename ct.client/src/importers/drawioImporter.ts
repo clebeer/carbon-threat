@@ -86,9 +86,9 @@ function parseDrawioXml(xml: string): DrawioShape[] {
 }
 
 function decodeHtmlEntities(s: string): string {
-  const el = document.createElement('div');
-  el.innerHTML = s;
-  return el.textContent || s;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(s, 'text/html');
+  return doc.documentElement.textContent || s;
 }
 
 /** Classify a Draw.io shape into a Carbon Threat kind */
