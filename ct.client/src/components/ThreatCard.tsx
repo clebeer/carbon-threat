@@ -170,7 +170,16 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
     >
       {/* Row header — always visible */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
         onClick={() => setExpanded(v => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded(v => !v);
+          }
+        }}
         style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
