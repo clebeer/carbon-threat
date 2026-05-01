@@ -172,7 +172,6 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
       <div
         role="button"
         tabIndex={0}
-        aria-expanded={expanded}
         onClick={() => setExpanded(v => !v)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
