@@ -85,6 +85,8 @@
 !td.server/src/providers/*.js
 !td.server/src/repositories/
 !td.server/src/repositories/*.js
+!td.server/src/services/
+!td.server/src/services/*.js
 !td.server/src/security/
 !td.server/src/security/*.js
 !td.server/src/auth/
