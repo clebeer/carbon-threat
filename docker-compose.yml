@@ -2,7 +2,7 @@
 # CarbonThreat — Docker Compose
 #
 # Quick start (local MVP / Production):
-#   cp minimal.env .env            # edit DB_USER / DB_PASSWORD if desired
+#   ./scripts/setup-env.sh         # generates .env with secure secrets
 #   ./scripts/gen-local-certs.sh   # generate self-signed certs (only needed if APP_USE_TLS=true)
 #   docker compose up --build -d
 #
