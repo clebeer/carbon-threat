@@ -44,7 +44,7 @@ done
 
 # ── --reset: full teardown + regenerate + bring up ──────────────────────────
 if [ "$RESET" = true ]; then
-    info "🔄  Full reset requested"
+    info "Full reset requested"
     warn "This will STOP all containers and DELETE volumes (database data will be lost!)"
 
     if [ "$FORCE" != true ]; then
@@ -61,7 +61,7 @@ if [ "$RESET" = true ]; then
         warn "docker compose down -v failed (containers may not be running)"
 
     info "Volumes removed. Regenerating .env..."
-    FORCE=true  # force overwrite since we're doing a full reset
+    FORCE=true
 fi
 
 # ── Pre-flight checks ───────────────────────────────────────────────────────
@@ -69,7 +69,6 @@ if [ ! -f "$TEMPLATE_FILE" ]; then
     error "Template file not found: $TEMPLATE_FILE"
 fi
 
-# Check for openssl (required for secret generation)
 if ! command -v openssl &>/dev/null; then
     error "openssl is required but not found in PATH. Install it and try again."
 fi
@@ -82,7 +81,7 @@ if [ -f "$ENV_FILE" ]; then
         read -r answer
         case "$answer" in
             [yY]|[yY][eE][sS]) ;;
-            *) info "Aborted — existing .env preserved."; exit 0 ;;
+            *) info "Aborted -- existing .env preserved."; exit 0 ;;
         esac
     fi
     info "Overwriting existing .env"
@@ -91,12 +90,13 @@ fi
 # ── Generate secrets ────────────────────────────────────────────────────────
 info "Generating cryptographically secure secrets..."
 
-DB_PASSWORD=$(openssl rand -base64 24)
+# Use hex for DB_PASSWORD to avoid + / = chars that break DATABASE_URL
+DB_PASSWORD=$(openssl rand -hex 20)
 JWT_SIGNING_KEY=$(openssl rand -base64 48)
 JWT_REFRESH_SIGNING_KEY=$(openssl rand -base64 48)
 ENCRYPTION_KEY=$(openssl rand -hex 32)
-# Legacy ENCRYPTION_KEYS value: exactly 32 characters
-LEGACY_ENC_VAL=$(openssl rand -base64 24 | head -c 32)
+# Legacy ENCRYPTION_KEYS value: exactly 32 characters (alphanumeric only)
+LEGACY_ENC_VAL=$(openssl rand -hex 16)
 
 # ── Build .env from template ────────────────────────────────────────────────
 info "Building .env from $TEMPLATE_FILE"
@@ -118,13 +118,11 @@ sed -i.bak \
     -e "s|postgres://carbonthreat_user:[^@]*@|postgres://carbonthreat_user:${DB_PASSWORD}@|g" \
     "$ENV_FILE"
 
-# Clean up sed backup file
 rm -f "${ENV_FILE}.bak"
 
 # ── Check for existing PostgreSQL volume conflict ───────────────────────────
 PG_VOLUME_EXISTS=false
 if command -v docker &>/dev/null; then
-    # Get the compose project name from the directory name
     PROJECT_NAME="$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')"
     if docker volume ls -q 2>/dev/null | grep -q "${PROJECT_NAME}_pgdata"; then
         PG_VOLUME_EXISTS=true
@@ -133,7 +131,7 @@ fi
 
 # ── Summary ─────────────────────────────────────────────────────────────────
 echo ""
-info "✅  .env created successfully at $ENV_FILE"
+info ".env created successfully at $ENV_FILE"
 echo ""
 printf "  ${CYAN}%-40s${NC} %s\n" "DB_PASSWORD" "${DB_PASSWORD:0:8}..."
 printf "  ${CYAN}%-40s${NC} %s\n" "ENCRYPTION_JWT_SIGNING_KEY" "${JWT_SIGNING_KEY:0:8}..."
@@ -144,10 +142,9 @@ echo ""
 
 # ── Volume conflict warning ─────────────────────────────────────────────────
 if [ "$PG_VOLUME_EXISTS" = true ] && [ "$RESET" != true ]; then
-    echo ""
-    warn "⚠️  PostgreSQL data volume (pgdata) already exists!"
-    warn "   The new DB_PASSWORD will NOT match the password stored in the existing volume."
-    warn "   This will cause 'password authentication failed' errors."
+    warn "PostgreSQL data volume (pgdata) already exists!"
+    warn "The new DB_PASSWORD will NOT match the password stored in the existing volume."
+    warn "This will cause 'password authentication failed' errors."
     echo ""
     warn "To fix, run one of:"
     echo "  ./scripts/setup-env.sh --reset        # full reset (deletes DB data)"
@@ -159,7 +156,7 @@ fi
 if [ "$RESET" = true ]; then
     info "Starting the stack..."
     docker compose -f "$PROJECT_ROOT/docker-compose.yml" up --build -d
-    info "✅  Stack is up! Check status with: docker compose logs -f"
+    info "Stack is up! Check status with: docker compose logs -f"
     exit 0
 fi
 
@@ -168,4 +165,4 @@ echo "  1. Review .env and adjust APP_HOSTNAME, TLS settings, OAuth keys, etc."
 echo "  2. Generate TLS certs (if APP_USE_TLS=true):  ./scripts/gen-local-certs.sh"
 echo "  3. Start the stack:                           docker compose up --build -d"
 echo ""
-warn "⚠️  NEVER commit .env to version control!"
+warn "NEVER commit .env to version control!"
