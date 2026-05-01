@@ -5,6 +5,7 @@
 # Usage:
 #   ./scripts/setup-env.sh          # generate .env from minimal.env
 #   ./scripts/setup-env.sh --force  # overwrite .env without prompting
+#   ./scripts/setup-env.sh --reset  # full reset: down -v + regenerate .env + up
 #
 # This script reads minimal.env (the template), replaces every GENERATE_*
 # placeholder with a cryptographically secure value, and writes the result
@@ -30,6 +31,39 @@ info()  { printf "${GREEN}[INFO]${NC}  %s\n" "$*"; }
 warn()  { printf "${YELLOW}[WARN]${NC}  %s\n" "$*"; }
 error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; exit 1; }
 
+# ── Parse arguments ─────────────────────────────────────────────────────────
+FORCE=false
+RESET=false
+for arg in "$@"; do
+    case "$arg" in
+        --force) FORCE=true ;;
+        --reset) RESET=true ;;
+        *) warn "Unknown argument: $arg" ;;
+    esac
+done
+
+# ── --reset: full teardown + regenerate + bring up ──────────────────────────
+if [ "$RESET" = true ]; then
+    info "🔄  Full reset requested"
+    warn "This will STOP all containers and DELETE volumes (database data will be lost!)"
+
+    if [ "$FORCE" != true ]; then
+        printf "${CYAN}Proceed with full reset? [y/N]${NC} "
+        read -r answer
+        case "$answer" in
+            [yY]|[yY][eE][sS]) ;;
+            *) info "Aborted."; exit 0 ;;
+        esac
+    fi
+
+    info "Stopping containers and removing volumes..."
+    docker compose -f "$PROJECT_ROOT/docker-compose.yml" down -v 2>/dev/null || \
+        warn "docker compose down -v failed (containers may not be running)"
+
+    info "Volumes removed. Regenerating .env..."
+    FORCE=true  # force overwrite since we're doing a full reset
+fi
+
 # ── Pre-flight checks ───────────────────────────────────────────────────────
 if [ ! -f "$TEMPLATE_FILE" ]; then
     error "Template file not found: $TEMPLATE_FILE"
@@ -42,7 +76,7 @@ fi
 
 # ── Handle existing .env ────────────────────────────────────────────────────
 if [ -f "$ENV_FILE" ]; then
-    if [ "${1:-}" != "--force" ]; then
+    if [ "$FORCE" != true ]; then
         warn ".env already exists at $ENV_FILE"
         printf "${CYAN}Overwrite? [y/N]${NC} "
         read -r answer
@@ -87,6 +121,16 @@ sed -i.bak \
 # Clean up sed backup file
 rm -f "${ENV_FILE}.bak"
 
+# ── Check for existing PostgreSQL volume conflict ───────────────────────────
+PG_VOLUME_EXISTS=false
+if command -v docker &>/dev/null; then
+    # Get the compose project name from the directory name
+    PROJECT_NAME="$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')"
+    if docker volume ls -q 2>/dev/null | grep -q "${PROJECT_NAME}_pgdata"; then
+        PG_VOLUME_EXISTS=true
+    fi
+fi
+
 # ── Summary ─────────────────────────────────────────────────────────────────
 echo ""
 info "✅  .env created successfully at $ENV_FILE"
@@ -97,6 +141,28 @@ printf "  ${CYAN}%-40s${NC} %s\n" "ENCRYPTION_JWT_REFRESH_SIGNING_KEY" "${JWT_RE
 printf "  ${CYAN}%-40s${NC} %s\n" "ENCRYPTION_KEY" "${ENCRYPTION_KEY:0:8}..."
 printf "  ${CYAN}%-40s${NC} %s\n" "ENCRYPTION_KEYS (legacy)" "${LEGACY_ENC_VAL:0:8}..."
 echo ""
+
+# ── Volume conflict warning ─────────────────────────────────────────────────
+if [ "$PG_VOLUME_EXISTS" = true ] && [ "$RESET" != true ]; then
+    echo ""
+    warn "⚠️  PostgreSQL data volume (pgdata) already exists!"
+    warn "   The new DB_PASSWORD will NOT match the password stored in the existing volume."
+    warn "   This will cause 'password authentication failed' errors."
+    echo ""
+    warn "To fix, run one of:"
+    echo "  ./scripts/setup-env.sh --reset        # full reset (deletes DB data)"
+    echo "  docker compose down -v && docker compose up --build -d  # manual reset"
+    echo ""
+fi
+
+# ── Auto-start after --reset ────────────────────────────────────────────────
+if [ "$RESET" = true ]; then
+    info "Starting the stack..."
+    docker compose -f "$PROJECT_ROOT/docker-compose.yml" up --build -d
+    info "✅  Stack is up! Check status with: docker compose logs -f"
+    exit 0
+fi
+
 info "Next steps:"
 echo "  1. Review .env and adjust APP_HOSTNAME, TLS settings, OAuth keys, etc."
 echo "  2. Generate TLS certs (if APP_USE_TLS=true):  ./scripts/gen-local-certs.sh"
