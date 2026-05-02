@@ -3,8 +3,27 @@ import { Client } from 'pg';
 import Knex from 'knex';
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { validateEnterpriseSetupPgHost } from '../helpers/setupDbHost.helper.js';
 
 const logger = loggerHelper.get('controllers/config.js');
+
+/**
+ * Optional hardening: set SETUP_TOKEN in the environment during install —
+ * callers must send the same value in header `x-setup-token` or body.setupToken.
+ */
+function assertDisposableSetupCredential(req, res) {
+  const expected = process.env.SETUP_TOKEN;
+  if (!expected) return true;
+  const supplied = req.headers['x-setup-token'] ?? req.body?.setupToken;
+  if (supplied !== expected) {
+    logger.warn('Setup request rejected — missing or invalid setup token');
+    res.status(403).json({
+      error: 'Valid setup credential required. Provide X-Setup-Token header or setupToken matching SETUP_TOKEN.',
+    });
+    return false;
+  }
+  return true;
+}
 
 /**
  * POST /api/config/test-db
@@ -23,10 +42,17 @@ first();
     }
   } catch { /* table may not exist yet on a fresh install — that is fine */ }
 
+  if (!assertDisposableSetupCredential(req, res)) return;
+
   const { host, port, user, password, name } = req.body || {};
 
   if (!host || !user || !password || !name) {
     return res.status(400).json({ error: 'host, user, password and name are required' });
+  }
+
+  const hostCheck = await validateEnterpriseSetupPgHost(host);
+  if (!hostCheck.ok) {
+    return res.status(400).json({ error: hostCheck.error ?? 'DB host is not permitted' });
   }
 
   const client = new Client({
@@ -71,11 +97,18 @@ export async function submitEnterpriseSetup(req, res) {
     return res.status(400).json({ error: 'authType is required' });
   }
 
+  if (!assertDisposableSetupCredential(req, res)) return;
+
   // If using an external database, wire up a separate Knex instance so we can
   // run migrations against the target host.  The default `db` instance points at
   // the server's own DATABASE_URL / DB_* vars.
   let targetDb = db;
   if (dbCfg && dbCfg.type === 'external') {
+    const hostCheck = await validateEnterpriseSetupPgHost(dbCfg.host);
+    if (!hostCheck.ok) {
+      return res.status(400).json({ error: hostCheck.error ?? 'DB host is not permitted' });
+    }
+
     targetDb = Knex({
       client: 'postgresql',
       connection: {

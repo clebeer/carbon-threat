@@ -3,6 +3,7 @@ import axios from 'axios';
 import { decryptModel, encryptModel } from '../security/encryption.js';
 import { createThirdPartyIssue } from '../integrations/third-party.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { getOrgId } from '../helpers/scope.helper.js';
 
 const logger = loggerHelper.get('controllers/integrationsController.js');
 
@@ -35,6 +36,11 @@ function redactSecrets(configObj) {
   return out;
 }
 
+/** Resolves org column for integration_configs (JWT orgId / org_id / provider). */
+function integrationOrgId(req) {
+  return getOrgId(req) ?? null;
+}
+
 // ── Controllers ────────────────────────────────────────────────────────────
 
 /**
@@ -43,8 +49,9 @@ function redactSecrets(configObj) {
  */
 export async function listConfigs(req, res) {
   try {
+    const orgId = integrationOrgId(req);
     const rows = await db('integration_configs').
-      where({ org_id: req.user.org_id ?? null }).
+      where({ org_id: orgId }).
       select('id', 'platform', 'is_enabled', 'updated_at');
 
     // Decrypt each row so the frontend knows which fields are set
@@ -77,7 +84,7 @@ export async function getConfig(req, res) {
 
   try {
     const row = await db('integration_configs').
-      where({ platform, org_id: req.user.org_id ?? null }).
+      where({ platform, org_id: integrationOrgId(req) }).
       first();
 
     if (!row) {return res.status(404).json({ error: 'Integration not configured' });}
@@ -111,8 +118,9 @@ export async function upsertConfig(req, res) {
     const config_encrypted = encryptConfig(configFields);
     const now = db.fn.now();
 
+    const orgId = integrationOrgId(req);
     const existing = await db('integration_configs').
-      where({ platform, org_id: req.user.org_id ?? null }).
+      where({ platform, org_id: orgId }).
       first();
 
     if (existing) {
@@ -122,7 +130,7 @@ export async function upsertConfig(req, res) {
     } else {
       await db('integration_configs').insert({
         platform,
-        org_id: req.user.org_id ?? null,
+        org_id: orgId,
         config_encrypted,
         is_enabled,
       });
@@ -145,7 +153,7 @@ export async function deleteConfig(req, res) {
 
   try {
     const deleted = await db('integration_configs').
-      where({ platform, org_id: req.user.org_id ?? null }).
+      where({ platform, org_id: integrationOrgId(req) }).
       delete();
 
     if (!deleted) {return res.status(404).json({ error: 'Integration not found' });}
@@ -176,7 +184,7 @@ export async function exportIssue(req, res) {
 
   try {
     const row = await db('integration_configs').
-      where({ platform, org_id: req.user.org_id ?? null, is_enabled: true }).
+      where({ platform, org_id: integrationOrgId(req), is_enabled: true }).
       first();
 
     if (!row) {
@@ -244,7 +252,7 @@ export async function testJulesConnection(req, res) {
 export async function getJulesStatus(req, res) {
   try {
     const row = await db('integration_configs')
-      .where({ platform: 'jules', org_id: req.user.org_id ?? null })
+      .where({ platform: 'jules', org_id: integrationOrgId(req) })
       .first();
 
     const configured = !!row;

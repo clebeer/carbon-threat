@@ -7,6 +7,11 @@ import responseWrapper from "./responseWrapper.js";
 
 const logger = loggerHelper.get("controllers/templateController.js");
 
+/** GitHub-backed template admin operations (JWT `role`; OAuth may set legacy `isAdmin`). */
+function isTemplateAdmin(req) {
+  return req.user?.role === 'admin' || req.user?.isAdmin === true;
+}
+
 
 const fetchTemplateMetadata = async (repository, accessToken) => {
   // Fetch the metadata file from the repository
@@ -54,8 +59,8 @@ const listTemplates = (req, res) => responseWrapper.sendResponseAsync(async () =
         return {
           templates: [],
           repoStatus: "NOT_INITIALIZED",
-          canInitialize: req.user?.isAdmin || false,
-          message: req.user?.isAdmin 
+          canInitialize: isTemplateAdmin(req),
+          message: isTemplateAdmin(req)
             ? "Template repository not initialized."
             : "Template repository not initialized. Contact administrator."
         };
@@ -68,7 +73,7 @@ const listTemplates = (req, res) => responseWrapper.sendResponseAsync(async () =
 }, req, res, logger);
 
 const importTemplate = async (req, res) => {
-  if (!req.user?.isAdmin) {
+  if (!isTemplateAdmin(req)) {
     logger.warn(`Non-admin user attempted to import template: ${req.user?.username}`);
     return forbidden(res, logger);
   }
@@ -104,7 +109,7 @@ const importTemplate = async (req, res) => {
 };
 
 const deleteTemplate = async (req, res) => {
-  if (!req.user?.isAdmin) {
+  if (!isTemplateAdmin(req)) {
     logger.warn(`Non-admin user attempted to delete template: ${req.user?.username}`);
     return forbidden(res, logger);
   }
@@ -138,7 +143,7 @@ const deleteTemplate = async (req, res) => {
 };
 
 const updateTemplate = async (req, res) => {
-  if (!req.user?.isAdmin) {
+  if (!isTemplateAdmin(req)) {
     logger.warn(`Non-admin user attempted to update template: ${req.user?.username}`);
     return forbidden(res, logger);
   }
@@ -221,7 +226,7 @@ const getTemplateContent = (req, res) => {
 
 
 const bootstrapTemplateRepository = async (req, res) => {
-  if (!req.user?.isAdmin) {
+  if (!isTemplateAdmin(req)) {
     logger.warn(`Non-admin user attempted to bootstrap template repository: ${req.user?.username}`);
     return forbidden(res, logger);
   }
