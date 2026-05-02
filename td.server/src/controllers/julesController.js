@@ -1,5 +1,6 @@
 import * as julesService from '../integrations/jules/jules.service.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { getOrgId } from '../helpers/scope.helper.js';
 
 const logger = loggerHelper.get('controllers/julesController.js');
 
@@ -9,7 +10,7 @@ const logger = loggerHelper.get('controllers/julesController.js');
  */
 export async function listSources(req, res, next) {
   try {
-    const sources = await julesService.getSources();
+    const sources = await julesService.getSources(getOrgId(req));
     return res.json({ sources });
   } catch (err) {
     logger.error('listSources failed', err);
@@ -35,7 +36,8 @@ export async function createSession(req, res, next) {
       sourceName: source_name,
       automationMode: automation_mode || 'REQUIRE_APPROVAL',
       promptOverride: prompt_override || null,
-      userId: req.user.id,
+      user:    req.user,
+      orgId:   getOrgId(req),
     });
 
     return res.status(201).json({ session });
@@ -56,7 +58,7 @@ export async function listSessions(req, res, next) {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const result = await julesService.listSessions({ page, limit });
+    const result = await julesService.listSessions({ page, limit, viewer: req.user });
     return res.json(result);
   } catch (err) {
     logger.error('listSessions failed', err);
@@ -71,7 +73,7 @@ export async function listSessions(req, res, next) {
 export async function getSession(req, res, next) {
   try {
     const { id } = req.params;
-    const result = await julesService.getSessionWithActivities(id);
+    const result = await julesService.getSessionWithActivities(id, req.user, getOrgId(req));
     if (!result) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -89,7 +91,7 @@ export async function getSession(req, res, next) {
 export async function approveSessionPlan(req, res, next) {
   try {
     const { id } = req.params;
-    const session = await julesService.approvePlan(id);
+    const session = await julesService.approvePlan(id, req.user, getOrgId(req));
     return res.json({ session });
   } catch (err) {
     logger.error('approveSessionPlan failed', err);
@@ -112,7 +114,7 @@ export async function sendSessionMessage(req, res, next) {
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
     }
-    const result = await julesService.sendMessage(id, message);
+    const result = await julesService.sendMessage(id, message, req.user, getOrgId(req));
     return res.json(result);
   } catch (err) {
     logger.error('sendSessionMessage failed', err);
@@ -130,7 +132,7 @@ export async function sendSessionMessage(req, res, next) {
 export async function deleteSession(req, res, next) {
   try {
     const { id } = req.params;
-    await julesService.deleteSession(id);
+    await julesService.deleteSession(id, req.user);
     return res.json({ message: 'Session deleted' });
   } catch (err) {
     logger.error('deleteSession failed', err);

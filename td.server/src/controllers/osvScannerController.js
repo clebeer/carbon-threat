@@ -20,6 +20,7 @@
 
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { canAccessOsvScanRun } from '../helpers/resourceAccess.helper.js';
 import {
   detectLockfileType,
   parseLockfile,
@@ -37,7 +38,7 @@ const MAX_CONTENT_LENGTH = 50 * 1024 * 1024;
 
 export async function listScans(req, res) {
   try {
-    const scans = await db('osv_scan_runs').
+    let q = db('osv_scan_runs').
       leftJoin('users', 'osv_scan_runs.created_by', 'users.id').
       select(
         'osv_scan_runs.*',
@@ -46,6 +47,12 @@ export async function listScans(req, res) {
       ).
       orderBy('osv_scan_runs.created_at', 'desc').
       limit(100);
+
+    if (req.user?.role !== 'admin') {
+      q = q.where({ 'osv_scan_runs.created_by': req.user.id });
+    }
+
+    const scans = await q;
 
     return res.json({ scans });
   } catch (err) {
@@ -206,6 +213,9 @@ export async function getScan(req, res) {
     const scan = await db('osv_scan_runs').where({ id: req.params.id }).
 first();
     if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
+    if (!canAccessOsvScanRun(scan, req.user)) {
+      return res.status(404).json({ error: 'Scan not found' });
+    }
     return res.json({ scan });
   } catch (err) {
     logger.error('getScan failed', err);
@@ -220,6 +230,9 @@ export async function getScanFindings(req, res) {
     const scan = await db('osv_scan_runs').where({ id: req.params.id }).
 first();
     if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
+    if (!canAccessOsvScanRun(scan, req.user)) {
+      return res.status(404).json({ error: 'Scan not found' });
+    }
 
     const findings = await db('osv_scan_findings').
       where({ scan_id: req.params.id }).
@@ -250,6 +263,13 @@ first();
 
 export async function deleteScan(req, res) {
   try {
+    const scan = await db('osv_scan_runs').where({ id: req.params.id }).
+first();
+    if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
+    if (!canAccessOsvScanRun(scan, req.user)) {
+      return res.status(404).json({ error: 'Scan not found' });
+    }
+
     const deleted = await db('osv_scan_runs').where({ id: req.params.id }).
 delete();
     if (!deleted) {return res.status(404).json({ error: 'Scan not found' });}
@@ -272,6 +292,9 @@ export async function exportScan(req, res) {
     const scan = await db('osv_scan_runs').where({ id: req.params.id }).
 first();
     if (!scan) {return res.status(404).json({ error: 'Scan not found' });}
+    if (!canAccessOsvScanRun(scan, req.user)) {
+      return res.status(404).json({ error: 'Scan not found' });
+    }
 
     const findings = await db('osv_scan_findings').
       where({ scan_id: req.params.id }).

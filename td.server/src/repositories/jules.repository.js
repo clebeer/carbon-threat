@@ -23,14 +23,30 @@ export async function updateSession(id, fields) {
   return row;
 }
 
-export async function listSessions({ page = 1, limit = 20 } = {}) {
+export async function listSessions({
+  page = 1,
+  limit = 20,
+  createdBy,
+  viewerIsAdmin = false,
+} = {}) {
+  if (!viewerIsAdmin && (createdBy === undefined || createdBy === null)) {
+    return { sessions: [], total: 0, page, limit };
+  }
   const offset = (page - 1) * limit;
-  const rows = await db('jules_sessions')
-    .orderBy('created_at', 'desc')
-    .limit(limit)
-    .offset(offset)
-    .select('*');
-  const [{ count }] = await db('jules_sessions').count('id as count');
+  let q = db('jules_sessions');
+  if (!viewerIsAdmin) {
+    q = q.where({ created_by: createdBy });
+  }
+  const rows = await q.clone().orderBy('created_at', 'desc').
+    limit(limit).
+    offset(offset).
+    select('*');
+
+  let countQ = db('jules_sessions');
+  if (!viewerIsAdmin) {
+    countQ = countQ.where({ created_by: createdBy });
+  }
+  const [{ count }] = await countQ.count('id as count');
   return { sessions: rows, total: Number(count), page, limit };
 }
 
