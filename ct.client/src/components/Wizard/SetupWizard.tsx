@@ -12,8 +12,8 @@ const TOTAL_STEPS = 4;
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '12px', boxSizing: 'border-box',
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-  color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '14px',
+  background: 'var(--surface-container)', border: '1px solid var(--border-medium)',
+  color: 'var(--on-surface)', borderRadius: '4px', outline: 'none', fontSize: '14px',
 };
 
 const labelStyle: React.CSSProperties = {
@@ -23,15 +23,15 @@ const labelStyle: React.CSSProperties = {
 
 const backBtnStyle: React.CSSProperties = {
   padding: '12px', background: 'transparent',
-  border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+  border: '1px solid var(--border-medium)', borderRadius: '6px',
   color: 'var(--on-surface-muted)', cursor: 'pointer', flex: '0 0 30%',
 };
 
 function primaryBtnStyle(enabled: boolean): React.CSSProperties {
   return {
     flex: 1, padding: '12px', border: 'none', borderRadius: '6px',
-    background: enabled ? 'var(--primary)' : 'rgba(0,242,255,0.18)',
-    color: enabled ? '#000' : 'rgba(255,255,255,0.25)',
+    background: enabled ? 'var(--primary)' : 'var(--surface-container)',
+    color: enabled ? 'var(--text-contrast-bg)' : 'var(--on-surface-hint)',
     fontWeight: 'bold', cursor: enabled ? 'pointer' : 'not-allowed',
     fontSize: '14px', transition: 'all 0.2s',
   };
@@ -129,7 +129,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
   // ── layout ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', background: 'var(--background)', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ display: 'flex', background: 'var(--surface-dim)', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center' }}>
       <div
         className="glass-panel"
         style={{ width: '560px', padding: '40px', borderRadius: '12px', position: 'relative', overflow: 'hidden', background: 'var(--surface-container-high)', border: '1px solid rgba(0,242,255,0.15)', boxShadow: '0 0 80px rgba(0,0,0,0.6)' }}
@@ -146,7 +146,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
 
         {/* Header */}
         <div style={{ marginTop: '8px', marginBottom: '28px' }}>
-          <h2 style={{ fontSize: '22px', fontFamily: 'var(--font-display)', color: '#fff', margin: '0 0 4px 0' }}>
+          <h2 style={{ fontSize: '22px', fontFamily: 'var(--font-display)', color: 'var(--on-surface)', margin: '0 0 4px 0' }}>
             Carbon<span style={{ color: 'var(--primary)' }}>Threat</span> Enterprise
           </h2>
           <p style={{ fontSize: '12px', color: 'var(--on-surface-muted)', margin: 0, fontFamily: 'var(--font-label)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
@@ -173,7 +173,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
                 <label key={opt} style={radioCard(db.type === opt)} onClick={() => setDbField({ type: opt })}>
                   <input type="radio" readOnly checked={db.type === opt} style={{ marginTop: '2px', accentColor: 'var(--primary)', flexShrink: 0 }} />
                   <div>
-                    <div style={{ color: '#fff', fontWeight: 600, fontSize: '14px', marginBottom: '3px' }}>
+                    <div style={{ color: 'var(--on-surface)', fontWeight: 600, fontSize: '14px', marginBottom: '3px' }}>
                       {opt === 'local' ? 'Local PostgreSQL' : 'External PostgreSQL'}
                     </div>
                     <div style={{ color: 'var(--on-surface-muted)', fontSize: '12px', lineHeight: 1.5 }}>
@@ -187,7 +187,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
             </div>
 
             {db.type === 'external' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', padding: '16px', background: 'var(--surface-container-low)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <div style={{ flex: 3 }}>
                     <label style={labelStyle}>Host</label>
@@ -256,7 +256,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
                 <label key={opt} style={radioCard(authType === opt, accent)} onClick={() => setAuthType(opt)}>
                   <input type="radio" readOnly checked={authType === opt} style={{ marginTop: '2px', accentColor: accent, flexShrink: 0 }} />
                   <div>
-                    <div style={{ color: '#fff', fontWeight: 600, fontSize: '14px', marginBottom: '3px' }}>
+                    <div style={{ color: 'var(--on-surface)', fontWeight: 600, fontSize: '14px', marginBottom: '3px' }}>
                       {opt === 'local' ? 'Local Authentication' : 'Enterprise SSO (SAML 2.0)'}
                     </div>
                     <div style={{ color: 'var(--on-surface-muted)', fontSize: '12px', lineHeight: 1.5 }}>
@@ -300,7 +300,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
               <div>
                 <label style={labelStyle}>
                   Password *&nbsp;
-                  <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}>(min. 12 characters)</span>
+                  <span style={{ color: 'var(--on-surface-hint)', fontWeight: 400 }}>(min. 12 characters)</span>
                 </label>
                 <input type="password" value={admin.password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdmin((a: AdminConfig) => ({ ...a, password: e.target.value }))} style={inputStyle} />
                 {admin.password.length > 0 && admin.password.length < 12 && (
@@ -413,7 +413,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
               ].map(row => (
                 <div
                   key={row.label}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', gap: '16px' }}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-container)', borderRadius: '6px', gap: '16px' }}
                 >
                   <span style={{ fontSize: '12px', color: 'var(--on-surface-muted)', fontFamily: 'var(--font-label)', letterSpacing: '0.5px', flexShrink: 0 }}>
                     {row.label}
@@ -431,7 +431,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
               {' '}— OAuth credentials will be configurable in Settings after initialization. Available in the next release.
             </div>
 
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginBottom: '20px', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '12px', color: 'var(--on-surface-hint)', marginBottom: '20px', lineHeight: 1.6 }}>
               The system will run database migrations and write the configuration to the application store. This may take a few seconds.
             </p>
 
