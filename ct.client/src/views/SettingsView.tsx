@@ -410,7 +410,18 @@ function IntegrationCard({ platform, existing }: { platform: Platform; existing:
 
   return (
     <div style={{ borderRadius: '8px', border: `1px solid ${open ? 'rgba(179,102,255,0.35)' : 'rgba(255,255,255,0.07)'}`, background: open ? 'rgba(179,102,255,0.03)' : 'rgba(255,255,255,0.02)', transition: 'all 0.2s' }}>
-      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer' }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(v => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(v => !v);
+          }
+        }}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer' }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isActive ? 'var(--primary)' : 'rgba(255,255,255,0.15)', boxShadow: isActive ? '0 0 6px var(--primary)' : 'none' }} />
           <span style={{ color: '#e2e8f0', fontSize: '14px' }}>{meta.label}</span>
@@ -442,7 +453,19 @@ function IntegrationCard({ platform, existing }: { platform: Platform; existing:
             ))}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div onClick={() => setEnabled(v => !v)} style={{ width: '34px', height: '18px', borderRadius: '9px', background: enabled ? 'var(--primary)' : 'rgba(255,255,255,0.15)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
+              <div
+                role="switch"
+                aria-checked={enabled}
+                tabIndex={0}
+                onClick={() => setEnabled(v => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setEnabled(v => !v);
+                  }
+                }}
+                style={{ width: '34px', height: '18px', borderRadius: '9px', background: enabled ? 'var(--primary)' : 'rgba(255,255,255,0.15)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
+              >
                 <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#000', position: 'absolute', top: '2.5px', left: enabled ? '19px' : '2px', transition: 'left 0.2s' }} />
               </div>
               <span style={{ fontSize: '12px', color: enabled ? 'var(--primary)' : 'var(--on-surface-muted)' }}>{enabled ? 'Enabled' : 'Disabled'}</span>

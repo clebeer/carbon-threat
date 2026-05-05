@@ -383,8 +383,20 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
               {tplLoading && <p style={{ color: 'var(--on-surface-muted)', fontSize: '12px', margin: 0 }}>Loading…</p>}
               {!tplLoading && templates.length === 0 && <p style={{ color: 'var(--on-surface-muted)', fontSize: '12px', margin: 0 }}>No templates for this pack.</p>}
               {templates.map(t => (
-                <div key={t.id} onClick={() => { setSelectedTplId(t.id); setTplTitle(t.name); }}
-                  style={{ padding: '14px 16px', borderRadius: '8px', background: selectedTplId === t.id ? 'rgba(179,102,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${selectedTplId === t.id ? 'rgba(179,102,255,0.4)' : 'rgba(255,255,255,0.07)'}`, cursor: 'pointer', transition: 'all 0.15s' }}>
+                <div
+                  key={t.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { setSelectedTplId(t.id); setTplTitle(t.name); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedTplId(t.id);
+                      setTplTitle(t.name);
+                    }
+                  }}
+                  style={{ padding: '14px 16px', borderRadius: '8px', background: selectedTplId === t.id ? 'rgba(179,102,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${selectedTplId === t.id ? 'rgba(179,102,255,0.4)' : 'rgba(255,255,255,0.07)'}`, cursor: 'pointer', transition: 'all 0.15s' }}
+                >
                   <div style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: 500 }}>{t.name}</div>
                   {t.description && <div style={{ fontSize: '11px', color: 'var(--on-surface-muted)', marginTop: '4px' }}>{t.description}</div>}
                   <div style={{ fontSize: '10px', color: 'var(--on-surface-muted)', marginTop: '6px' }}>
