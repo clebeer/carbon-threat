@@ -94,6 +94,10 @@ const DefaultIcons: Record<string, React.ReactNode> = {
   'aws-iam': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
   cloudwatch: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C4FFF" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 14l3-5 3 3 4-6"/></svg>,
   guardduty: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>,
+  sns: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M6 9l6-6 6 6"/><path d="M12 3v18"/><path d="M6 15l6 6 6-6"/></svg>,
+  elasticache: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/></svg>,
+  'api-gw-aws': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>,
+  'secrets-manager': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/><path d="M9 12l2 2 4-4"/></svg>,
   // Azure
   vm:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16"/><rect x="8" y="8" width="8" height="8"/></svg>,
   'blob-storage': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>,
@@ -106,6 +110,12 @@ const DefaultIcons: Record<string, React.ReactNode> = {
   'azure-firewall': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
   'entra-id': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>,
   'front-door': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2c-3 3-3 17 0 20"/><path d="M12 2c3 3 3 17 0 20"/></svg>,
+  vnet: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h8"/></svg>,
+  'api-management': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>,
+  'redis-cache': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD344C" strokeWidth="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5a9 3 0 0 0 18 0"/><path d="M3 12a9 3 0 0 0 18 0"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/></svg>,
+  sentinel: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/><path d="M9 12l2 2 4-4"/></svg>,
+  'azure-monitor': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#50B7E0" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M7 14l3-5 3 3 4-6"/></svg>,
+  'key-vault': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078D4" strokeWidth="1.5"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/><path d="M9 12l2 2 4-4"/></svg>,
   // Trust boundary
   'trust-boundary': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4 2"><rect x="2" y="2" width="20" height="20" rx="4"/><line x1="7" y1="2" x2="7" y2="7"/><line x1="2" y1="7" x2="7" y2="7"/></svg>,
 };
