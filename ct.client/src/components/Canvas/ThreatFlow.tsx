@@ -29,6 +29,9 @@ import { useAnalysisStore } from '../../store/analysisStore';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import ThreatPanel from './ThreatPanel';
 import DomainSelector from './DomainSelector';
+import { convertDrawioToReactFlow, isDrawioFile } from '../../importers/drawioImporter';
+import { convertGliffyToReactFlow, isGliffyDiagram } from '../../importers/gliffyImporter';
+import { convertVsdxToReactFlow, isVsdxFile } from '../../importers/visioImporter';
 
 // ── Default node icons (generic pack fallback) ────────────────────────────────
 
@@ -799,6 +802,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     return 'generic';
   });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const { highlightedEdgeIds, clearHighlight, setHighlight, setNodeFilter, selectedNodeId } = useAnalysisStore();
 
@@ -1000,6 +1004,77 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     onConnect: (id: string) => { setSelectedNode(nodes.find(n => n.id === id) ?? null); },
   };
 
+  // ── Import diagram from external formats ────────────────────────────────────
+  const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    pushSnapshot();
+    try {
+      let imported: { nodes: Node[]; edges: Edge[] };
+
+      if (isVsdxFile(file)) {
+        const result = await convertVsdxToReactFlow(file);
+        imported = { nodes: result.nodes, edges: result.edges };
+      } else {
+        const text = await file.text();
+        try {
+          const json = JSON.parse(text);
+          if (isGliffyDiagram(json)) {
+            const result = convertGliffyToReactFlow(json);
+            imported = { nodes: result.nodes, edges: result.edges };
+          } else if (isDrawioFile(text)) {
+            const result = convertDrawioToReactFlow(text);
+            imported = { nodes: result.nodes, edges: result.edges };
+          } else {
+            alert('Unsupported JSON format. Use Draw.io XML, Gliffy JSON, or Visio VSDX.');
+            return;
+          }
+        } catch {
+          // Not JSON — try as Draw.io XML
+          if (isDrawioFile(text)) {
+            const result = convertDrawioToReactFlow(text);
+            imported = { nodes: result.nodes, edges: result.edges };
+          } else {
+            alert('Unsupported file format. Use .drawio, .xml (Draw.io), .json (Gliffy), or .vsdx (Visio).');
+            return;
+          }
+        }
+      }
+
+      // Merge imported nodes/edges into canvas, offset to avoid overlap
+      const offsetX = nodes.length > 0 ? Math.max(...nodes.map(n => n.position.x)) + 200 : 0;
+      const mappedNodes = imported.nodes.map((n, i) => ({
+        ...n,
+        id: String(++nodeCounter),
+        type: 'cyber',
+        position: { x: (n.position?.x ?? 0) + offsetX, y: n.position?.y ?? i * 80 },
+        data: { label: n.data?.label ?? n.data?.kind ?? 'Node', kind: n.data?.kind ?? 'server', selected: false },
+      })) as Node<CyberNodeData>[];
+
+      const idMap = new Map(imported.nodes.map((n, i) => [n.id, mappedNodes[i].id]));
+      const mappedEdges = imported.edges
+        .filter(e => idMap.has(e.source) && idMap.has(e.target))
+        .map(e => ({
+          ...e,
+          id: `ie-${++nodeCounter}`,
+          source: idMap.get(e.source)!,
+          target: idMap.get(e.target)!,
+          type: 'data-flow',
+          animated: true,
+          style: { stroke: 'var(--primary)', strokeWidth: 2 },
+        }));
+
+      setNodes(ns => [...ns, ...mappedNodes]);
+      setEdges(es => [...es, ...mappedEdges]);
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert('Import failed. Check the file format and try again.');
+    } finally {
+      // Reset input so same file can be re-imported
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [nodes, setNodes, setEdges, pushSnapshot]);
+
   const handleSave = useCallback(async () => {
     if (!modelId) return;
     setSaveStatus('saving');
@@ -1059,6 +1134,10 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
             <option value="distribute-h" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>━ Distrib H</option>
             <option value="distribute-v" style={{ background: '#1a1a2e', color: '#e2e8f0' }}>┃ Distrib V</option>
           </select>
+
+          {/* Import (Draw.io, Gliffy, Visio) */}
+          <input ref={fileInputRef} type="file" accept=".drawio,.xml,.json,.vsdx" onChange={handleImport} style={{ display: 'none' }} />
+          <button aria-label="Import diagram" onClick={() => fileInputRef.current?.click()} title="Import (Draw.io / Gliffy / Visio)" style={tbBtn}>📂 Import</button>
 
           {/* Export */}
           <button aria-label="Export as PNG" onClick={() => exportImage('png')} title="Export as PNG" style={tbBtn}>⬇ PNG</button>
