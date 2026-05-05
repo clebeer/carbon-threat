@@ -101,8 +101,9 @@ function classifyShape(shapeType: string, style: Record<string, string>): string
   if (st.includes('diamond') || st.includes('rhombus')) return 'fw';
   if (st.includes('ellipse') || st.includes('circle') || st.includes('actor')) return 'user';
   if (st.includes('cloud')) return 'cloud';
-  if (st.includes('mxgraph.cisco') || st.includes('router')) return 'router';
-  if (st.includes('mxgraph.cisco') || st.includes('switch')) return 'switch';
+  if (st.includes('router')) return 'router';
+  if (st.includes('switch')) return 'switch';
+  if (st.includes('mxgraph.cisco')) return 'server';
   if (st.includes('mxgraph.aws') || st.includes('mxgraph.azure') || st.includes('mxgraph.gcp')) return 'cloud';
   if (st.includes('trapezoid')) return 'cdn';
   if (st.includes('document') || st.includes('note')) return 'browser';
