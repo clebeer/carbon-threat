@@ -9,3 +9,7 @@
 ## 2026-05-05 - Custom switch elements
 **Learning:** Found custom switch elements implemented with divs using `onClick` but missing correct roles and keyboard support.
 **Action:** When creating or fixing custom switch elements, use `role="switch"`, `aria-checked`, `tabIndex={0}`, and an `onKeyDown` listener that checks for 'Enter' and 'Space' keys.
+
+## 2024-05-08 - [Applying Standard Tab and Expand/Collapse Accessibility to Custom Components]
+**Learning:** Many interactive flex-based components in the project, such as `ThreatCard.tsx`, visually act like standard UI patterns (collapsible accordions and tabbed interfaces) but lack the necessary HTML elements and ARIA attributes for screen readers and keyboard users to interpret their states effectively.
+**Action:** When implementing or modifying custom visual accordion groups and tab groups, always pair `aria-expanded` and `aria-controls` for expand/collapse states (and hide decorative carets with `aria-hidden="true"`), and utilize the standard ARIA tablist pattern (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, `role="tabpanel"`, `aria-labelledby`) to ensure standard accessibility compliance across the application.
