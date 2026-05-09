@@ -9,7 +9,7 @@ const RETRY_DELAYS = [1000, 2000, 4000];
  */
 function resolveApiKey(overrideKey) {
   const key = overrideKey || process.env.JULES_API_KEY;
-  if (!key) throw new Error('Jules API key is not configured. Configure it in Settings > Integrations or set JULES_API_KEY env var.');
+  if (!key) {throw new Error('Jules API key is not configured. Configure it in Settings > Integrations or set JULES_API_KEY env var.');}
   return key;
 }
 
@@ -31,7 +31,7 @@ async function request(method, path, data, apiKeyOverride) {
       return response.data;
     } catch (err) {
       if (err.response?.status === 429 && attempt < RETRY_DELAYS.length) {
-        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
         continue;
       }
       throw err;

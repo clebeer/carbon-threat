@@ -97,17 +97,17 @@ function decryptToken(enc) {
 function buildValidatedUrl(baseUrl, folderId, fileName) {
   try {
     // Minimal path validation
-    if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
+    if (baseUrl.includes('/../') || (/\/%2e%2e\//i).test(baseUrl)) {
       throw new Error('Invalid path');
     }
     
     const url = new URL(baseUrl);
     
     // Validate path parameters
-    if (folderId && !/^[A-Za-z0-9_-]+$/.test(folderId)) {
+    if (folderId && !(/^[A-Za-z0-9_-]+$/).test(folderId)) {
       throw new Error('Invalid parameter');
     }
-    if (!/^[A-Za-z0-9_.-]+$/.test(fileName)) {
+    if (!(/^[A-Za-z0-9_.-]+$/).test(fileName)) {
       throw new Error('Invalid parameter');
     }
     

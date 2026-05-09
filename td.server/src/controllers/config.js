@@ -13,7 +13,7 @@ const logger = loggerHelper.get('controllers/config.js');
  */
 function assertDisposableSetupCredential(req, res) {
   const expected = process.env.SETUP_TOKEN;
-  if (!expected) return true;
+  if (!expected) {return true;}
   const supplied = req.headers['x-setup-token'] ?? req.body?.setupToken;
   if (supplied !== expected) {
     logger.warn('Setup request rejected — missing or invalid setup token');
@@ -42,7 +42,7 @@ first();
     }
   } catch { /* table may not exist yet on a fresh install — that is fine */ }
 
-  if (!assertDisposableSetupCredential(req, res)) return;
+  if (!assertDisposableSetupCredential(req, res)) {return;}
 
   const { host, port, user, password, name } = req.body || {};
 
@@ -97,7 +97,7 @@ export async function submitEnterpriseSetup(req, res) {
     return res.status(400).json({ error: 'authType is required' });
   }
 
-  if (!assertDisposableSetupCredential(req, res)) return;
+  if (!assertDisposableSetupCredential(req, res)) {return;}
 
   // If using an external database, wire up a separate Knex instance so we can
   // run migrations against the target host.  The default `db` instance points at
