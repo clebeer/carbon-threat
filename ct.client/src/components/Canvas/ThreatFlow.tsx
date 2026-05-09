@@ -38,6 +38,7 @@ import { NodeStencil } from './NodeStencil';
 import { RenameModal } from './RenameModal';
 import { EdgeLabelModal } from './EdgeLabelModal';
 import { layoutWithDagre, layoutWithElk, alignNodes } from './hooks/useLayout';
+import { ErrorBoundary } from '../ErrorBoundary';
 
 // ── Node & edge type registries ──────────────────────────────────────────────
 
@@ -377,6 +378,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     <div style={{ width: '100%', height: '100%', paddingTop: '64px', position: 'relative', display: 'flex' }}>
       <NodeStencil onAdd={(kind) => addNode(kind)} pack={currentPack} />
 
+      <ErrorBoundary label="Canvas">
       <div ref={reactFlowWrapper} style={{ flex: 1, position: 'relative' }}>
         {/* Toolbar */}
         <div style={{ position: 'absolute', top: '12px', right: threatPanelOpen ? '356px' : '12px', zIndex: 30, display: 'flex', gap: '6px', alignItems: 'center', transition: 'right 0.2s', flexWrap: 'wrap' }}>
@@ -479,9 +481,12 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           </div>
         )}
       </div>
+      </ErrorBoundary>
 
       {aiPanelOpen && selectedNode && (
-        <AISuggestionsPanel node={selectedNode} onClose={handlePaneClick} onAccept={(t: ThreatSuggestion) => setAcceptedThreats((ts: ThreatSuggestion[]) => [...ts, t])} />
+        <ErrorBoundary label="AI Panel">
+          <AISuggestionsPanel node={selectedNode} onClose={handlePaneClick} onAccept={(t: ThreatSuggestion) => setAcceptedThreats((ts: ThreatSuggestion[]) => [...ts, t])} />
+        </ErrorBoundary>
       )}
       {threatPanelOpen && modelId && (
         <ThreatPanel modelId={modelId} onClose={() => setShowThreatPanel(false)} />
