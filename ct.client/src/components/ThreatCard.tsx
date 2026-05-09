@@ -93,6 +93,8 @@ function OwaspGuide({ refs }: OwaspGuideProps) {
           <div key={type} style={{ borderRadius: '8px', border: `1px solid ${meta.border}`, overflow: 'hidden' }}>
             {/* Group header */}
             <button
+              aria-expanded={isExpanded}
+              aria-controls={`owasp-group-${type}`}
               onClick={() => setExpandedType(isExpanded ? null : type)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: meta.bg, border: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
@@ -103,12 +105,12 @@ function OwaspGuide({ refs }: OwaspGuideProps) {
                   {items.length}
                 </span>
               </div>
-              <span style={{ fontSize: '11px', color: meta.color }}>{isExpanded ? '▲' : '▼'}</span>
+              <span aria-hidden="true" style={{ fontSize: '11px', color: meta.color }}>{isExpanded ? '▲' : '▼'}</span>
             </button>
 
             {/* Refs list */}
             {isExpanded && (
-              <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(0,0,0,0.2)' }}>
+              <div id={`owasp-group-${type}`} style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(0,0,0,0.2)' }}>
                 {items.map((r, i) => (
                   <a
                     key={i}
@@ -172,6 +174,8 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
       <div
         role="button"
         tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={`threat-detail-${t.id}`}
         onClick={() => setExpanded(v => !v)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -211,18 +215,22 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
           >
             {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)', userSelect: 'none' }}>{expanded ? '▲' : '▼'}</span>
+          <span aria-hidden="true" style={{ fontSize: '11px', color: 'var(--on-surface-muted)', userSelect: 'none' }}>{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
 
       {/* Expanded detail */}
       {expanded && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div id={`threat-detail-${t.id}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div role="tablist" style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             {(['details', 'owasp'] as const).map(tab => (
               <button
                 key={tab}
+                role="tab"
+                id={`tab-${tab}-${t.id}`}
+                aria-controls={`tabpanel-${tab}-${t.id}`}
+                aria-selected={activeTab === tab}
                 onClick={() => setActiveTab(tab)}
                 style={{ flex: 1, padding: '8px', border: 'none', background: activeTab === tab ? 'rgba(255,255,255,0.04)' : 'transparent', color: activeTab === tab ? '#e2e8f0' : 'var(--on-surface-muted)', fontSize: '11px', cursor: 'pointer', borderBottom: `2px solid ${activeTab === tab ? 'var(--primary)' : 'transparent'}`, fontWeight: activeTab === tab ? 600 : 400, letterSpacing: '0.5px', transition: 'all 0.15s', textTransform: 'uppercase' }}
               >
@@ -233,7 +241,7 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
 
           <div style={{ padding: '14px 16px' }}>
             {activeTab === 'details' && (
-              <div>
+              <div role="tabpanel" id={`tabpanel-details-${t.id}`} aria-labelledby={`tab-details-${t.id}`}>
                 {t.description && (
                   <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)', margin: '0 0 14px', lineHeight: 1.6 }}>{t.description}</p>
                 )}
@@ -274,7 +282,7 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
             )}
 
             {activeTab === 'owasp' && (
-              <div>
+              <div role="tabpanel" id={`tabpanel-owasp-${t.id}`} aria-labelledby={`tab-owasp-${t.id}`}>
                 <p style={{ fontSize: '12px', color: 'var(--on-surface-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
                   Security standards and guidelines relevant to this threat. Click any reference to open the official documentation.
                 </p>
