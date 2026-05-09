@@ -71,39 +71,39 @@ function httpPost(url, body, options = {}) {
 // ── Common normalisation ──────────────────────────────────────────────────────
 
 function normaliseSeverity(cvssScore = 0, severityText = '') {
-  if (cvssScore >= 9.0) return 'Critical';
-  if (cvssScore >= 7.0) return 'High';
-  if (cvssScore >= 4.0) return 'Medium';
-  if (cvssScore > 0) return 'Low';
+  if (cvssScore >= 9.0) {return 'Critical';}
+  if (cvssScore >= 7.0) {return 'High';}
+  if (cvssScore >= 4.0) {return 'Medium';}
+  if (cvssScore > 0) {return 'Low';}
   const t = severityText.toLowerCase();
-  if (t.includes('critical')) return 'Critical';
-  if (t.includes('high')) return 'High';
-  if (t.includes('medium') || t.includes('moderate')) return 'Medium';
+  if (t.includes('critical')) {return 'Critical';}
+  if (t.includes('high')) {return 'High';}
+  if (t.includes('medium') || t.includes('moderate')) {return 'Medium';}
   return 'Low';
 }
 
 // ── CWE → STRIDE formal mapping (MITRE-based) ───────────────────────────────
 const CWE_STRIDE_MAP = {
-  'CWE-79': ['Tampering', 'Information Disclosure'],       // XSS
-  'CWE-89': ['Tampering'],                                  // SQL Injection
-  'CWE-22': ['Tampering', 'Information Disclosure'],        // Path Traversal
-  'CWE-78': ['Tampering', 'Elevation of Privilege'],        // OS Command Injection
-  'CWE-352': ['Tampering', 'Spoofing'],                     // CSRF
-  'CWE-287': ['Spoofing'],                                  // Improper Authentication
-  'CWE-862': ['Elevation of Privilege'],                    // Missing Authorization
-  'CWE-863': ['Elevation of Privilege'],                    // Incorrect Authorization
-  'CWE-200': ['Information Disclosure'],                     // Information Exposure
-  'CWE-400': ['DoS'],                                        // Uncontrolled Resource Consumption
-  'CWE-502': ['Tampering', 'Elevation of Privilege'],       // Deserialization
-  'CWE-918': ['Information Disclosure', 'Tampering'],       // SSRF
-  'CWE-611': ['Information Disclosure'],                     // XXE
-  'CWE-306': ['Spoofing', 'Elevation of Privilege'],        // Missing Authentication
-  'CWE-250': ['Elevation of Privilege'],                     // Execution with Unnecessary Privileges
-  'CWE-778': ['Repudiation'],                                // Insufficient Logging
-  'CWE-327': ['Tampering', 'Information Disclosure'],       // Broken Crypto
-  'CWE-326': ['Tampering', 'Information Disclosure'],       // Inadequate Encryption Strength
-  'CWE-295': ['Spoofing'],                                   // Improper Certificate Validation
-  'CWE-94': ['Tampering', 'Elevation of Privilege'],        // Code Injection
+  'CWE-79': ['Tampering', 'Information Disclosure'], // XSS
+  'CWE-89': ['Tampering'], // SQL Injection
+  'CWE-22': ['Tampering', 'Information Disclosure'], // Path Traversal
+  'CWE-78': ['Tampering', 'Elevation of Privilege'], // OS Command Injection
+  'CWE-352': ['Tampering', 'Spoofing'], // CSRF
+  'CWE-287': ['Spoofing'], // Improper Authentication
+  'CWE-862': ['Elevation of Privilege'], // Missing Authorization
+  'CWE-863': ['Elevation of Privilege'], // Incorrect Authorization
+  'CWE-200': ['Information Disclosure'], // Information Exposure
+  'CWE-400': ['DoS'], // Uncontrolled Resource Consumption
+  'CWE-502': ['Tampering', 'Elevation of Privilege'], // Deserialization
+  'CWE-918': ['Information Disclosure', 'Tampering'], // SSRF
+  'CWE-611': ['Information Disclosure'], // XXE
+  'CWE-306': ['Spoofing', 'Elevation of Privilege'], // Missing Authentication
+  'CWE-250': ['Elevation of Privilege'], // Execution with Unnecessary Privileges
+  'CWE-778': ['Repudiation'], // Insufficient Logging
+  'CWE-327': ['Tampering', 'Information Disclosure'], // Broken Crypto
+  'CWE-326': ['Tampering', 'Information Disclosure'], // Inadequate Encryption Strength
+  'CWE-295': ['Spoofing'], // Improper Certificate Validation
+  'CWE-94': ['Tampering', 'Elevation of Privilege'], // Code Injection
 };
 
 const STRIDE_KEYWORDS = [
@@ -250,8 +250,7 @@ export const nvdAdapter = {
     const severity = normaliseSeverity(cvssScore, cvssData.cvssData?.baseSeverity ?? '');
 
     // CWE
-    const cwes = (cve.weaknesses ?? []).flatMap((w) =>
-      w.description?.filter((d) => d.lang === 'en').map((d) => d.value) ?? []
+    const cwes = (cve.weaknesses ?? []).flatMap((w) => w.description?.filter((d) => d.lang === 'en').map((d) => d.value) ?? []
     ).filter(Boolean);
 
     const strideCategories = mapToStride(title, description, cwes);

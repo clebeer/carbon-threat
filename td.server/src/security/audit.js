@@ -10,7 +10,7 @@ const SENSITIVE_FIELD_TOKENS = [
   'passwd',
   'pwd',
   'secret',
-  'token',      // covers refreshToken, apiToken, accessToken, idToken, webhookSecret via fallthrough below
+  'token', // covers refreshToken, apiToken, accessToken, idToken, webhookSecret via fallthrough below
   'apikey',
   'api_key',
   'clientsecret',

@@ -26,7 +26,7 @@ const oauthReturn = (req, res) => {
     // Accept only characters that OAuth providers actually emit in the code
     // parameter. Anything else is dropped — prevents URL-structure injection
     // into the redirect target.
-    if (!/^[A-Za-z0-9._~-]{1,512}$/.test(rawCode)) {
+    if (!(/^[A-Za-z0-9._~-]{1,512}$/).test(rawCode)) {
         return res.status(400).send('Invalid OAuth code');
     }
 

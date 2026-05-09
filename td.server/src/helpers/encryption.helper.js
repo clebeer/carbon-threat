@@ -76,7 +76,7 @@ const encryptData = (plainText, key, iv) => {
     const authTag = cipher.getAuthTag();
 
     return {
-        v: 2,                                  // version: GCM
+        v: 2, // version: GCM
         keyId: key.id,
         iv: iv.toString(outputEncoding),
         tag: authTag.toString(outputEncoding),
