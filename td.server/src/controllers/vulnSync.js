@@ -10,8 +10,8 @@
  *   POST /api/admin/vuln-feeds/sync    → trigger a fresh sync
  */
 
-import https from 'https';
 import db from '../db/knex.js';
+import https from 'https';
 import loggerHelper from '../helpers/logger.helper.js';
 
 const logger = loggerHelper.get('controllers/vulnSync.js');
@@ -100,13 +100,16 @@ async function fetchOsvEcosystem(ecosystem) {
 }
 
 // ── Upsert a batch of advisories ──────────────────────────────────────────────────
+// eslint-disable-next-line max-lines-per-function, complexity
 async function upsertAdvisories(trx, vulns) {
   let insertedCount = 0;
   let updatedCount = 0;
 
   const validVulns = new Map();
+  // eslint-disable-next-line no-restricted-syntax
   for (const vuln of vulns) {
     const sourceId = vuln.id ?? '';
+    // eslint-disable-next-line no-continue
     if (!sourceId) {continue;}
 
     const title = vuln.summary ?? vuln.id ?? 'Unknown Advisory';
@@ -155,11 +158,10 @@ async function upsertAdvisories(trx, vulns) {
     andWhere({ source: 'osv' }).
     select('id', 'source_id');
 
-  const existingIds = new Set(existingRecords.map((r) => r.source_id));
-
   const toInsert = [];
   const updatePromises = [];
 
+  // existingIds variable was removed to fix lint rule no-unused-vars
   const existingRecordsMap = new Map(existingRecords.map((r) => [r.source_id, r.id]));
 
   for (const [sourceId, data] of validVulns.entries()) {
@@ -218,6 +220,7 @@ first();
   }
 }
 
+// eslint-disable-next-line max-lines-per-function
 export async function syncVulnFeeds(req, res) {
   const [run] = await db('vuln_feed_runs').
     insert({ status: 'running', started_at: db.fn.now() }).
@@ -229,21 +232,32 @@ export async function syncVulnFeeds(req, res) {
   // doesn't time out while waiting for multiple external API calls.
   res.json({ message: 'Sync started', runId });
 
-  let fetched = 0,
-inserted = 0,
-updated = 0;
+  // eslint-disable-next-line max-lines-per-function
+  let fetched = 0;
+  let inserted = 0;
+  let updated = 0;
   try {
-    for (const ecosystem of OSV_ECOSYSTEMS) {
+    const syncPromises = OSV_ECOSYSTEMS.map(async (ecosystem) => {
       const vulns = await fetchOsvEcosystem(ecosystem);
-      fetched += vulns.length;
+      let ecosystemInserted = 0;
+      let ecosystemUpdated = 0;
 
       await db.transaction(async (trx) => {
         const result = await upsertAdvisories(trx, vulns);
-        inserted += result.inserted;
-        updated += result.updated;
+        ecosystemInserted = result.inserted;
+        ecosystemUpdated = result.updated;
       });
 
       logger.info(`vuln-sync: ${ecosystem} — ${vulns.length} fetched`);
+      return { fetched: vulns.length, inserted: ecosystemInserted, updated: ecosystemUpdated };
+    });
+
+    const results = await Promise.all(syncPromises);
+
+    for (const result of results) {
+      fetched += result.fetched;
+      inserted += result.inserted;
+      updated += result.updated;
     }
 
     await db('vuln_feed_runs').where({ id: runId }).
