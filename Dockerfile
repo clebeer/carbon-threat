@@ -34,9 +34,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 # git        — required by the OSV Scanner Git Repository scan feature
-# docker-cli — required by the OSV Scanner Container Image scan feature (DooD)
 # ca-certificates — root CA bundle needed by git/curl for HTTPS clones
-RUN apk add --no-cache git docker-cli ca-certificates && update-ca-certificates
+RUN apk add --no-cache git ca-certificates && update-ca-certificates
 
 # Production-only server deps
 COPY td.server/package.json td.server/package-lock.json* ./td.server/
@@ -57,6 +56,11 @@ COPY --from=build /app/ct.client/dist ./dist
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
+
+# SECURITY: run as non-root user
+RUN adduser -D -u 1001 appuser
+RUN chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 3001
 ENTRYPOINT ["./docker-entrypoint.sh"]

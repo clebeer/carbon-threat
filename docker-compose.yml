@@ -25,8 +25,8 @@ services:
       POSTGRES_USER:     ${DB_USER:?DB_USER is required — see minimal.env}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required — see minimal.env}
       POSTGRES_DB:       ${DB_NAME:-carbonthreat}
-    ports:
-      - "5432:5432"
+    # Port 5432 NOT exposed to host — only accessible via Docker internal network
+    # Expose only if needed for local debugging: docker compose exec db psql -U ...
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -58,10 +58,8 @@ services:
     volumes:
       - ct_secrets:/app/secrets
       - ./certs:/app/certs:ro
-      # Docker-out-of-Docker: expõe o daemon do host ao container image scanner.
-      # O processo Node.js roda como root (padrão do node:20-alpine), logo tem
-      # acesso direto ao socket sem necessidade de group_add.
-      - /var/run/docker.sock:/var/run/docker.sock
+      # SECURITY: Docker socket NOT mounted — prevents container escape / host compromise.
+      # If Docker image scanning is needed, use a Docker socket proxy instead.
     depends_on:
       db:
         condition: service_healthy
