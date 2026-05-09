@@ -1,0 +1,51 @@
+# =============================================================================
+# CarbonThreat — Production Docker Compose Override
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This overlay adds production-specific settings:
+#   - Restart policy: always (survives host reboots)
+#   - Resource limits (memory, CPU)
+#   - Structured JSON logging
+#   - Read-only root filesystem
+#   - Security hardening (no new privileges, dropped capabilities)
+# =============================================================================
+
+services:
+
+  db:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  carbonthreat:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
