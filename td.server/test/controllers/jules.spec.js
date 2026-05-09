@@ -72,6 +72,14 @@ describe('jules.controller.js', () => {
       expect(stub.calledOnce).to.be.true;
       expect(stub.firstCall.args[0].automationMode).to.equal('AUTO_CREATE_PR');
     });
+
+    it('returns 500 when service throws an error', async () => {
+      sinon.stub(julesService, 'createSession').rejects(new Error('Internal error'));
+      const { req, res } = makeReqRes({ body: { finding_id: 'f1', source_name: 'sources/abc', automation_mode: 'AUTO_CREATE_PR' } });
+      await julesController.createSession(req, res);
+      expect(res._status).to.equal(500);
+      expect(res._json.error).to.include('Internal error');
+    });
   });
 
   describe('getSession()', () => {
