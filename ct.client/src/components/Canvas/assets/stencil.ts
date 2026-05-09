@@ -32,6 +32,16 @@ export const DEFAULT_STENCIL: { kind: string; label: string }[] = [
   { kind: 'iam',     label: 'IAM' },
   { kind: 'gitops',  label: 'CI/CD' },
   { kind: 'cdn',     label: 'CDN' },
+  // OCI (Oracle Cloud) assets
+  { kind: 'oci-compartment', label: 'OCI Compat.' },
+  { kind: 'oci-vault',       label: 'OCI Vault' },
+  { kind: 'oci-db',          label: 'OCI DB' },
+  { kind: 'oci-k8s',         label: 'OKE' },
+  // Alibaba Cloud assets
+  { kind: 'ali-ecs',         label: 'ECS' },
+  { kind: 'ali-oss',         label: 'OSS' },
+  { kind: 'ali-rds',         label: 'RDS' },
+  { kind: 'ali-slb',         label: 'SLB' },
   // Trust boundary
   { kind: 'trust-boundary', label: 'Boundary' },
 ];

@@ -32,6 +32,16 @@ export const DEFAULT_KIND_LABEL: Record<string, string> = {
   aks: 'AKS Cluster', 'redis-cache': 'Azure Cache', 'azure-firewall': 'Azure Firewall',
   sentinel: 'Sentinel', 'azure-monitor': 'Monitor', 'entra-id': 'Entra ID',
   'key-vault': 'Key Vault', 'front-door': 'Front Door',
+  // OCI (Oracle Cloud)
+  'oci-compartment': 'OCI Compartment', 'oci-vault': 'OCI Vault',
+  'oci-db': 'OCI Database', 'oci-k8s': 'OKE Cluster',
+  'oci-object-storage': 'OCI Object Storage', 'oci-lb': 'OCI Load Balancer',
+  'oci-waf': 'OCI WAF', 'oci-iam': 'OCI IAM',
+  // Alibaba Cloud
+  'ali-ecs': 'ECS Instance', 'ali-oss': 'OSS Storage',
+  'ali-rds': 'RDS Database', 'ali-slb': 'SLB Load Balancer',
+  'ali-k8s': 'ACK Cluster', 'ali-waf': 'WAF',
+  'ali-ram': 'RAM / IAM', 'ali-kms': 'KMS',
   // Trust boundary
   'trust-boundary': 'Trust Boundary',
 };

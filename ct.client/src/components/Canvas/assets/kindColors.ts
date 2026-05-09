@@ -36,6 +36,16 @@ export const KIND_COLORS: Record<string, string> = {
   aks: '#0078D4', 'redis-cache': '#DD344C', 'azure-firewall': '#0078D4',
   sentinel: '#0078D4', 'azure-monitor': '#50B7E0', 'entra-id': '#0078D4',
   'key-vault': '#0078D4', 'front-door': '#0078D4',
+  // OCI (Oracle Cloud — red)
+  'oci-compartment': '#C74634', 'oci-vault': '#C74634',
+  'oci-db': '#C74634', 'oci-k8s': '#C74634',
+  'oci-object-storage': '#C74634', 'oci-lb': '#C74634',
+  'oci-waf': '#C74634', 'oci-iam': '#C74634',
+  // Alibaba Cloud (orange)
+  'ali-ecs': '#FF6A00', 'ali-oss': '#FF6A00',
+  'ali-rds': '#FF6A00', 'ali-slb': '#FF6A00',
+  'ali-k8s': '#FF6A00', 'ali-waf': '#FF6A00',
+  'ali-ram': '#FF6A00', 'ali-kms': '#FF6A00',
   // Trust boundary
   'trust-boundary': '#f59e0b',
 };
@@ -67,6 +77,16 @@ export const MINIMAP_COLOR_FALLBACK: Record<string, string> = {
   aks: '#0078D4', 'redis-cache': '#DD344C', 'azure-firewall': '#0078D4',
   sentinel: '#0078D4', 'azure-monitor': '#50B7E0', 'entra-id': '#0078D4',
   'key-vault': '#0078D4', 'front-door': '#0078D4',
+  // OCI
+  'oci-compartment': '#C74634', 'oci-vault': '#C74634',
+  'oci-db': '#C74634', 'oci-k8s': '#C74634',
+  'oci-object-storage': '#C74634', 'oci-lb': '#C74634',
+  'oci-waf': '#C74634', 'oci-iam': '#C74634',
+  // Alibaba Cloud
+  'ali-ecs': '#FF6A00', 'ali-oss': '#FF6A00',
+  'ali-rds': '#FF6A00', 'ali-slb': '#FF6A00',
+  'ali-k8s': '#FF6A00', 'ali-waf': '#FF6A00',
+  'ali-ram': '#FF6A00', 'ali-kms': '#FF6A00',
   // Trust boundary
   'trust-boundary': '#f59e0b',
 };

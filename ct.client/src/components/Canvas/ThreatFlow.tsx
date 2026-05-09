@@ -39,6 +39,7 @@ import { RenameModal } from './RenameModal';
 import { EdgeLabelModal } from './EdgeLabelModal';
 import { layoutWithDagre, layoutWithElk, alignNodes } from './hooks/useLayout';
 import { ErrorBoundary } from '../ErrorBoundary';
+import { downloadDrawio } from '../../exporters/drawioExporter';
 
 // ── Node & edge type registries ──────────────────────────────────────────────
 
@@ -86,7 +87,10 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const clipboardRef = useRef<Node<CyberNodeData> | null>(null);
+  const [validationIssues, setValidationIssues] = useState<string[]>([]);
+  const [showValidation, setShowValidation] = useState(false);
+  const { screenToFlowPosition, fitView: reactFlowFitView } = useReactFlow();
   const { highlightedEdgeIds, clearHighlight, setHighlight, setNodeFilter, selectedNodeId } = useAnalysisStore();
 
   // Export diagram as PNG or SVG
@@ -351,6 +355,72 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     }
   }, [nodes, setNodes, setEdges, pushSnapshot]);
 
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ctrl+C — copy selected node
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey) {
+        const sel = nodes.find(n => n.data?.selected);
+        if (sel) { clipboardRef.current = { ...sel }; e.preventDefault(); }
+      }
+      // Ctrl+V — paste copied node
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !e.shiftKey) {
+        if (clipboardRef.current) {
+          addNode(clipboardRef.current.data.kind, {
+            x: clipboardRef.current.position.x + 100,
+            y: clipboardRef.current.position.y + 60,
+          });
+          e.preventDefault();
+        }
+      }
+      // Ctrl+A — select all nodes
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        setNodes((ns: Node<CyberNodeData>[]) => ns.map((n: Node<CyberNodeData>) => ({ ...n, data: { ...n.data, selected: true } })));
+        e.preventDefault();
+      }
+      // Ctrl+Shift+F — Zoom to fit
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+        reactFlowFitView({ padding: 0.3 });
+        e.preventDefault();
+      }
+      // Escape — clear selection
+      if (e.key === 'Escape') {
+        setSelectedNode(null);
+        setShowValidation(false);
+        setNodes((ns: Node<CyberNodeData>[]) => ns.map((n: Node<CyberNodeData>) => ({ ...n, data: { ...n.data, selected: false } })));
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [nodes, addNode, setNodes, reactFlowFitView]);
+
+  // ── Diagram validation ────────────────────────────────────────────────────
+  const runValidation = useCallback(() => {
+    const issues: string[] = [];
+    if (nodes.length === 0) { issues.push('Diagram is empty — add some components.'); setValidationIssues(issues); setShowValidation(true); return; }
+
+    // Find disconnected nodes (no edges)
+    const connectedIds = new Set<string>();
+    for (const edge of edges) { connectedIds.add(edge.source); connectedIds.add(edge.target); }
+    const disconnected = nodes.filter(n => !connectedIds.has(n.id));
+    if (disconnected.length > 0) {
+      issues.push(`${disconnected.length} disconnected node(s): ${disconnected.map(n => n.data?.label ?? n.id).join(', ')}`);
+    }
+
+    // Find nodes with duplicate labels
+    const labelCount = new Map<string, number>();
+    for (const n of nodes) { const l = (n.data?.label ?? '').trim(); labelCount.set(l, (labelCount.get(l) ?? 0) + 1); }
+    for (const [label, count] of labelCount) { if (count > 1) issues.push(`Duplicate label "${label}" (${count} nodes)`); }
+
+    // Find edges without labels
+    const unlabeledEdges = edges.filter(e => !(e.data as Record<string, unknown>)?.label);
+    if (unlabeledEdges.length > 0) issues.push(`${unlabeledEdges.length} edge(s) without data flow label`);
+
+    if (issues.length === 0) issues.push('✅ Diagram looks good! No issues found.');
+    setValidationIssues(issues);
+    setShowValidation(true);
+  }, [nodes, edges]);
+
   const handleSave = useCallback(async () => {
     if (!modelId) return;
     setSaveStatus('saving');
@@ -399,8 +469,11 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           </select>
           <input ref={fileInputRef} type="file" accept=".drawio,.xml,.json,.vsdx" onChange={handleImport} style={{ display: 'none' }} />
           <button onClick={() => fileInputRef.current?.click()} title="Import" style={tbBtn}>📂 Import</button>
+          <button onClick={() => reactFlowFitView({ padding: 0.3 })} title="Zoom to Fit (Ctrl+Shift+F)" style={tbBtn}>⊞ Fit</button>
           <button onClick={() => exportImage('png')} title="Export PNG" style={tbBtn}>⬇ PNG</button>
           <button onClick={() => exportImage('svg')} title="Export SVG" style={tbBtn}>⬇ SVG</button>
+          <button onClick={() => downloadDrawio(nodes, edges, modelTitle ?? 'diagram')} title="Export .drawio (round-trip)" style={tbBtn}>📐 .drawio</button>
+          <button onClick={runValidation} title="Validate diagram" style={tbBtn}>🔍 Validate</button>
           <select value={activeEdgeType} onChange={e => setActiveEdgeType(e.target.value)} title="Edge type" style={{ ...tbBtn, appearance: 'none', paddingRight: '8px', textAlign: 'center', background: 'rgba(255,255,255,0.06)' }}>
             {EDGE_TYPES_LIST.map(et => (
               <option key={et.type} value={et.type} style={{ background: '#1a1a2e', color: '#e2e8f0' }}>{et.icon} {et.label}</option>
@@ -477,7 +550,22 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
 
         {!aiPanelOpen && !threatPanelOpen && (
           <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--on-surface-muted)', background: 'rgba(0,0,0,0.45)', padding: '5px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10 }}>
-            Drag from stencil · Shift+drag to select · Shift+click multi-select · Connect handles · Ctrl+Z undo
+            Drag · Shift+drag select · Ctrl+C/V copy/paste · Ctrl+A select all · Ctrl+Z undo
+          </div>
+        )}
+
+        {/* Validation Panel */}
+        {showValidation && (
+          <div style={{ position: 'absolute', bottom: '24px', right: '24px', zIndex: 25, background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '16px', maxWidth: '340px', fontSize: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.5px' }}>🔍 DIAGRAM VALIDATION</span>
+              <button onClick={() => setShowValidation(false)} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '14px' }}>✕</button>
+            </div>
+            {validationIssues.map((issue, i) => (
+              <div key={i} style={{ padding: '4px 0', color: issue.startsWith('✅') ? '#52c41a' : '#ffa940', borderBottom: i < validationIssues.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                {issue}
+              </div>
+            ))}
           </div>
         )}
       </div>
