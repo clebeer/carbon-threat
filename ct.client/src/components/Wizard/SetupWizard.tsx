@@ -110,8 +110,8 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
       localStorage.setItem('carbonthreat_setup_complete', 'true');
       if (onComplete) onComplete();
       else window.location.reload();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
       setLoading(false);
     }
   }

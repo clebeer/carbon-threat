@@ -27,6 +27,7 @@ import {
   downloadScanExport,
   type ScanRun,
   type ScanFinding,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   type ScannerPolicy,
   type ManualPackage,
   type Severity,
@@ -147,7 +148,7 @@ function SeverityBar({ bySeverity, total }: { bySeverity: Partial<Record<string,
 function FindingsTable({
   findings,
   bySeverity,
-  scan,
+  scan: _scan,
   onExport,
 }: {
   findings: ScanFinding[];

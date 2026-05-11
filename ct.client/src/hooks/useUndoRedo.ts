@@ -4,7 +4,7 @@
  * Maintains a history stack of {nodes, edges} snapshots.
  * Bound to Ctrl+Z (undo) and Ctrl+Y / Ctrl+Shift+Z (redo).
  */
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { Node, Edge } from 'reactflow';
 
 interface Snapshot {
@@ -30,13 +30,24 @@ export function useUndoRedo(
   const futureRef = useRef<Snapshot[]>([]);
   const skipSnapshot = useRef(false);
 
+  // External store for canUndo/canRedo (avoids reading refs during render)
+  const listeners = useRef(new Set<() => void>());
+  const subscribe = useCallback((l: () => void) => { listeners.current.add(l); return () => { listeners.current.delete(l); }; }, []);
+  const notify = useCallback(() => { listeners.current.forEach(l => l()); }, []);
+
+  const getCanUndo = useCallback(() => pastRef.current.length > 0, []);
+  const getCanRedo = useCallback(() => futureRef.current.length > 0, []);
+  const canUndo = useSyncExternalStore(subscribe, getCanUndo);
+  const canRedo = useSyncExternalStore(subscribe, getCanRedo);
+
   // Push current state to past (called before every mutation)
   const pushSnapshot = useCallback(() => {
     if (!enabled) return;
     pastRef.current.push({ nodes, edges });
     if (pastRef.current.length > maxHistory) pastRef.current.shift();
     futureRef.current = []; // clear redo stack on new action
-  }, [nodes, edges, maxHistory, enabled]);
+    notify();
+  }, [nodes, edges, maxHistory, enabled, notify]);
 
   const undo = useCallback(() => {
     if (!enabled || pastRef.current.length === 0) return;
@@ -45,7 +56,8 @@ export function useUndoRedo(
     skipSnapshot.current = true;
     setNodes(prev.nodes);
     setEdges(prev.edges);
-  }, [nodes, edges, setNodes, setEdges, enabled]);
+    notify();
+  }, [nodes, edges, setNodes, setEdges, enabled, notify]);
 
   const redo = useCallback(() => {
     if (!enabled || futureRef.current.length === 0) return;
@@ -54,10 +66,8 @@ export function useUndoRedo(
     skipSnapshot.current = true;
     setNodes(next.nodes);
     setEdges(next.edges);
-  }, [nodes, edges, setNodes, setEdges, enabled]);
-
-  const canUndo = pastRef.current.length > 0;
-  const canRedo = futureRef.current.length > 0;
+    notify();
+  }, [nodes, edges, setNodes, setEdges, enabled, notify]);
 
   // Keyboard shortcuts
   useEffect(() => {

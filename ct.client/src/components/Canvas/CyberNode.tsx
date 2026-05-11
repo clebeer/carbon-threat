@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { DomainPack } from '../../api/domainPacks';

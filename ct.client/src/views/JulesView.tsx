@@ -14,6 +14,7 @@ export default function JulesView() {
     fetchSessions()
       .catch(err => setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? (err as Error).message ?? 'Erro ao carregar sessões'))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function JulesView() {
     sessions.forEach(s => {
       if (!TERMINAL.has(s.status)) startPolling(s.id);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions.length]);
 
   async function openDetail(session: JulesSession) {

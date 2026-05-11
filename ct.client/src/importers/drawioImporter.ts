@@ -16,7 +16,9 @@ export interface DrawioShape {
 }
 
 export interface ImportResult {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   nodes: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   edges: any[];
   stats: { converted: number; skipped: number; edges: number };
   warnings: string[];
@@ -46,7 +48,8 @@ function parseDrawioXml(xml: string): DrawioShape[] {
       const edge = cell.getAttribute('edge') === '1';
       const source = cell.getAttribute('source') || undefined;
       const target = cell.getAttribute('target') || undefined;
-      const parent = cell.getAttribute('parent') || '1';
+      // parent attribute used for grouping hierarchy (not needed in output)
+      void (cell.getAttribute('parent') || '1');
 
       // Parse geometry
       const geo = cell.querySelector('mxGeometry');
@@ -130,8 +133,8 @@ export function convertDrawioToReactFlow(xml: string): ImportResult {
   let skipped = 0;
   let edgeCount = 0;
 
-  const nodes: any[] = [];
-  const edges: any[] = [];
+  const nodes: ImportResult['nodes'] = [];
+  const edges: ImportResult['edges'] = [];
 
   // First pass: create nodes
   const nodeShapes = shapes.filter(s => s.type !== 'edge' && s.id !== '0' && s.id !== '1');

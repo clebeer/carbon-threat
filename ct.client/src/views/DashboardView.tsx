@@ -75,6 +75,7 @@ function StatCard({ label, value, color, sub }: StatCardProps) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomPieTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
@@ -86,12 +87,13 @@ const CustomPieTooltip = ({ active, payload }: any) => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomBarTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: 'var(--surface-container)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', fontSize: '12px' }}>
       <div style={{ color: SEV_COLORS[label] ?? '#fff', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
-      {payload.map((p: any) => (
+      {payload.map((p: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
         <div key={p.name} style={{ color: STATUS_COLORS[p.name] ?? '#e2e8f0' }}>
           {p.name}: {p.value}
         </div>
@@ -106,7 +108,7 @@ interface HealthzResponse { status: string; uptime?: number }
 interface AuditRow { id: number; action: string; entity_type: string; created_at: string }
 
 export default function DashboardView() {
-  const user      = useAuthStore((s: any) => s.user);
+  const user      = useAuthStore((s: any) => s.user); // eslint-disable-line @typescript-eslint/no-explicit-any
   const dashRef   = useRef<HTMLDivElement>(null);
 
   // ── Data ──────────────────────────────────────────────────────────────────

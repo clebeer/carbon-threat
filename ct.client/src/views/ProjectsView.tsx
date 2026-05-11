@@ -12,9 +12,9 @@ import {
 } from '../api/threatmodels';
 import { listPacks, listTemplates, applyTemplate, type DomainPack, type DomainTemplate } from '../api/domainPacks';
 import CloudStorageBrowser from '../components/CloudStorageBrowser';
-import { convertGliffyToReactFlow, isGliffyDiagram } from '../importers/gliffyImporter';
-import { convertVsdxToReactFlow, isVsdxFile } from '../importers/visioImporter';
-import { convertDrawioToReactFlow, isDrawioFile } from '../importers/drawioImporter';
+import { convertGliffyToReactFlow } from '../importers/gliffyImporter';
+import { convertVsdxToReactFlow } from '../importers/visioImporter';
+import { convertDrawioToReactFlow } from '../importers/drawioImporter';
 
 const PACK_ICONS: Record<string, string> = {
   generic: '⬡', aws: '🟧', azure: '🔷', iot: '◉', k8s: '⎈',
@@ -145,8 +145,8 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       const result = await importThreatDragonModel(json);
       qc.invalidateQueries({ queryKey: ['threatmodels'] });
       onOpenModel?.(result.model.id, result.model.title);
-    } catch (err: any) {
-      setImportError(err?.response?.data?.error ?? err?.message ?? 'Import failed');
+    } catch (err: unknown) {
+      setImportError((err as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error ?? (err as Error)?.message ?? 'Import failed');
     } finally {
       setImporting(false);
     }
@@ -171,8 +171,8 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       onOpenModel?.(model.id, model.title);
       if (warnings.length > 0) console.warn('Gliffy import warnings:', warnings);
       if (stats.skipped > 0) console.info(`Gliffy: skipped ${stats.skipped} objects`);
-    } catch (err: any) {
-      setImportError(err?.message ?? 'Gliffy import failed');
+    } catch (err: unknown) {
+      setImportError((err as Error)?.message ?? 'Gliffy import failed');
     } finally {
       setImporting(false);
     }
@@ -195,8 +195,8 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       onOpenModel?.(model.id, model.title);
       if (warnings.length > 0) console.warn('Visio import warnings:', warnings);
       if (stats.skipped > 0) console.info(`Visio: skipped ${stats.skipped} objects`);
-    } catch (err: any) {
-      setImportError(err?.message ?? 'Visio import failed');
+    } catch (err: unknown) {
+      setImportError((err as Error)?.message ?? 'Visio import failed');
     } finally {
       setImporting(false);
     }
@@ -220,8 +220,8 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       onOpenModel?.(model.id, model.title);
       if (warnings.length > 0) console.warn('Draw.io import warnings:', warnings);
       if (stats.skipped > 0) console.info(`Draw.io: skipped ${stats.skipped} objects`);
-    } catch (err: any) {
-      setImportError(err?.message ?? 'Draw.io import failed');
+    } catch (err: unknown) {
+      setImportError((err as Error)?.message ?? 'Draw.io import failed');
     } finally {
       setImporting(false);
     }
@@ -329,7 +329,6 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
       {importError && (
         <div style={{ padding: '12px 16px', background: 'rgba(255,77,79,0.08)', border: '1px solid var(--error)', borderRadius: '8px', color: 'var(--error)', fontSize: '13px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Import failed: {importError}</span>
-          <button aria-label="Dismiss Error" onClick={() => setImportError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px' }}>×</button>
           <button aria-label="Dismiss error" onClick={() => setImportError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '16px' }}>×</button>
         </div>
       )}
@@ -400,7 +399,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
                   <div style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: 500 }}>{t.name}</div>
                   {t.description && <div style={{ fontSize: '11px', color: 'var(--on-surface-muted)', marginTop: '4px' }}>{t.description}</div>}
                   <div style={{ fontSize: '10px', color: 'var(--on-surface-muted)', marginTop: '6px' }}>
-                    {(t.diagram_json as any)?.nodes?.length ?? 0} nodes · {(t.diagram_json as any)?.edges?.length ?? 0} edges
+                    {(t.diagram_json as Record<string, { length?: number }>)?.nodes?.length ?? 0} nodes · {(t.diagram_json as Record<string, { length?: number }>)?.edges?.length ?? 0} edges
                   </div>
                 </div>
               ))}

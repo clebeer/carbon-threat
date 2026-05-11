@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * ReactFlow mock — replaces the real package in jsdom tests.
  *

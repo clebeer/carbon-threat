@@ -86,24 +86,6 @@ describe('convertVsdxToReactFlow', () => {
   });
 
   it('converts connectors to edges', async () => {
-    const pageXml = `<?xml version="1.0" encoding="UTF-8"?>
-    <PageContents xmlns="http://schemas.microsoft.com/office/visio/2012/main">
-      <Shapes>
-        <Shape ID="1" Name="Server">
-          <Text>Server A</Text>
-        </Shape>
-        <Shape ID="2" Name="Server">
-          <Text>Server B</Text>
-        </Shape>
-        <Shape ID="3" Name="Dynamic connector" Type="Connector">
-          <Text>HTTPS</Text>
-          <Connects>
-            <Connect FromSheet="1" ToSheet="3"/>
-          </Connects>
-        </Shape>
-      </Shapes>
-    </PageContents>`;
-
     // Build a more realistic connector scenario:
     // The connector has Connects with FromSheet/ToSheet pointing to shape IDs
     const pageXmlWithConn = `<?xml version="1.0" encoding="UTF-8"?>

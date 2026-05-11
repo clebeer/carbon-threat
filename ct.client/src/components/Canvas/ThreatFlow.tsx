@@ -134,6 +134,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   // Load model content
   useEffect(() => {
     if (!modelId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActivePack(localStorage.getItem(`ct_pack_${modelId}`) ?? 'generic');
     getThreatModel(modelId).then(({ content }) => {
       const loadedNodes = (content as Record<string, unknown>)?.nodes;
@@ -275,17 +276,20 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
     }));
   }, [nodes, setNodes, pushSnapshot]);
 
-  // Wire shared refs for sub-components
-  cyberNodeState.activePack = currentPack;
+  // Wire shared refs for sub-components via effect (avoid modifying external state during render)
+  useEffect(() => {
+    cyberNodeState.activePack = currentPack;
+  }, [currentPack]);
 
-  // Wire toolbar actions for mini-toolbar
-  const toolbarActions = {
-    onDelete: (id: string) => { pushSnapshot(); setNodes((ns: Node<CyberNodeData>[]) => ns.filter(n => n.id !== id)); },
-    onDuplicate: (id: string) => { const n = nodes.find(n => n.id === id); if (n) addNode(n.data.kind, { x: n.position.x + 120, y: n.position.y + 40 }); },
-    onRename: (id: string) => { const n = nodes.find(n => n.id === id); if (n) setRenaming(n); },
-    onConnect: (id: string) => { setSelectedNode(nodes.find(n => n.id === id) ?? null); },
-  };
-  cyberNodeState.toolbarActions = toolbarActions;
+  // Wire toolbar actions for mini-toolbar via ref
+  useEffect(() => {
+    cyberNodeState.toolbarActions = {
+      onDelete: (id: string) => { pushSnapshot(); setNodes((ns: Node<CyberNodeData>[]) => ns.filter(n => n.id !== id)); },
+      onDuplicate: (id: string) => { const n = nodes.find(n => n.id === id); if (n) addNode(n.data.kind, { x: n.position.x + 120, y: n.position.y + 40 }); },
+      onRename: (id: string) => { const n = nodes.find(n => n.id === id); if (n) setRenaming(n); },
+      onConnect: (id: string) => { setSelectedNode(nodes.find(n => n.id === id) ?? null); },
+    };
+  }, [nodes, pushSnapshot, setNodes, addNode]);
 
   // ── Import diagram from external formats ──────────────────────────────────
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
-import { listThreatModels, getThreatModel, type ThreatModelSummary } from '../api/threatmodels';
+import { listThreatModels, type ThreatModelSummary } from '../api/threatmodels';
 import { listThreats, type Threat } from '../api/threats';
 import { apiClient } from '../api/client';
 import ExportIssuesModal from '../components/ExportIssuesModal';
@@ -84,6 +84,7 @@ function badge(
   const pad = 3;
   doc.setFontSize(7.5);
   const tw = doc.getTextWidth(text);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   doc.setFillColor(rgb[0], rgb[1], rgb[2], 0.15 as any);
   // Approximate background with low-opacity fill via a light tint
   doc.setFillColor(
@@ -187,7 +188,7 @@ function generateModelPDF(model: ThreatModelSummary, threats: Threat[]) {
   const cardW = (CONTENT_W - 8) / 3;
   const cardH = 22;
   const startX = 22;
-  let statsY = ty + 38;
+  const statsY = ty + 38;
 
   stats.forEach((s, i) => {
     const col = i % 3;
@@ -553,8 +554,8 @@ export default function ReportsView() {
       a.download = `carbonthreat-${slug}.sarif.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setDownloadError(`SARIF export failed for "${model.title}": ${err?.message ?? 'unknown error'}`);
+    } catch (err: unknown) {
+      setDownloadError(`SARIF export failed for "${model.title}": ${(err as Error)?.message ?? 'unknown error'}`);
     } finally {
       setSarifing(null);
     }
@@ -566,8 +567,8 @@ export default function ReportsView() {
     try {
       const threats = await listThreats({ modelId: model.id });
       generateModelPDF(model, threats);
-    } catch (err: any) {
-      setDownloadError(`Failed to generate report for "${model.title}": ${err?.message ?? 'unknown error'}`);
+    } catch (err: unknown) {
+      setDownloadError(`Failed to generate report for "${model.title}": ${(err as Error)?.message ?? 'unknown error'}`);
     } finally {
       setDownloading(null);
     }

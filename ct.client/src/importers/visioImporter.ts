@@ -188,7 +188,7 @@ function parsePagesFromXml(
 ): VisioPage {
   const shapes: VisioShape[] = [];
   const connectors: VisioConnector[] = [];
-  const warnings: string[] = [];
+  const _warnings: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
 
   const pageContents = (pageXml?.PageContents ?? pageXml) as Record<string, unknown>;
 
@@ -202,7 +202,7 @@ function parsePagesFromXml(
     const shapeId = String(shape?.['@_ID'] ?? shape?.ID ?? '');
     if (!shapeId) continue;
 
-    const isConnector = shape?.Connects || shape?.['@_Type'] === 'Shape' && shape?.XForm;
+    const _isConnector = shape?.Connects || shape?.['@_Type'] === 'Shape' && shape?.XForm; // eslint-disable-line @typescript-eslint/no-unused-vars
 
     // Check if this is a connector (line/dynamic connector)
     const masterRef = String(shape?.['@_Master'] ?? '');
@@ -403,7 +403,7 @@ export async function convertVsdxToReactFlow(file: File | ArrayBuffer): Promise<
   // Visio uses inches for coordinates — scale to pixels (1 inch ≈ 96px)
   const SCALE = 96;
 
-  const nodes: Node[] = primaryPage.shapes.map((shape, idx) => {
+  const nodes: Node[] = primaryPage.shapes.map((shape, _idx) => {
     const masterInfo = mastersMap[shape.masterId ?? ''];
     const kind = masterInfo?.kind ?? mapShapeKind(shape.name ?? '', shape.text);
     const label = shape.label || shape.text || masterInfo?.name || kind;

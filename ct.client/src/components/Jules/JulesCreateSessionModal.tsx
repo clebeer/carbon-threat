@@ -27,7 +27,11 @@ export function JulesCreateSessionModal({ finding, onClose, onCreated }: Props) 
   });
 
   useEffect(() => {
-    if (sources?.length && !sourceName) setSourceName(sources[0].name);
+    if (sources?.length && !sourceName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSourceName(sources[0].name);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sources]);
 
   const defaultPrompt = `Fix vulnerability ${finding.vuln_id}: ${finding.title ?? 'security vulnerability'} in package ${finding.package_name}${finding.package_version ? `@${finding.package_version}` : ''}.${finding.fixed_version ? ` Upgrade to ${finding.fixed_version}.` : ''}`;

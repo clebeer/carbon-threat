@@ -1,7 +1,7 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { CyberNodeData } from './CyberNode';
 
-export function TrustBoundaryNode({ data, id }: NodeProps<CyberNodeData>) {
+export function TrustBoundaryNode({ data }: NodeProps<CyberNodeData>) {
   return (
     <div style={{
       width: '100%', height: '100%',
