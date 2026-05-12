@@ -332,6 +332,7 @@ export default function AdminView() {
                             deactivateMutation.mutate(user.id);
                           }
                         }}
+                        aria-label="Deactivate user"
                         title="Deactivate user"
                         style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
                       >
