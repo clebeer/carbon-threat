@@ -1,7 +1,5 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ReactGridLayout = require('react-grid-layout');
 import jsPDF from 'jspdf';
 import { apiClient } from '../api/client';
 import { listThreatModels, type ThreatModelSummary } from '../api/threatmodels';
@@ -22,7 +20,7 @@ interface HealthzResponse { status: string; uptime?: number }
 export default function DashboardView() {
   const user      = useAuthStore((s: any) => s.user); // eslint-disable-line @typescript-eslint/no-explicit-any
   const dashRef   = useRef<HTMLDivElement>(null);
-  const { layout, isLoaded, loadLayout, setLayout, persistLayout, resetLayout } = useDashboardStore();
+  const { loadLayout, resetLayout } = useDashboardStore();
 
   // Load persisted layout on mount
   useEffect(() => { loadLayout(); }, [loadLayout]);
@@ -95,14 +93,6 @@ export default function DashboardView() {
     { label: 'Scanned Pkgs', value: totalPackagesScanned, color: '#06b6d4', sub: 'dependencies checked' },
     { label: 'OWASP Refs', value: owaspRefCount, color: '#f59e0b', sub: 'standards mapped' },
   ];
-
-  // ── Layout persistence ────────────────────────────────────────────────────
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleLayoutChange = useCallback((newLayout: any) => {
-    setLayout(newLayout);
-    persistLayout();
-  }, [setLayout, persistLayout]);
 
   // ── Exports ───────────────────────────────────────────────────────────────
 
@@ -201,16 +191,6 @@ export default function DashboardView() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const currentLayout = isLoaded && layout.length > 0 ? layout : [
-    { i: 'stats',      x: 0, y: 0, w: 12, h: 3, minW: 6 },
-    { i: 'stride',     x: 0, y: 3, w: 5,  h: 4, minW: 3 },
-    { i: 'severity',   x: 5, y: 3, w: 7,  h: 4, minW: 4 },
-    { i: 'heatmap',    x: 0, y: 7, w: 12, h: 4, minW: 8 },
-    { i: 'top-threats',x: 0, y: 11,w: 7,  h: 5, minW: 5 },
-    { i: 'sys-activity',x:7, y: 11,w: 5,  h: 5, minW: 3 },
-    { i: 'scans',      x: 0, y: 16,w: 12, h: 4, minW: 6 },
-  ];
-
   return (
     <div ref={dashRef} style={{ padding: '32px', paddingTop: '96px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
 
@@ -251,46 +231,35 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* ── Grid Layout ── */}
-      <ReactGridLayout
-        layout={currentLayout}
-        cols={12}
-        rowHeight={60}
-        width={dashRef.current?.offsetWidth ?? 1200}
-        draggableHandle=".glass-panel"
-        onLayoutChange={handleLayoutChange}
-        isResizable={true}
-        isDraggable={true}
-        compactType="vertical"
-        margin={[16, 16]}
-      >
-        {/* Stats */}
-        <div key="stats">
-          <StatsRow stats={stats} />
-        </div>
+      {/* ── Stats Row ── */}
+      <div style={{ marginBottom: '24px' }}>
+        <StatsRow stats={stats} />
+      </div>
 
-        {/* STRIDE donut */}
-        <div key="stride" className="glass-panel" style={{ padding: '20px' }}>
+      {/* ── Charts Row ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '16px', marginBottom: '16px' }}>
+        <div className="glass-panel" style={{ padding: '20px' }}>
           <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '16px' }}>STRIDE DISTRIBUTION</div>
           <StrideChart threats={allThreats} />
         </div>
-
-        {/* Severity bar */}
-        <div key="severity" className="glass-panel" style={{ padding: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px' }}>
           <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '16px' }}>SEVERITY BY STATUS</div>
           <SeverityChart threats={allThreats} />
         </div>
+      </div>
 
-        {/* Risk heatmap */}
-        <div key="heatmap" className="glass-panel" style={{ padding: '20px' }}>
-          <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
-            RISK HEATMAP — STRIDE × SEVERITY
-          </div>
-          <RiskHeatmap threats={allThreats} />
+      {/* ── Risk Heatmap ── */}
+      <div className="glass-panel" style={{ padding: '20px', marginBottom: '16px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
+          RISK HEATMAP — STRIDE × SEVERITY
         </div>
+        <RiskHeatmap threats={allThreats} />
+      </div>
 
+      {/* ── Threats + Activity Row ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: '16px', marginBottom: '16px' }}>
         {/* Top threats */}
-        <div key="top-threats" className="glass-panel" style={{ padding: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px' }}>
           <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
             TOP UNMITIGATED THREATS
           </div>
@@ -320,7 +289,7 @@ export default function DashboardView() {
         </div>
 
         {/* System + Activity */}
-        <div key="sys-activity" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="glass-panel" style={{ padding: '16px 20px' }}>
             <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '12px' }}>SYSTEM</div>
             {[
@@ -340,46 +309,46 @@ export default function DashboardView() {
             <ActivityLog logs={auditData?.logs ?? []} />
           </div>
         </div>
+      </div>
 
-        {/* Recent Scans */}
-        <div key="scans" className="glass-panel" style={{ padding: '20px' }}>
-          <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
-            RECENT VULNERABILITY SCANS
-          </div>
-          {recentScans.length === 0 ? (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--on-surface-muted)', fontSize: '13px' }}>
-              No vulnerability scans found. Run a scan in the Scanner module to view activity.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {recentScans.map(scan => {
-                const sc = scan.status === 'error' ? '#ef4444' : scan.status === 'complete' ? '#22c55e' : '#f59e0b';
-                return (
-                  <div key={scan.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${sc}` }}>
-                    <span style={{ fontSize: '12px', color: '#e2e8f0', flex: 1, fontWeight: 600 }}>{scan.name}</span>
-                    <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)', width: '90px' }}>{scan.scan_type.toUpperCase()}</span>
-                    <span style={{ fontSize: '11px', color: '#06b6d4', width: '120px' }}>{scan.packages_scanned} packages</span>
-                    <span style={{ fontSize: '11px', color: scan.vulns_found > 0 ? '#ef4444' : '#22c55e', width: '100px', fontWeight: scan.vulns_found > 0 ? 700 : 400 }}>
-                      {scan.vulns_found} vulns
-                    </span>
-                    <span style={{ fontSize: '10px', color: 'var(--on-surface-muted)', flexShrink: 0 }}>
-                      {new Date(scan.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {/* ── Recent Scans ── */}
+      <div className="glass-panel" style={{ padding: '20px', marginBottom: '16px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
+          RECENT VULNERABILITY SCANS
         </div>
+        {recentScans.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--on-surface-muted)', fontSize: '13px' }}>
+            No vulnerability scans found. Run a scan in the Scanner module to view activity.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {recentScans.map(scan => {
+              const sc = scan.status === 'error' ? '#ef4444' : scan.status === 'complete' ? '#22c55e' : '#f59e0b';
+              return (
+                <div key={scan.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${sc}` }}>
+                  <span style={{ fontSize: '12px', color: '#e2e8f0', flex: 1, fontWeight: 600 }}>{scan.name}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)', width: '90px' }}>{scan.scan_type.toUpperCase()}</span>
+                  <span style={{ fontSize: '11px', color: '#06b6d4', width: '120px' }}>{scan.packages_scanned} packages</span>
+                  <span style={{ fontSize: '11px', color: scan.vulns_found > 0 ? '#ef4444' : '#22c55e', width: '100px', fontWeight: scan.vulns_found > 0 ? 700 : 400 }}>
+                    {scan.vulns_found} vulns
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--on-surface-muted)', flexShrink: 0 }}>
+                    {new Date(scan.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-        {/* Recent Models (hidden by default, available for layout) */}
-        <div key="models" className="glass-panel" style={{ padding: '20px' }}>
-          <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
-            RECENT MODELS
-          </div>
-          <RecentModels models={models} />
+      {/* ── Recent Models ── */}
+      <div className="glass-panel" style={{ padding: '20px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--secondary)', letterSpacing: '1px', marginBottom: '14px' }}>
+          RECENT MODELS
         </div>
-      </ReactGridLayout>
+        <RecentModels models={models} />
+      </div>
     </div>
   );
 }
