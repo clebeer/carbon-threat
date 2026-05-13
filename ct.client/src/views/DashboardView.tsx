@@ -15,17 +15,6 @@ import RiskHeatmap from '../components/dashboard/RiskHeatmap';
 import RecentModels from '../components/dashboard/RecentModels';
 import ActivityLog, { type AuditRow } from '../components/dashboard/ActivityLog';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function hexToRgb(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return [isNaN(r) ? 128 : r, isNaN(g) ? 128 : g, isNaN(b) ? 128 : b];
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface HealthzResponse { status: string; uptime?: number }
