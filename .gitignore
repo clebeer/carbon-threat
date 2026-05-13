@@ -68,6 +68,9 @@
 !docs/assets/images/*.png
 !docs/assets/schemas
 !docs/assets/schemas/*.json
+!docs/superpowers/
+!docs/superpowers/specs/
+!docs/superpowers/specs/*.md
 
 # Express server
 !td.server
