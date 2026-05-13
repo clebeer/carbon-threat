@@ -22,6 +22,34 @@ Copy `.env.example` to `.env` and fill in your values before starting.
 | `DB_PASSWORD` | Yes | PostgreSQL password |
 | `DB_NAME` | Yes | Database name |
 
+## Backup Storage
+
+| Variable | Default | Description |
+|---|---|---|
+| `BACKUP_DIR` | `./backups` | Local directory for backup files |
+| `BACKUP_ENCRYPTION_KEY` | — | Optional encryption key for backup files at rest |
+
+### SFTP Storage
+
+| Variable | Default | Description |
+|---|---|---|
+| `SFTP_HOST` | — | SFTP server hostname |
+| `SFTP_PORT` | `22` | SFTP server port |
+| `SFTP_USER` | — | SFTP username |
+| `SFTP_PASSWORD` | — | SFTP password (use secrets manager in production) |
+| `SFTP_PRIVATE_KEY_PATH` | — | Path to SSH private key (alternative to password) |
+| `SFTP_REMOTE_DIR` | `/backups` | Remote directory for backup uploads |
+
+### Google Drive Storage
+
+| Variable | Default | Description |
+|---|---|---|
+| `GDRIVE_CLIENT_ID` | — | Google OAuth client ID |
+| `GDRIVE_CLIENT_SECRET` | — | Google OAuth client secret |
+| `GDRIVE_REDIRECT_URI` | — | OAuth redirect URI |
+| `GDRIVE_REFRESH_TOKEN` | — | Long-lived refresh token for API access |
+| `GDRIVE_FOLDER_ID` | — | Google Drive folder ID for backup uploads |
+
 ## Default Admin
 
 | Variable | Description |

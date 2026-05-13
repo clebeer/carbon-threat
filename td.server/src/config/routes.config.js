@@ -26,6 +26,9 @@ import * as vulnSyncController from '../controllers/vulnSync.js';
 import * as osvScannerController from '../controllers/osvScannerController.js';
 import * as attackController from '../controllers/attackController.js';
 import * as julesController from '../controllers/julesController.js';
+import * as assetLibraryController from '../controllers/assetLibraryController.js';
+import * as dashboardController from '../controllers/dashboardController.js';
+import * as backupController from '../controllers/backupController.js';
 import { requireRole } from '../auth/rbac.js';
 import { auditMiddleware } from '../security/audit.js';
 
@@ -243,6 +246,26 @@ const routes = (router) => {
     router.post('/api/jules/sessions/:id/approve', requireRole('admin', 'analyst'), julesController.approveSessionPlan);
     router.post('/api/jules/sessions/:id/message', requireRole('admin', 'analyst'), julesController.sendSessionMessage);
     router.delete('/api/jules/sessions/:id', requireRole('admin'), julesController.deleteSession);
+
+    // ── Asset Library (import JSON/CSV) ──────────────────────────────────────
+    router.post('/api/assets/import', requireRole('admin', 'analyst'), auditMiddleware('ASSET_IMPORT'), assetLibraryController.importAssets);
+    router.get('/api/assets/library', assetLibraryController.listLibraryAssets);
+    router.delete('/api/assets/library/:id', requireRole('admin', 'analyst'), auditMiddleware('ASSET_DELETE'), assetLibraryController.deleteLibraryAsset);
+
+    // ── Dashboard Layout (per-user) ──────────────────────────────────────────
+    router.get('/api/dashboard/layout', dashboardController.getLayout);
+    router.put('/api/dashboard/layout', dashboardController.saveLayout);
+    router.post('/api/dashboard/layout/reset', dashboardController.resetLayout);
+
+    // ── Backup System ────────────────────────────────────────────────────────
+    router.get('/api/backups', requireRole('admin'), backupController.listBackups);
+    router.post('/api/backups', requireRole('admin'), auditMiddleware('BACKUP_CREATE'), backupController.createBackup);
+    router.get('/api/backups/:id/download', requireRole('admin'), backupController.downloadBackup);
+    router.post('/api/backups/restore', requireRole('admin'), auditMiddleware('BACKUP_RESTORE'), backupController.restoreFromBackup);
+    router.delete('/api/backups/:id', requireRole('admin'), auditMiddleware('BACKUP_DELETE'), backupController.deleteBackup);
+    router.get('/api/backups/schedules', requireRole('admin'), backupController.listSchedules);
+    router.post('/api/backups/schedules', requireRole('admin'), auditMiddleware('BACKUP_SCHEDULE_CREATE'), backupController.createSchedule);
+    router.delete('/api/backups/schedules/:id', requireRole('admin'), auditMiddleware('BACKUP_SCHEDULE_DELETE'), backupController.deleteSchedule);
 };
 
 const config = (app) => {

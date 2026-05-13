@@ -1,6 +1,6 @@
 # Database Schema
 
-PostgreSQL. Migrations are in `td.server/src/db/migrations/` and run automatically at startup.
+PostgreSQL. Migrations are in `td.server/src/db/migrations/` and run automatically at startup. There are 15 migrations (001–015).
 
 ## Core tables
 
@@ -201,3 +201,61 @@ Append-only — no UPDATE/DELETE on this table.
 - `integrations` — external platform configs (Jira, GitHub Issues, etc.)
 - `assets` — derived from threat model nodes (type, name, threat_model_id)
 - `tokens` — refresh token registry for revocation
+
+## Phase 3 tables
+
+### `assets_library` (migration 013)
+
+Imported asset definitions — reusable across threat models.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `org_id` | UUID | Organization scope (multi-tenant) |
+| `name` | string | Asset display name |
+| `kind` | string | Stencil kind (e.g. `server`, `db`, `fw`, `oci-instance`) |
+| `description` | text | |
+| `properties` | JSONB | Custom key/value properties |
+| `created_by` | UUID FK → users | |
+| `created_at` / `updated_at` | timestamp | |
+
+### `dashboard_layouts` (migration 014)
+
+Per-user dashboard widget layout persistence.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → users UNIQUE | One layout per user |
+| `layout_config` | JSONB | Array of `LayoutItem` objects `{i, x, y, w, h, minW?, minH?}` |
+| `updated_at` | timestamp | |
+
+### `backups` (migration 015)
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `name` | string | Auto-generated or user-provided |
+| `status` | string | `pending` \| `running` \| `complete` \| `error` |
+| `storage_type` | string | `local` \| `sftp` \| `gdrive` |
+| `file_path` | string | Local path or remote identifier |
+| `file_size` | bigint | Size in bytes |
+| `metadata` | JSONB | Tables + row counts at backup time |
+| `error_message` | text | Set on failure |
+| `created_by` | UUID FK → users | |
+| `started_at` / `finished_at` | timestamp | |
+| `created_at` / `updated_at` | timestamp | |
+
+### `backup_schedules` (migration 015)
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | UUID PK | |
+| `name` | string | Schedule display name |
+| `frequency` | string | `daily` \| `weekly` \| `monthly` |
+| `cron_expression` | string | Optional custom cron |
+| `storage_type` | string | `local` \| `sftp` \| `gdrive` |
+| `storage_config` | JSONB | Provider-specific config (host, path, credentials ref) |
+| `is_active` | boolean | Pause/resume |
+| `last_run_at` | timestamp | |
+| `created_at` / `updated_at` | timestamp | |

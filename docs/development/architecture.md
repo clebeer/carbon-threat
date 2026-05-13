@@ -32,6 +32,26 @@ PostgreSQL
 - Knex queries stay in repositories.
 - Column names: `snake_case`. JS variables: `camelCase`. Constants: `SCREAMING_SNAKE_CASE`.
 
+## Phase 3 Modules
+
+### Backend (td.server)
+
+| Module | Files | Description |
+|---|---|---|
+| Asset Library | `controllers/assetLibraryController.js` | Import JSON/CSV asset lists into `assets_library` table |
+| Dashboard Layout | `controllers/dashboardController.js` | Per-user dashboard widget layout CRUD |
+| Backup System | `controllers/backupController.js`, `services/backupService.js` | Full backup/restore pipeline with local, SFTP, and Google Drive storage |
+| Backup Scheduler | `services/backupService.js` (node-cron) | Cron-based automatic backup execution |
+
+### Frontend (ct.client)
+
+| Module | Files | Description |
+|---|---|---|
+| Asset Importer | `importers/assetListImporter.ts`, `components/AssetImportModal.tsx` | Parse JSON/CSV, preview, and batch-import assets |
+| Asset API | `api/assets.ts` | API client for asset library endpoints |
+| Dashboard Store | `store/dashboardStore.ts`, `api/dashboard.ts` | Zustand store + API client for persistent widget layouts |
+| Backup UI | `views/BackupView.tsx`, `api/backup.ts` | Backup management with create, download, restore, and schedules |
+
 ## Authentication
 
 - **Local auth**: email + bcrypt password, returns JWT access + refresh tokens.

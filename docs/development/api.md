@@ -20,6 +20,35 @@ The full interactive API is available at `/api-docs` (Swagger UI) when the serve
 | `POST` | `/api/auth/sso/saml/callback` | SAML assertion callback |
 | `POST` | `/api/logout` | Logout (invalidates refresh token) |
 
+### Asset Library
+
+| Method | Path | Roles | Description |
+|---|---|---|---|
+| `POST` | `/api/assets/import` | admin, analyst | Import assets from JSON/CSV text. Body: `{data: string, format: 'json'\|'csv'}` |
+| `GET` | `/api/assets/library` | any authenticated | List all imported library assets |
+| `DELETE` | `/api/assets/library/:id` | admin, analyst | Delete a library asset |
+
+### Dashboard Layout
+
+| Method | Path | Roles | Description |
+|---|---|---|---|
+| `GET` | `/api/dashboard/layout` | any authenticated | Get the user's dashboard widget layout |
+| `PUT` | `/api/dashboard/layout` | any authenticated | Save layout. Body: `{layout: LayoutItem[]}` |
+| `POST` | `/api/dashboard/layout/reset` | any authenticated | Reset layout to defaults |
+
+### Backup & Restore
+
+| Method | Path | Roles | Description |
+|---|---|---|---|
+| `GET` | `/api/backups` | admin | List backup records |
+| `POST` | `/api/backups` | admin | Create a new backup. Body: `{name?, storage_type?}` |
+| `GET` | `/api/backups/:id/download` | admin | Download backup as JSON file |
+| `POST` | `/api/backups/restore` | admin | Restore from backup JSON. Body: `{data: object}` |
+| `DELETE` | `/api/backups/:id` | admin | Delete a backup record |
+| `GET` | `/api/backups/schedules` | admin | List backup schedules |
+| `POST` | `/api/backups/schedules` | admin | Create schedule. Body: `{name, frequency, storage_type?}` |
+| `DELETE` | `/api/backups/schedules/:id` | admin | Delete a schedule |
+
 ### Users (admin only unless noted)
 
 | Method | Path | Roles | Description |
