@@ -1,13 +1,19 @@
-var appFactory = require('./src/app.js');
+const appFactory = require('./src/app.js');
+const loggerHelper = require('./src/helpers/logger.helper.js').default;
 
-var app = appFactory.default.create();
+const logger = loggerHelper.get('dev.js');
 
-var server = app.listen(app.get('port'), function() {
-    console.log('Development server listening at ' + server.address().address + ' on port ' +  server.address().port);
-});
+const createServer = async () => {
+    const app = await appFactory.default.create();
+    const server = app.listen(app.get('port'), function() {
+        logger.info('Development server listening at ' + server.address().address + ' on port ' + server.address().port);
+    });
+};
 
-process.once('SIGUSR2', 
-  function () { 
-    process.kill(process.pid, 'SIGUSR2'); 
+createServer();
+
+process.once('SIGUSR2',
+  function () {
+    process.kill(process.pid, 'SIGUSR2');
   }
 );
