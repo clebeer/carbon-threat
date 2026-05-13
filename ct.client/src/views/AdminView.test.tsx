@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -196,6 +196,9 @@ describe('AdminView', () => {
 
   describe('deactivate user', () => {
     it('calls DELETE /api/users/:id when deactivate is triggered', async () => {
+      // jsdom does not implement window.confirm — mock it to return true
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
       let deleteCalled = false;
       server.use(
         http.delete('/api/users/:id', () => {
@@ -212,6 +215,8 @@ describe('AdminView', () => {
         await user.click(deactivateBtns[0]);
         await waitFor(() => expect(deleteCalled).toBe(true), { timeout: 3000 });
       }
+
+      confirmSpy.mockRestore();
     });
   });
 

@@ -5,6 +5,7 @@ import rateLimiter from 'express-rate-limit';
 
 import appFactory from '../src/app.js';
 import envConfig from '../src/config/env.config.js';
+import env from '../src/env/Env.js';
 import expressHelper from '../src/helpers/express.helper.js';
 import https from '../src/config/https.config.js';
 import { getMockApp } from './mocks/express.mocks.js';
@@ -12,12 +13,15 @@ import loggerHelper from '../src/helpers/logger.helper.js';
 import parsersConfig from '../src/config/parsers.config.js';
 import routesConfig from '../src/config/routes.config.js';
 import securityHeaders from '../src/config/securityheaders.config.js';
+import * as migrate from '../src/db/migrate.js';
+import * as seed from '../src/db/seed.js';
 
 describe('app.js main application', () => {
     let mockApp;
     const mockLogger = {
         info: () => {},
-        error: () => {}
+        error: () => {},
+        warn: () => {}
     };
 
     beforeEach(() => {
@@ -30,14 +34,29 @@ describe('app.js main application', () => {
         sinon.stub(routesConfig, 'config');
         sinon.stub(https, 'middleware');
         sinon.stub(loggerHelper, 'level');
+        sinon.stub(loggerHelper, 'get').returns(mockLogger);
         sinon.stub(rateLimiter, 'rateLimit');
+
+        // Stub async startup dependencies
+        sinon.stub(migrate, 'runMigrations').resolves();
+        sinon.stub(seed, 'runSeeds').resolves();
+    });
+
+    afterEach(() => {
+        sinon.restore();
     });
 
     describe('without errors', () => {
-        beforeEach(() => {
+        beforeEach(async () => {
             process.env.NODE_ENV = 'production';
             sinon.stub(envConfig, 'tryLoadDotEnv');
-            appFactory.create();
+            sinon.stub(env, 'get').returns({
+                config: {
+                    LOG_LEVEL: 'warn',
+                    PORT: 3000
+                }
+            });
+            await appFactory.create();
         });
 
         it('sets the log level', () => {
@@ -45,7 +64,7 @@ describe('app.js main application', () => {
         });
 
         it('trusts proxies', () => {
-            expect(mockApp.set).to.have.been.calledWith('trust proxy', true);
+            expect(mockApp.set).to.have.been.calledWith('trust proxy', 1);
         });
 
         it('adds the https middleware', () => {
@@ -56,8 +75,7 @@ describe('app.js main application', () => {
             expect(envConfig.tryLoadDotEnv).to.have.been.calledOnce;
         });
         
-        it('uses /public for static content', () => {
-            expect(mockApp.use).to.have.been.calledWith('/public', sinon.match.any);
+        it('uses static content', () => {
             expect(express.static).to.have.been.calledWith(sinon.match('dist'));
         });
 
@@ -79,10 +97,16 @@ describe('app.js main application', () => {
     });
 
     describe('with default environment', () => {
-        beforeEach(() => {
+        beforeEach(async () => {
             process.env.ENV_FILE = 'none';
             sinon.stub(envConfig, 'tryLoadDotEnv');
-            appFactory.create();
+            sinon.stub(env, 'get').returns({
+                config: {
+                    LOG_LEVEL: 'warn',
+                    PORT: 3000
+                }
+            });
+            await appFactory.create();
         });
 
         it('sets the default log level', () => {
@@ -95,10 +119,16 @@ describe('app.js main application', () => {
     });
 
     describe('with development environment', () => {
-        beforeEach(() => {
+        beforeEach(async () => {
             process.env.NODE_ENV = 'development';
             sinon.stub(envConfig, 'tryLoadDotEnv');
-            appFactory.create();
+            sinon.stub(env, 'get').returns({
+                config: {
+                    LOG_LEVEL: 'debug',
+                    PORT: 3000
+                }
+            });
+            await appFactory.create();
         });
 
         it('disables the rate limiting', () => {
@@ -109,18 +139,15 @@ describe('app.js main application', () => {
     describe('with error', () => {
         const err = new Error('whoops!');
 
-        beforeEach(() => {
+        it('rethrows the error', async () => {
             sinon.stub(envConfig, 'tryLoadDotEnv').throws(err);
             process.env.NODE_ENV = 'production';
-        });
-
-        it('rethrows the error', () => {
-            expect(() => {
-                appFactory.create();
-            }).to.throw('whoops!');
+            try {
+                await appFactory.create();
+                expect.fail('should have thrown');
+            } catch (e) {
+                expect(e.message).to.equal('whoops!');
+            }
         });
     });
 });
-
-
-

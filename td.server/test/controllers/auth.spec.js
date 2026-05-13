@@ -67,8 +67,10 @@ describe('controllers/auth.js', () => {
         describe('with refresh token', () => {
             // auth.logout now uses sendResponseAsync (async) — await the call
             beforeEach(async () => {
+                sinon.stub(tokenRepo, 'verify').resolves({ user: { id: 'user1' } });
                 sinon.stub(tokenRepo, 'remove').resolves();
                 mockRequest.body.refreshToken = refresh;
+                mockRequest.user = { id: 'user1' };
                 await auth.logout(mockRequest, mockResponse);
             });
 

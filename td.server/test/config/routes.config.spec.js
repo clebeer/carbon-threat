@@ -133,6 +133,8 @@ describe('config/routes.config.js routes', () => {
         it('routes POST /api/threatmodel/:organisation/:repo/:branch/:model/create', () => {
             expect(mockRouter.post).to.have.been.calledWith(
                 '/api/threatmodel/:organisation/:repo/:branch/:model/create',
+                sinon.match.func,
+                sinon.match.func,
                 threatmodelController.create
             );
         });
@@ -140,6 +142,8 @@ describe('config/routes.config.js routes', () => {
         it('routes PUT /api/threatmodel/:organisation/:repo/:branch/:model/update', () => {
             expect(mockRouter.put).to.have.been.calledWith(
                 '/api/threatmodel/:organisation/:repo/:branch/:model/update',
+                sinon.match.func,
+                sinon.match.func,
                 threatmodelController.update
             );
         });
@@ -156,6 +160,8 @@ describe('config/routes.config.js routes', () => {
         it('routes POST /api/googleproviderthreatmodel/:folder/create', () => {
             expect(mockRouter.post).to.have.been.calledWith(
                 '/api/googleproviderthreatmodel/:folder/create',
+                sinon.match.func,
+                sinon.match.func,
                 googleProviderThreatmodelController.create
             );
         });
@@ -163,6 +169,8 @@ describe('config/routes.config.js routes', () => {
         it('routes PUT /api/googleproviderthreatmodel/:file/update', () => {
             expect(mockRouter.put).to.have.been.calledWith(
                 '/api/googleproviderthreatmodel/:file/update',
+                sinon.match.func,
+                sinon.match.func,
                 googleProviderThreatmodelController.update
             );
         });

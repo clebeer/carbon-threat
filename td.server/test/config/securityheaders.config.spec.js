@@ -14,9 +14,9 @@ describe('config/securityHeaders.config.js', () => {
         sinon.stub(helmet, 'frameguard');
         sinon.stub(helmet, 'hidePoweredBy');
         sinon.stub(helmet, 'noSniff');
-        sinon.stub(helmet, 'xssFilter');
         sinon.stub(helmet, 'referrerPolicy');
         sinon.stub(helmet, 'contentSecurityPolicy');
+        sinon.stub(helmet, 'permittedCrossDomainPolicies');
         securityHeaders.config(mockApp, true);
     });
 
@@ -45,10 +45,6 @@ describe('config/securityHeaders.config.js', () => {
         expect(helmet.noSniff).to.have.been.calledOnce;
     });
 
-    it('adds an xss filter', () => {
-        expect(helmet.xssFilter).to.have.been.calledOnce;
-    });
-
     it('adds the referrer policy', () => {
         const expected = {
             policy: 'strict-origin-when-cross-origin'
@@ -58,5 +54,9 @@ describe('config/securityHeaders.config.js', () => {
 
     it('adds a CSP', () => {
         expect(helmet.contentSecurityPolicy).to.have.been.calledWith(sinon.match.object);
+    });
+
+    it('adds permitted cross domain policies', () => {
+        expect(helmet.permittedCrossDomainPolicies).to.have.been.calledWith({ permittedPolicies: 'none' });
     });
 });
