@@ -563,7 +563,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           <div style={{ position: 'absolute', bottom: '24px', right: '24px', zIndex: 25, background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '16px', maxWidth: '340px', fontSize: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <span style={{ fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.5px' }}>🔍 DIAGRAM VALIDATION</span>
-              <button onClick={() => setShowValidation(false)} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '14px' }}>✕</button>
+              <button aria-label="Dismiss Validation" onClick={() => setShowValidation(false)} style={{ background: 'none', border: 'none', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '14px' }}>✕</button>
             </div>
             {validationIssues.map((issue, i) => (
               <div key={i} style={{ padding: '4px 0', color: issue.startsWith('✅') ? '#52c41a' : '#ffa940', borderBottom: i < validationIssues.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
