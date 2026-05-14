@@ -142,6 +142,8 @@ const routes = (router) => {
     router.get('/api/users/:id', requireRole('admin', 'analyst', 'viewer'), usersController.getUser);
     router.post('/api/users', requireRole('admin'), auditMiddleware('USER_CREATE'), usersController.createUser);
     router.put('/api/users/:id', requireRole('admin', 'analyst', 'viewer'), auditMiddleware('USER_UPDATE'), usersController.updateUser);
+    // SECURITY: Dedicated password change endpoint — requires current password for self-service
+    router.put('/api/users/:id/password', requireRole('admin', 'analyst', 'viewer'), auditMiddleware('USER_PASSWORD_CHANGE'), usersController.changePassword);
     router.delete('/api/users/:id', requireRole('admin'), auditMiddleware('USER_DEACTIVATE'), usersController.deleteUser);
 
     // SMTP configuration (admin only)

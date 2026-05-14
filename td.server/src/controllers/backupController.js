@@ -11,6 +11,22 @@ import { generateBackupFilename, restoreBackup, serializeBackup } from '../servi
 const logger = loggerHelper.get('controllers/backupController.js');
 
 /**
+ * SECURITY: Sanitize backup/schedule names to prevent path traversal.
+ * Rejects names containing directory separators or traversal sequences.
+ */
+function sanitizeName(name) {
+  if (!name) {return name;}
+  // Block path traversal patterns
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    return null;
+  }
+  // Limit length and strip control characters
+  const cleaned = name.replace(/[\x00-\x1f\x7f]/g, '').trim().
+substring(0, 200);
+  return cleaned || null;
+}
+
+/**
  * GET /api/backups
  * List all backups for the current org.
  */
@@ -41,6 +57,10 @@ export async function createBackup(req, res) {
     const orgId = req.user?.org_id ?? null;
     const { name, storage_type = 'local' } = req.body;
 
+    // SECURITY: Sanitize name to prevent path traversal
+    if (name && sanitizeName(name) === null) {
+      return res.status(400).json({ error: 'Invalid backup name: must not contain path separators or traversal sequences' });
+    }
     const backupName = name || `Backup ${new Date().toLocaleString()}`;
 
     // Create the backup record
@@ -195,6 +215,11 @@ export async function createSchedule(req, res) {
 
     if (!name) {
       return res.status(400).json({ error: '"name" is required' });
+    }
+
+    // SECURITY: Sanitize name to prevent path traversal
+    if (sanitizeName(name) === null) {
+      return res.status(400).json({ error: 'Invalid schedule name: must not contain path separators or traversal sequences' });
     }
 
     const [schedule] = await db('backup_schedules').insert({

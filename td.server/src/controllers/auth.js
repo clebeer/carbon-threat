@@ -97,16 +97,22 @@ const logout = (req, res) => responseWrapper.sendResponseAsync(async () => {
 const refresh = async (req, res) => {
     logger.debug(`API refresh request: ${logger.transformToString(req)}`);
 
-    const tokenBody = await tokenRepo.verify((req.body || {}).refreshToken);
+    const oldRefreshToken = (req.body || {}).refreshToken;
+    const tokenBody = await tokenRepo.verify(oldRefreshToken);
     if (!tokenBody) {
         return errors.unauthorized(res, logger);
     }
     return responseWrapper.sendResponseAsync(async () => {
         const { provider, user } = tokenBody;
-        const { accessToken } = await jwtHelper.createAsync(provider.name, provider, user);
 
-        // Limit the time refresh tokens live, so do not provide a new one.
-        return { accessToken, refreshToken: (req.body || {}).refreshToken };
+        // SECURITY FIX (FIX-4): Refresh token rotation.
+        // Remove the old refresh token and issue a new one on every refresh.
+        // This limits the window of exploitation if a token is intercepted.
+        await tokenRepo.remove(oldRefreshToken);
+        const { accessToken, refreshToken } = await jwtHelper.createAsync(provider.name, provider, user);
+        await tokenRepo.add(refreshToken);
+
+        return { accessToken, refreshToken };
     }, req, res, logger);
 };
 

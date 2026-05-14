@@ -34,6 +34,27 @@ const config = (app, forceSecure) => {
     app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
     app.use(helmet.permittedCrossDomainPolicies({ permittedPolicies: 'none' }));
 
+    // SECURITY: Explicitly deny access to browser features that are not needed.
+    // Prevents compromised scripts from accessing camera, microphone, geolocation, etc.
+    app.use(helmet({
+        permissionsPolicy: {
+            features: {
+                camera: [],
+                microphone: [],
+                geolocation: [],
+                midi: [],
+                usb: [],
+                magnetometer: [],
+                gyroscope: [],
+                accelerometer: [],
+                'ambient-light-sensor': [],
+                'speaker-selection': [],
+                payment: [],
+                syncXhr: [], // Prefer fetch/XHR without sync blocking
+            },
+        },
+    }));
+
     // Build the connect-src allowlist. In production we restrict WebSocket
     // targets to the configured app origin so a successful XSS cannot exfiltrate
     // data to an attacker-controlled ws:// endpoint.

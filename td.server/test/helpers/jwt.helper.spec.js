@@ -67,6 +67,7 @@ describe('helpers/jwt.helper.js', () => {
                 sinon.match.any,
                 config.ENCRYPTION_JWT_SIGNING_KEY,
                 {
+                    algorithm: 'HS256',
                     expiresIn: '1d'
                 }
             );

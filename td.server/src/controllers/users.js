@@ -112,11 +112,11 @@ export async function updateUser(req, res) {
     if (req.body[field] !== undefined) {updates[field] = req.body[field];}
   }
 
-  if (req.body.password && (isAdmin || isSelf)) {
-    if (req.body.password.length < 12) {
-      return res.status(400).json({ error: 'Password must be at least 12 characters' });
-    }
-    updates.password_hash = await bcrypt.hash(req.body.password, 12);
+  // SECURITY FIX: Password changes require a dedicated endpoint with current password verification.
+  // See PUT /api/users/:id/password (changePassword) below.
+  // Reject any password field sent to the generic update endpoint to prevent mass assignment.
+  if (req.body.password || req.body.password_hash) {
+    return res.status(400).json({ error: 'Use PUT /api/users/:id/password to change passwords' });
   }
 
   if (updates.role && !ALLOWED_ROLES.includes(updates.role)) {
@@ -143,6 +143,58 @@ returning(SAFE_COLUMNS);
     return res.json({ user });
   } catch (err) {
     logger.error('updateUser failed', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+/**
+ * PUT /api/users/:id/password
+ * Changes a user's password. Requires current password verification for self-service.
+ * Admins can reset any user's password without the current password.
+ */
+export async function changePassword(req, res) {
+  const { id } = req.params;
+  const { current_password, new_password } = req.body || {};
+  const isAdmin = req.user.role === 'admin';
+  const isSelf = req.user.id === id;
+
+  if (!isAdmin && !isSelf) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (!new_password || new_password.length < 12) {
+    return res.status(400).json({ error: 'New password must be at least 12 characters' });
+  }
+
+  try {
+    const user = await db('users').where({ id }).
+first();
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Self-service requires current password verification
+    if (isSelf && !isAdmin) {
+      if (!current_password) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+      const valid = await bcrypt.compare(current_password, user.password_hash);
+      if (!valid) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    }
+
+    const password_hash = await bcrypt.hash(new_password, 12);
+    await db('users').where({ id }).
+update({
+      password_hash,
+      updated_at: db.fn.now(),
+    });
+
+    logger.info(`Password changed for user ${id} by ${req.user.id}${isAdmin && !isSelf ? ' (admin reset)' : ''}`);
+    return res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    logger.error('changePassword failed', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

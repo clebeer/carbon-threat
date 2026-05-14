@@ -270,7 +270,7 @@ describe('controllers/users.js', () => {
       expect(res._status).to.equal(403);
     });
 
-    it('returns 400 when password is too short', async () => {
+    it('returns 400 when password is sent to generic update endpoint', async () => {
       const { req, res } = makeReqRes({
         user:   ADMIN_USER,
         params: { id: 'target-id' },
@@ -278,7 +278,7 @@ describe('controllers/users.js', () => {
       });
       await updateUser(req, res);
       expect(res._status).to.equal(400);
-      expect(res._json.error).to.include('12 characters');
+      expect(res._json.error).to.include('password');
     });
 
     it('returns 400 when role is invalid', async () => {
