@@ -14,9 +14,9 @@
  *   DELETE /api/threatmodels/:id               → archive (soft delete)
  */
 
+import { decryptModel, encryptModel } from '../security/encryption.js';
 import { randomUUID } from 'crypto';
 
-import { decryptModel, encryptModel } from '../security/encryption.js';
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
 
