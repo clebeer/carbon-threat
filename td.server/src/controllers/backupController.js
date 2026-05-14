@@ -4,6 +4,7 @@
  * CRUD operations for backup records, download, restore, and schedule management.
  */
 
+import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
 import { generateBackupFilename, restoreBackup, serializeBackup } from '../services/backupService.js';
 
@@ -15,17 +16,16 @@ const logger = loggerHelper.get('controllers/backupController.js');
  */
 export async function listBackups(req, res) {
   try {
-    const knex = req.app.get('db');
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('backups').orderBy('created_at', 'desc');
+    const query = db('backups').orderBy('created_at', 'desc');
     if (orgId) {query.where('org_id', orgId);}
 
     const backups = await query;
     return res.json({ backups });
   } catch (err) {
-    logger.error('listBackups failed', err);
-    return res.status(500).json({ error: 'Failed to list backups' });
+    logger.error(`listBackups failed: ${err.message}\n${err.stack}`);
+    return res.status(500).json({ error: 'Failed to list backups', details: err.message });
   }
 }
 
@@ -37,7 +37,6 @@ export async function listBackups(req, res) {
  */
 export async function createBackup(req, res) {
   try {
-    const knex = req.app.get('db');
     const userId = req.user?.id ?? req.user?.sub;
     const orgId = req.user?.org_id ?? null;
     const { name, storage_type = 'local' } = req.body;
@@ -45,45 +44,45 @@ export async function createBackup(req, res) {
     const backupName = name || `Backup ${new Date().toLocaleString()}`;
 
     // Create the backup record
-    const [backup] = await knex('backups').insert({
+    const [backup] = await db('backups').insert({
       org_id: orgId,
       name: backupName,
       status: 'running',
       storage_type,
       created_by: userId,
-      started_at: knex.fn.now(),
+      started_at: db.fn.now(),
     }).
 returning('*');
 
     // Serialize data asynchronously
     try {
-      const backupData = await serializeBackup(knex, orgId);
+      const backupData = await serializeBackup(db, orgId);
       const filename = generateBackupFilename(backupName);
       const jsonStr = JSON.stringify(backupData, null, 2);
 
-      await knex('backups').where('id', backup.id).
+      await db('backups').where('id', backup.id).
 update({
         status: 'complete',
         file_path: filename,
         file_size: Buffer.byteLength(jsonStr, 'utf8'),
         metadata: JSON.stringify({ tables: Object.keys(backupData.data), recordCounts: Object.fromEntries(Object.entries(backupData.data).map(([k, v]) => [k, v.length])) }),
-        finished_at: knex.fn.now(),
+        finished_at: db.fn.now(),
       });
 
       logger.info(`Backup created: ${backup.id} (${filename})`);
       return res.status(201).json({ backup: { ...backup, status: 'complete', file_path: filename, file_size: Buffer.byteLength(jsonStr, 'utf8') } });
     } catch (err) {
-      await knex('backups').where('id', backup.id).
+      await db('backups').where('id', backup.id).
 update({
         status: 'error',
         error_message: err.message,
-        finished_at: knex.fn.now(),
+        finished_at: db.fn.now(),
       });
       throw err;
     }
   } catch (err) {
-    logger.error('createBackup failed', err);
-    return res.status(500).json({ error: 'Failed to create backup' });
+    logger.error(`createBackup failed: ${err.message}\n${err.stack}`);
+    return res.status(500).json({ error: 'Failed to create backup', details: err.message });
   }
 }
 
@@ -93,11 +92,10 @@ update({
  */
 export async function downloadBackup(req, res) {
   try {
-    const knex = req.app.get('db');
     const { id } = req.params;
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('backups').where('id', id);
+    const query = db('backups').where('id', id);
     if (orgId) {query.where('org_id', orgId);}
 
     const backup = await query.first();
@@ -106,7 +104,7 @@ export async function downloadBackup(req, res) {
     }
 
     // Re-serialize the data for download
-    const backupData = await serializeBackup(knex, orgId);
+    const backupData = await serializeBackup(db, orgId);
     const filename = backup.file_path || generateBackupFilename(backup.name);
 
     res.setHeader('Content-Type', 'application/json');
@@ -126,14 +124,13 @@ export async function downloadBackup(req, res) {
  */
 export async function restoreFromBackup(req, res) {
   try {
-    const knex = req.app.get('db');
-    const { data } = req.body;
+    const { data: backupData } = req.body;
 
-    if (!data) {
+    if (!backupData) {
       return res.status(400).json({ error: 'Request body must include "data" (backup JSON)' });
     }
 
-    const result = await restoreBackup(knex, data);
+    const result = await restoreBackup(db, backupData);
 
     return res.json({ success: true, result });
   } catch (err) {
@@ -148,11 +145,10 @@ export async function restoreFromBackup(req, res) {
  */
 export async function deleteBackup(req, res) {
   try {
-    const knex = req.app.get('db');
     const { id } = req.params;
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('backups').where('id', id);
+    const query = db('backups').where('id', id);
     if (orgId) {query.where('org_id', orgId);}
 
     const deleted = await query.delete();
@@ -172,10 +168,9 @@ export async function deleteBackup(req, res) {
  */
 export async function listSchedules(req, res) {
   try {
-    const knex = req.app.get('db');
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('backup_schedules').orderBy('created_at', 'desc');
+    const query = db('backup_schedules').orderBy('created_at', 'desc');
     if (orgId) {query.where('org_id', orgId);}
 
     const schedules = await query;
@@ -194,7 +189,6 @@ export async function listSchedules(req, res) {
  */
 export async function createSchedule(req, res) {
   try {
-    const knex = req.app.get('db');
     const userId = req.user?.id ?? req.user?.sub;
     const orgId = req.user?.org_id ?? null;
     const { name, frequency = 'daily', cron_expression, storage_type = 'local', storage_config = {} } = req.body;
@@ -203,7 +197,7 @@ export async function createSchedule(req, res) {
       return res.status(400).json({ error: '"name" is required' });
     }
 
-    const [schedule] = await knex('backup_schedules').insert({
+    const [schedule] = await db('backup_schedules').insert({
       org_id: orgId,
       name,
       frequency,
@@ -227,11 +221,10 @@ returning('*');
  */
 export async function deleteSchedule(req, res) {
   try {
-    const knex = req.app.get('db');
     const { id } = req.params;
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('backup_schedules').where('id', id);
+    const query = db('backup_schedules').where('id', id);
     if (orgId) {query.where('org_id', orgId);}
 
     const deleted = await query.delete();

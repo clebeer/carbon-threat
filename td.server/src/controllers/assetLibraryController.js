@@ -5,6 +5,7 @@
  * GET  /api/assets/library — list imported assets from the library
  * DELETE /api/assets/library/:id — delete a library asset
  */
+import db from '../db/knex.js';
 
 import loggerHelper from '../helpers/logger.helper.js';
 
@@ -99,7 +100,6 @@ export async function importAssets(req, res) {
       return res.status(400).json({ error: 'No assets found in the imported data' });
     }
 
-    const knex = req.app.get('db');
     const userId = req.user?.id ?? req.user?.sub;
     const orgId = req.user?.org_id ?? null;
 
@@ -130,7 +130,7 @@ export async function importAssets(req, res) {
 
     let created = 0;
     if (assets.length > 0) {
-      const inserted = await knex('asset_library').insert(assets).
+      const inserted = await db('asset_library').insert(assets).
 returning('*');
       created = inserted.length;
     }
@@ -143,7 +143,7 @@ returning('*');
         created,
         warnings,
       },
-      assets: created > 0 ? await knex('asset_library').
+      assets: created > 0 ? await db('asset_library').
         where('org_id', orgId).
         orderBy('created_at', 'desc').
         limit(created) : [],
@@ -161,10 +161,9 @@ returning('*');
  */
 export async function listLibraryAssets(req, res) {
   try {
-    const knex = req.app.get('db');
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('asset_library').orderBy('created_at', 'desc');
+    const query = db('asset_library').orderBy('created_at', 'desc');
     if (orgId) {query.where('org_id', orgId);}
 
     const assets = await query;
@@ -182,11 +181,10 @@ export async function listLibraryAssets(req, res) {
  */
 export async function deleteLibraryAsset(req, res) {
   try {
-    const knex = req.app.get('db');
     const { id } = req.params;
     const orgId = req.user?.org_id ?? null;
 
-    const query = knex('asset_library').where('id', id);
+    const query = db('asset_library').where('id', id);
     if (orgId) {query.where('org_id', orgId);}
 
     const deleted = await query.delete();

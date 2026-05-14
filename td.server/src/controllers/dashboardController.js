@@ -5,6 +5,7 @@
  * PUT    /api/dashboard/layout  — save the user's dashboard layout
  * POST   /api/dashboard/layout/reset — reset to default layout
  */
+import db from '../db/knex.js';
 
 import loggerHelper from '../helpers/logger.helper.js';
 
@@ -15,10 +16,9 @@ const logger = loggerHelper.get('controllers/dashboardController.js');
  */
 export async function getLayout(req, res) {
   try {
-    const knex = req.app.get('db');
     const userId = req.user?.id ?? req.user?.sub;
 
-    const row = await knex('dashboard_layouts').where('user_id', userId).
+    const row = await db('dashboard_layouts').where('user_id', userId).
 first();
 
     if (!row) {
@@ -39,7 +39,6 @@ first();
  */
 export async function saveLayout(req, res) {
   try {
-    const knex = req.app.get('db');
     const userId = req.user?.id ?? req.user?.sub;
     const { layout } = req.body;
 
@@ -47,11 +46,11 @@ export async function saveLayout(req, res) {
       return res.status(400).json({ error: '"layout" must be an array' });
     }
 
-    await knex('dashboard_layouts').
+    await db('dashboard_layouts').
       insert({
         user_id: userId,
         layout_config: JSON.stringify(layout),
-        updated_at: knex.fn.now(),
+        updated_at: db.fn.now(),
       }).
       onConflict('user_id').
       merge(['layout_config', 'updated_at']);
@@ -70,10 +69,9 @@ export async function saveLayout(req, res) {
  */
 export async function resetLayout(req, res) {
   try {
-    const knex = req.app.get('db');
     const userId = req.user?.id ?? req.user?.sub;
 
-    await knex('dashboard_layouts').where('user_id', userId).
+    await db('dashboard_layouts').where('user_id', userId).
 delete();
 
     return res.json({ success: true, layout: [] });
