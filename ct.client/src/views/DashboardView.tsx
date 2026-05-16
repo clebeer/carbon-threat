@@ -217,6 +217,7 @@ export default function DashboardView() {
           <button
             onClick={exportCSV}
             disabled={totalThreats === 0}
+            title={totalThreats === 0 ? 'No threats to export' : 'Export to CSV'}
             style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--on-surface-muted)', fontSize: '12px', cursor: totalThreats > 0 ? 'pointer' : 'not-allowed', opacity: totalThreats > 0 ? 1 : 0.4 }}
           >
             ↓ CSV
@@ -224,6 +225,7 @@ export default function DashboardView() {
           <button
             onClick={exportPDF}
             disabled={totalThreats === 0}
+            title={totalThreats === 0 ? 'No threats to export' : 'Export to PDF'}
             style={{ padding: '8px 18px', borderRadius: '6px', border: 'none', background: totalThreats > 0 ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: totalThreats > 0 ? '#000' : 'var(--on-surface-muted)', fontSize: '12px', fontWeight: 700, cursor: totalThreats > 0 ? 'pointer' : 'not-allowed', opacity: totalThreats > 0 ? 1 : 0.4 }}
           >
             ↓ PDF Report
