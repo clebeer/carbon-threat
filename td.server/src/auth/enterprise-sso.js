@@ -1,8 +1,8 @@
-import passport from 'passport';
-import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcrypt';
 import db from '../db/knex.js';
+import { Strategy as LocalStrategy } from 'passport-local';
 import loggerHelper from '../helpers/logger.helper.js';
+import passport from 'passport';
 
 const logger = loggerHelper.get('auth/enterprise-sso.js');
 

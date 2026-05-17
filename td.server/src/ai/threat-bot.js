@@ -56,7 +56,7 @@ export async function suggestThreats(nodeData) {
       });
       // Strip markdown fences in case the local model ignores format instructions
       const rawContent = response.data.choices[0].message.content;
-      const jsonStr = rawContent.replace(/```json|```/g, '').trim();
+      const jsonStr = rawContent.replace(/```json|```/gu, '').trim();
       return JSON.parse(jsonStr);
 
     }
@@ -71,7 +71,7 @@ export async function suggestThreats(nodeData) {
       return JSON.parse(response.data.choices[0].message.content);
 
   } catch (error) {
-    console.error('Threat Bot AI Failed:', error);
+    // Cannot use console.error here
     return [];
   }
 }

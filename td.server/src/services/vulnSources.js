@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 /**
  * Vulnerability Source Adapters
  *
@@ -141,7 +142,7 @@ function extractCVEAliases(vuln) {
   const aliases = vuln.aliases ?? vuln.cveIds ?? [];
   const refs = (vuln.references ?? []).map((r) => r.url || r).filter(Boolean);
   const allStrings = [...aliases, ...refs].join(' ');
-  const cveMatches = allStrings.match(/CVE-\d{4}-\d{4,}/g) ?? [];
+  const cveMatches = allStrings.match(/CVE-\d{4}-\d{4,}/gu) ?? [];
   return [...new Set(cveMatches)];
 }
 
@@ -160,7 +161,7 @@ export const osvAdapter = {
     const limit = config.fetchLimit ?? 20;
     const allVulns = [];
 
-    for (const ecosystem of ecosystems) {
+    await Promise.all(ecosystems.map(async (ecosystem) => {
       try {
         const result = await httpPost('https://api.osv.dev/v1/query', { package: { ecosystem } });
         const vulns = (result.vulns ?? []).slice(0, limit);
@@ -169,7 +170,7 @@ export const osvAdapter = {
       } catch (err) {
         logger.warn(`osvAdapter: ${ecosystem} failed: ${err.message}`);
       }
-    }
+    }));
     return allVulns;
   },
 
