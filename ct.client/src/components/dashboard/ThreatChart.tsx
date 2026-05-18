@@ -34,7 +34,7 @@ const SEV_COLORS: Record<string, string> = {
 
 const SEV_ORDER = ['Critical', 'High', 'Medium', 'Low'] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const CustomPieTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
@@ -46,13 +46,13 @@ const CustomPieTooltip = ({ active, payload }: any) => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const CustomBarTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: 'var(--surface-container)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', fontSize: '12px' }}>
       <div style={{ color: SEV_COLORS[label] ?? '#fff', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
-      {payload.map((p: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+      {payload.map((p: any) => (
         <div key={p.name} style={{ color: STATUS_COLORS[p.name] ?? '#e2e8f0' }}>
           {p.name}: {p.value}
         </div>
@@ -62,13 +62,13 @@ const CustomBarTooltip = ({ active, payload, label }: any) => {
 };
 
 interface ThreatChartProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   threats: any[];
 }
 
 export function StrideChart({ threats }: ThreatChartProps) {
   const strideData = STRIDE_CATEGORIES
-    .map(cat => ({ name: cat, value: threats.filter((t: any) => t.stride_category === cat).length })) // eslint-disable-line @typescript-eslint/no-explicit-any
+    .map(cat => ({ name: cat, value: threats.filter((t: any) => t.stride_category === cat).length }))
     .filter(d => d.value > 0);
 
   if (strideData.length === 0) {
@@ -109,9 +109,9 @@ export function StrideChart({ threats }: ThreatChartProps) {
 export function SeverityChart({ threats }: ThreatChartProps) {
   const severityBarData = SEV_ORDER.map(sev => ({
     sev,
-    Open:          threats.filter((t: any) => t.severity === sev && t.status === 'Open').length, // eslint-disable-line @typescript-eslint/no-explicit-any
-    Investigating: threats.filter((t: any) => t.severity === sev && t.status === 'Investigating').length, // eslint-disable-line @typescript-eslint/no-explicit-any
-    Mitigated:     threats.filter((t: any) => t.severity === sev && t.status === 'Mitigated').length, // eslint-disable-line @typescript-eslint/no-explicit-any
+    Open:          threats.filter((t: any) => t.severity === sev && t.status === 'Open').length,
+    Investigating: threats.filter((t: any) => t.severity === sev && t.status === 'Investigating').length,
+    Mitigated:     threats.filter((t: any) => t.severity === sev && t.status === 'Mitigated').length,
   })).filter(d => d.Open + d.Investigating + d.Mitigated > 0);
 
   if (severityBarData.length === 0) {

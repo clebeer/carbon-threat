@@ -20,7 +20,7 @@ function heatmapBorder(count: number, max: number): string {
 }
 
 interface RiskHeatmapProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   threats: any[];
 }
 
@@ -30,7 +30,7 @@ export default function RiskHeatmap({ threats }: RiskHeatmapProps) {
   const heatmapData = STRIDE_CATEGORIES.map(stride => ({
     stride,
     counts: SEV_ORDER.map(sev =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       threats.filter((t: any) => t.stride_category === stride && t.severity === sev).length
     ),
   }));

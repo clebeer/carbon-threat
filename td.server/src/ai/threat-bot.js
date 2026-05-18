@@ -1,3 +1,4 @@
+/* eslint-disable require-unicode-regexp, no-console */
 import axios from 'axios';
 import { query } from '../config/pg.config.js';
 

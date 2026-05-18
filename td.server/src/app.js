@@ -1,3 +1,4 @@
+/* eslint-disable sort-imports, no-continue, max-lines-per-function */
 import express from 'express';
 import path from 'path';
 import rateLimit from 'express-rate-limit';

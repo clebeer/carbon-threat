@@ -134,7 +134,7 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   // Load model content
   useEffect(() => {
     if (!modelId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setActivePack(localStorage.getItem(`ct_pack_${modelId}`) ?? 'generic');
     getThreatModel(modelId).then(({ content }) => {
       const loadedNodes = (content as Record<string, unknown>)?.nodes;

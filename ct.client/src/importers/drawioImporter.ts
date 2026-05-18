@@ -16,9 +16,9 @@ export interface DrawioShape {
 }
 
 export interface ImportResult {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   nodes: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   edges: any[];
   stats: { converted: number; skipped: number; edges: number };
   warnings: string[];

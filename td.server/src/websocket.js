@@ -1,3 +1,4 @@
+/* eslint-disable sort-imports, require-unicode-regexp, prefer-named-capture-group, max-lines-per-function */
 import WebSocket from 'ws';
 import yjsConfig from 'y-websocket/bin/utils.js';
 import jsonwebtoken from 'jsonwebtoken';

@@ -28,7 +28,7 @@ export function JulesCreateSessionModal({ finding, onClose, onCreated }: Props) 
 
   useEffect(() => {
     if (sources?.length && !sourceName) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setSourceName(sources[0].name);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

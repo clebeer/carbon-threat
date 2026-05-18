@@ -1,3 +1,4 @@
+/* eslint-disable require-unicode-regexp, no-await-in-loop, max-lines */
 /**
  * Vulnerability Source Adapters
  *

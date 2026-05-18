@@ -84,7 +84,7 @@ function badge(
   const pad = 3;
   doc.setFontSize(7.5);
   const tw = doc.getTextWidth(text);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   doc.setFillColor(rgb[0], rgb[1], rgb[2], 0.15 as any);
   // Approximate background with low-opacity fill via a light tint
   doc.setFillColor(

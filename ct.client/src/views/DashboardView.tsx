@@ -18,7 +18,7 @@ import ActivityLog, { type AuditRow } from '../components/dashboard/ActivityLog'
 interface HealthzResponse { status: string; uptime?: number }
 
 export default function DashboardView() {
-  const user      = useAuthStore((s: any) => s.user); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const user      = useAuthStore((s: any) => s.user);
   const dashRef   = useRef<HTMLDivElement>(null);
   const { loadLayout, resetLayout } = useDashboardStore();
 
