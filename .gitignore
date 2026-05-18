@@ -347,3 +347,5 @@
 !td.server/test/security/*.spec.js
 !.Jules/
 !.Jules/*.md
+!ct.client/eslint.config.js
+!td.server/test/setupEnv.js
