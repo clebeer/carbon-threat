@@ -15,8 +15,7 @@ export async function up(knex) {
   // ── ATT&CK Objects ────────────────────────────────────────────────────────
   // Stores all ATT&CK entity types in a single table (discriminated by `type`).
   await knex.schema.createTable('attack_objects', (t) => {
-    t.uuid('id').primary().
-defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
 
     // External ATT&CK identifier e.g. TA0001, T1059, T1059.003, M1027, G0007, S0001
     t.string('attack_id').notNullable();
@@ -35,9 +34,7 @@ defaultTo(knex.raw('gen_random_uuid()'));
     t.jsonb('kill_chain_phases').defaultTo('[]');
 
     // Sub-technique only: parent technique UUID (attack_objects.id)
-    t.uuid('parent_id').references('id').
-inTable('attack_objects').
-onDelete('SET NULL');
+    t.uuid('parent_id').references('id').inTable('attack_objects').onDelete('SET NULL');
 
     // Group/Software: alternative names
     t.specificType('aliases', 'TEXT[]').defaultTo('{}');
@@ -48,23 +45,19 @@ onDelete('SET NULL');
     // Original STIX 2.1 identifier (bundle-scoped — unique per object)
     t.string('stix_id').unique();
 
-    t.boolean('is_deprecated').notNullable().
-defaultTo(false);
-    t.boolean('is_revoked').notNullable().
-defaultTo(false);
+    t.boolean('is_deprecated').notNullable().defaultTo(false);
+    t.boolean('is_revoked').notNullable().defaultTo(false);
 
     // Free-form extra metadata from STIX (detection, data sources, etc.)
     t.jsonb('extra').defaultTo('{}');
 
-    t.timestamp('created_at').notNullable().
-defaultTo(knex.fn.now());
-    t.timestamp('updated_at').notNullable().
-defaultTo(knex.fn.now());
+    t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+    t.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 
     t.unique(['attack_id'], { indexName: 'uq_attack_objects_attack_id' });
-    t.index('type', 'idx_attack_objects_type');
-    t.index('name', 'idx_attack_objects_name');
-    t.index('parent_id', 'idx_attack_objects_parent_id');
+    t.index('type',        'idx_attack_objects_type');
+    t.index('name',        'idx_attack_objects_name');
+    t.index('parent_id',   'idx_attack_objects_parent_id');
   });
 
   // ── ATT&CK Relationships ──────────────────────────────────────────────────
@@ -73,19 +66,14 @@ defaultTo(knex.fn.now());
   //   subtechnique-of : sub-technique → technique (parent)
   //   uses            : group/software → technique
   await knex.schema.createTable('attack_relationships', (t) => {
-    t.uuid('id').primary().
-defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
 
-    t.uuid('source_id').
-      notNullable().
-      references('id').
-inTable('attack_objects').
-onDelete('CASCADE');
-    t.uuid('target_id').
-      notNullable().
-      references('id').
-inTable('attack_objects').
-onDelete('CASCADE');
+    t.uuid('source_id')
+      .notNullable()
+      .references('id').inTable('attack_objects').onDelete('CASCADE');
+    t.uuid('target_id')
+      .notNullable()
+      .references('id').inTable('attack_objects').onDelete('CASCADE');
 
     // mitigates | subtechnique-of | uses | attributed-to | detects
     t.string('relationship_type').notNullable();
@@ -100,55 +88,43 @@ onDelete('CASCADE');
   // User-curated associations between Carbon Threat STRIDE threats and
   // MITRE ATT&CK techniques.  Also supports model-level (no threat_id) mappings.
   await knex.schema.createTable('attack_threat_mappings', (t) => {
-    t.uuid('id').primary().
-defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
 
     // Optional: link to a specific STRIDE threat record
-    t.uuid('threat_id').
-      references('id').
-inTable('threats').
-onDelete('CASCADE');
+    t.uuid('threat_id')
+      .references('id').inTable('threats').onDelete('CASCADE');
 
     // Required: the ATT&CK technique being mapped
-    t.uuid('technique_id').
-      notNullable().
-      references('id').
-inTable('attack_objects').
-onDelete('CASCADE');
+    t.uuid('technique_id')
+      .notNullable()
+      .references('id').inTable('attack_objects').onDelete('CASCADE');
 
     // Optional: scope to a threat model
-    t.uuid('model_id').
-      references('id').
-inTable('threat_models').
-onDelete('CASCADE');
+    t.uuid('model_id')
+      .references('id').inTable('threat_models').onDelete('CASCADE');
 
-    t.uuid('created_by').
-      references('id').
-inTable('users').
-onDelete('SET NULL');
+    t.uuid('created_by')
+      .references('id').inTable('users').onDelete('SET NULL');
 
     // high | medium | low
     t.string('confidence').defaultTo('medium');
     t.text('notes');
 
-    t.timestamp('created_at').notNullable().
-defaultTo(knex.fn.now());
+    t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 
-    t.index('threat_id', 'idx_atm_threat_id');
+    t.index('threat_id',    'idx_atm_threat_id');
     t.index('technique_id', 'idx_atm_technique_id');
-    t.index('model_id', 'idx_atm_model_id');
+    t.index('model_id',     'idx_atm_model_id');
   });
 
   // ── ATT&CK Sync Log ───────────────────────────────────────────────────────
   // One row per synchronisation run.  Last row with status='complete' drives
   // the "last synced" display in the UI.
   await knex.schema.createTable('attack_sync_log', (t) => {
-    t.uuid('id').primary().
-defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
 
     // e.g. enterprise-attack, mobile-attack, ics-attack
-    t.string('domain').notNullable().
-defaultTo('enterprise-attack');
+    t.string('domain').notNullable().defaultTo('enterprise-attack');
 
     // ATT&CK version string embedded in the bundle (x-mitre-collection)
     t.string('attack_version');
@@ -157,19 +133,15 @@ defaultTo('enterprise-attack');
     t.integer('relationships_synced').defaultTo(0);
 
     // pending | running | complete | error
-    t.string('status').notNullable().
-defaultTo('pending');
+    t.string('status').notNullable().defaultTo('pending');
     t.text('error_message');
 
-    t.uuid('triggered_by').references('id').
-inTable('users').
-onDelete('SET NULL');
+    t.uuid('triggered_by').references('id').inTable('users').onDelete('SET NULL');
 
-    t.timestamp('started_at').notNullable().
-defaultTo(knex.fn.now());
+    t.timestamp('started_at').notNullable().defaultTo(knex.fn.now());
     t.timestamp('finished_at');
 
-    t.index('status', 'idx_sync_log_status');
+    t.index('status',     'idx_sync_log_status');
     t.index('started_at', 'idx_sync_log_started_at');
   });
 }

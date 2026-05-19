@@ -24,8 +24,8 @@ export async function listSources(req, res) {
 export async function createSession(req, res) {
   const { finding_id, source_name, automation_mode, prompt_override } = req.body ?? {};
 
-  if (!finding_id) {return res.status(400).json({ error: 'finding_id is required' });}
-  if (!source_name) {return res.status(400).json({ error: 'source_name is required' });}
+  if (!finding_id)  return res.status(400).json({ error: 'finding_id is required' });
+  if (!source_name) return res.status(400).json({ error: 'source_name is required' });
 
   const validModes = ['AUTO_CREATE_PR', 'REQUIRE_APPROVAL'];
   const mode = automation_mode ?? 'AUTO_CREATE_PR';
@@ -50,7 +50,7 @@ export async function createSession(req, res) {
 }
 
 export async function listSessions(req, res) {
-  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
   const limit = Math.min(100, parseInt(req.query.limit) || 20);
 
   try {
@@ -65,7 +65,7 @@ export async function getSession(req, res) {
   const { id } = req.params;
   try {
     const result = await julesService.getSessionWithActivities(id, req.user, getOrgId(req));
-    if (!result) {return res.status(404).json({ error: 'Session not found' });}
+    if (!result) return res.status(404).json({ error: 'Session not found' });
     return res.json(result);
   } catch (err) {
     return handleError(res, err);
@@ -87,7 +87,7 @@ export async function sendSessionMessage(req, res) {
   const { id } = req.params;
   const { message } = req.body ?? {};
 
-  if (!message) {return res.status(400).json({ error: 'message is required' });}
+  if (!message) return res.status(400).json({ error: 'message is required' });
 
   try {
     await julesService.sendMessage(id, message, req.user, getOrgId(req));

@@ -15,10 +15,10 @@ function isPrivateIp(ip) {
     if (ip.startsWith('127.') || ip === '::1') {return true;}
     if (ip.startsWith('10.')) {return true;}
     if (ip.startsWith('192.168.')) {return true;}
-    if (ip.startsWith('169.254.')) {return true;} // link-local (AWS/GCP/Azure metadata)
-    if ((/^172\.(1[6-9]|2\d|3[01])\./).test(ip)) {return true;}
-    if ((/^f[cd][0-9a-f]{2}:/i).test(ip)) {return true;} // IPv6 ULA
-    if ((/^fe80:/i).test(ip)) {return true;} // IPv6 link-local
+    if (ip.startsWith('169.254.')) {return true;}         // link-local (AWS/GCP/Azure metadata)
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) {return true;}
+    if (/^f[cd][0-9a-f]{2}:/i.test(ip)) {return true;}    // IPv6 ULA
+    if (/^fe80:/i.test(ip)) {return true;}                // IPv6 link-local
     if (ip === '0.0.0.0' || ip === '::') {return true;}
     return false;
 }
@@ -68,7 +68,7 @@ const REQUEST_DEFAULTS = {
 function buildValidatedUrl(baseUrl, apiPath) {
   try {
     // Minimal path validation
-    if (baseUrl.includes('/../') || (/\/%2e%2e\//i).test(baseUrl)) {
+    if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
       throw new Error('Invalid path');
     }
     

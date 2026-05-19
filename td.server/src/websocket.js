@@ -202,8 +202,7 @@ export function startWebsocketServer(server) {
 
       setupWSConnection(ws, req, { docName });
       logger.info(`[Yjs] ${payload.user?.email ?? payload.sub ?? 'user'} connected to document: ${docName} (ip=${ip})`);
-    }).
-catch((err) => {
+    }).catch((err) => {
       logger.error(`[WS] Authorization check failed for ${docName}: ${err.message}`);
       ws.close(1011, 'Internal Error');
     });

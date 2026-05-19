@@ -251,11 +251,11 @@ export async function testJulesConnection(req, res) {
  */
 export async function getJulesStatus(req, res) {
   try {
-    const row = await db('integration_configs').
-      where({ platform: 'jules', org_id: integrationOrgId(req) }).
-      first();
+    const row = await db('integration_configs')
+      .where({ platform: 'jules', org_id: integrationOrgId(req) })
+      .first();
 
-    const configured = Boolean(row);
+    const configured = !!row;
     const enabled = row?.is_enabled ?? false;
 
     // Optionally test connectivity if configured and enabled

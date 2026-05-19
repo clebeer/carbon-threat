@@ -20,14 +20,14 @@
  *  CycloneDX   cyclonedx*.json / bom.json with bomFormat field
  */
 
-import https from 'https';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import fsP from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import db from '../db/knex.js';
-import loggerHelper from '../helpers/logger.helper.js';
+import https          from 'https';
+import { execFile }   from 'child_process';
+import { promisify }  from 'util';
+import fsP            from 'fs/promises';
+import path           from 'path';
+import os             from 'os';
+import db             from '../db/knex.js';
+import loggerHelper   from '../helpers/logger.helper.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -51,12 +51,12 @@ const COMMON_BIN_DIRS = [
   '/usr/local/bin',
   '/usr/bin',
   '/bin',
-  '/opt/homebrew/bin', // macOS Apple-Silicon Homebrew
+  '/opt/homebrew/bin',       // macOS Apple-Silicon Homebrew
   '/opt/homebrew/sbin',
   '/usr/local/homebrew/bin', // macOS Intel Homebrew
   '/usr/local/sbin',
-  '/opt/local/bin', // MacPorts
-  '/snap/bin', // Linux snap
+  '/opt/local/bin',          // MacPorts
+  '/snap/bin',               // Linux snap
   '/home/linuxbrew/.linuxbrew/bin', // Linuxbrew
 ];
 
@@ -65,7 +65,7 @@ const COMMON_BIN_DIRS = [
  * Throws a descriptive error if the binary cannot be found.
  */
 async function resolveBin(name) {
-  if (_binCache.has(name)) {return _binCache.get(name);}
+  if (_binCache.has(name)) return _binCache.get(name);
 
   // Try `which` / `where` first — it searches the user's actual PATH.
   const whichCmd = os.platform() === 'win32' ? 'where' : 'which';
@@ -97,8 +97,8 @@ async function resolveBin(name) {
 }
 
 // Maximum packages per OSV /v1/querybatch request
-const OSV_BATCH_SIZE = 100;
-const OSV_API_URL = 'https://api.osv.dev/v1/querybatch';
+const OSV_BATCH_SIZE    = 100;
+const OSV_API_URL       = 'https://api.osv.dev/v1/querybatch';
 const OSV_VULN_BASE_URL = 'https://api.osv.dev/v1/vulns';
 
 // Maximum concurrent advisory detail fetches (avoids overwhelming the API)
@@ -106,11 +106,11 @@ const OSV_DETAIL_CONCURRENCY = 10;
 
 // ── STRIDE keyword mapping (mirrors vulnSync.js for consistency) ──────────
 const STRIDE_KEYWORDS = [
-  { categories: ['Spoofing'], words: ['spoof', 'impersonat', 'authenticat', 'identity', 'bypass auth', 'forged', 'fake'] },
-  { categories: ['Tampering'], words: ['tamper', 'inject', 'sql injection', 'xss', 'csrf', 'code injection', 'rce', 'remote code', 'path traversal', 'deserialization'] },
-  { categories: ['Repudiation'], words: ['repudiat', 'log', 'audit', 'non-repudiat', 'trace'] },
+  { categories: ['Spoofing'],               words: ['spoof', 'impersonat', 'authenticat', 'identity', 'bypass auth', 'forged', 'fake'] },
+  { categories: ['Tampering'],              words: ['tamper', 'inject', 'sql injection', 'xss', 'csrf', 'code injection', 'rce', 'remote code', 'path traversal', 'deserialization'] },
+  { categories: ['Repudiation'],            words: ['repudiat', 'log', 'audit', 'non-repudiat', 'trace'] },
   { categories: ['Information Disclosure'], words: ['disclosure', 'information leak', 'sensitive data', 'exposure', 'enumerat', 'directory listing', 'ssrf', 'xxe'] },
-  { categories: ['DoS'], words: ['denial of service', 'dos', 'ddos', 'resource exhaust', 'memory leak', 'crash', 'flood', 'amplification', 'integer overflow'] },
+  { categories: ['DoS'],                    words: ['denial of service', 'dos', 'ddos', 'resource exhaust', 'memory leak', 'crash', 'flood', 'amplification', 'integer overflow'] },
   { categories: ['Elevation of Privilege'], words: ['privilege', 'escalat', 'sudo', 'root', 'admin bypass', 'acl bypass', 'authorization bypass', 'permission'] },
 ];
 
@@ -118,20 +118,20 @@ function mapToStride(title = '', description = '') {
   const text = `${title} ${description}`.toLowerCase();
   const matched = new Set();
   for (const { categories, words } of STRIDE_KEYWORDS) {
-    if (words.some((w) => text.includes(w))) {categories.forEach((c) => matched.add(c));}
+    if (words.some(w => text.includes(w))) categories.forEach(c => matched.add(c));
   }
   return matched.size > 0 ? [...matched] : ['Tampering'];
 }
 
 function normaliseSeverity(cvssScore, severityText = '') {
-  if (cvssScore >= 9.0) {return 'Critical';}
-  if (cvssScore >= 7.0) {return 'High';}
-  if (cvssScore >= 4.0) {return 'Medium';}
-  if (cvssScore > 0) {return 'Low';}
+  if (cvssScore >= 9.0) return 'Critical';
+  if (cvssScore >= 7.0) return 'High';
+  if (cvssScore >= 4.0) return 'Medium';
+  if (cvssScore > 0)    return 'Low';
   const t = severityText.toLowerCase();
-  if (t.includes('critical')) {return 'Critical';}
-  if (t.includes('high')) {return 'High';}
-  if (t.includes('medium') || t.includes('moderate')) {return 'Medium';}
+  if (t.includes('critical'))                          return 'Critical';
+  if (t.includes('high'))                              return 'High';
+  if (t.includes('medium') || t.includes('moderate')) return 'Medium';
   return 'Low';
 }
 
@@ -139,9 +139,9 @@ function normaliseSeverity(cvssScore, severityText = '') {
 
 function postJson(url, body) {
   return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
+    const data   = JSON.stringify(body);
     const parsed = new URL(url);
-    const req = https.request(
+    const req    = https.request(
       {
         hostname: parsed.hostname,
         path:     parsed.pathname,
@@ -154,9 +154,9 @@ function postJson(url, body) {
       },
       (res) => {
         let raw = '';
-        res.on('data', (chunk) => { raw += chunk; });
+        res.on('data', chunk => { raw += chunk; });
         res.on('end', () => {
-          try { resolve(JSON.parse(raw)); }
+          try   { resolve(JSON.parse(raw)); }
           catch { reject(new Error(`JSON parse error: ${raw.slice(0, 200)}`)); }
         });
       }
@@ -171,7 +171,7 @@ function postJson(url, body) {
 function getJson(url) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
-    const req = https.request(
+    const req    = https.request(
       {
         hostname: parsed.hostname,
         path:     parsed.pathname + (parsed.search || ''),
@@ -180,9 +180,9 @@ function getJson(url) {
       },
       (res) => {
         let raw = '';
-        res.on('data', (chunk) => { raw += chunk; });
+        res.on('data', chunk => { raw += chunk; });
         res.on('end', () => {
-          try { resolve(JSON.parse(raw)); }
+          try   { resolve(JSON.parse(raw)); }
           catch { reject(new Error(`JSON parse error: ${raw.slice(0, 200)}`)); }
         });
       }
@@ -203,33 +203,33 @@ function getJson(url) {
 function parseCvssV3Score(vector) {
   try {
     // Strip "CVSS:3.x/" prefix
-    const body = String(vector).replace(/^CVSS:[0-9.]+\//i, '');
-    const metrics = Object.fromEntries(body.split('/').map((p) => p.split(':')));
+    const body    = String(vector).replace(/^CVSS:[0-9.]+\//i, '');
+    const metrics = Object.fromEntries(body.split('/').map(p => p.split(':')));
 
-    const AV = { N: 0.85, A: 0.62, L: 0.55, P: 0.20 };
-    const AC = { L: 0.77, H: 0.44 };
-    const UI = { N: 0.85, R: 0.62 };
+    const AV  = { N: 0.85, A: 0.62, L: 0.55, P: 0.20 };
+    const AC  = { L: 0.77, H: 0.44 };
+    const UI  = { N: 0.85, R: 0.62 };
     const CIA = { N: 0.00, L: 0.22, H: 0.56 };
     // Privileges Required differs by Scope
     const PR_U = { N: 0.85, L: 0.62, H: 0.27 };
     const PR_C = { N: 0.85, L: 0.50, H: 0.15 };
 
-    const S = metrics.S ?? 'U';
-    const av = AV[metrics.AV] ?? 0;
-    const ac = AC[metrics.AC] ?? 0;
+    const S  = metrics.S ?? 'U';
+    const av = AV[metrics.AV]  ?? 0;
+    const ac = AC[metrics.AC]  ?? 0;
     const pr = (S === 'C' ? PR_C : PR_U)[metrics.PR] ?? 0;
-    const ui = UI[metrics.UI] ?? 0;
-    const c = CIA[metrics.C] ?? 0;
-    const i = CIA[metrics.I] ?? 0;
-    const a = CIA[metrics.A] ?? 0;
+    const ui = UI[metrics.UI]  ?? 0;
+    const c  = CIA[metrics.C]  ?? 0;
+    const i  = CIA[metrics.I]  ?? 0;
+    const a  = CIA[metrics.A]  ?? 0;
 
     const iss = 1 - (1 - c) * (1 - i) * (1 - a);
 
     const impact = S === 'U'
       ? 6.42 * iss
-      : 7.52 * (iss - 0.029) - 3.25 * (iss - 0.02)**15;
+      : 7.52 * (iss - 0.029) - 3.25 * Math.pow(iss - 0.02, 15);
 
-    if (impact <= 0) {return 0;}
+    if (impact <= 0) return 0;
 
     const exploitability = 8.22 * av * ac * pr * ui;
 
@@ -259,31 +259,31 @@ function extractSeverityFromVuln(vuln) {
   for (const sev of vuln.severity ?? []) {
     if ((sev.type === 'CVSS_V3' || sev.type === 'CVSS_V31') && sev.score) {
       const score = parseCvssV3Score(sev.score);
-      if (score !== null) {return { cvssScore: score, severity: normaliseSeverity(score, '') };}
+      if (score !== null) return { cvssScore: score, severity: normaliseSeverity(score, '') };
     }
   }
 
   // Priority 2: pre-computed numeric score in database_specific
-  const dbSpec = vuln.database_specific ?? {};
-  const numScore = parseFloat(dbSpec.cvss_score ?? dbSpec.cvss ?? 0);
-  if (numScore > 0) {return { cvssScore: numScore, severity: normaliseSeverity(numScore, '') };}
+  const dbSpec    = vuln.database_specific ?? {};
+  const numScore  = parseFloat(dbSpec.cvss_score ?? dbSpec.cvss ?? 0);
+  if (numScore > 0) return { cvssScore: numScore, severity: normaliseSeverity(numScore, '') };
 
   // Priority 3 + 4: text severity from multiple locations
   const textCandidates = [
     dbSpec.severity,
     dbSpec.github_severity,
-    ...(vuln.affected ?? []).flatMap((a) => [
+    ...(vuln.affected ?? []).flatMap(a => [
       a.ecosystem_specific?.severity,
       a.database_specific?.severity,
     ]),
-  ].filter((v) => v && typeof v === 'string');
+  ].filter(v => v && typeof v === 'string');
 
   for (const text of textCandidates) {
     const t = text.toLowerCase().trim();
-    if (t === 'critical') {return { cvssScore: null, severity: 'Critical' };}
-    if (t === 'high') {return { cvssScore: null, severity: 'High' };}
-    if (t === 'medium' || t === 'moderate') {return { cvssScore: null, severity: 'Medium' };}
-    if (t === 'low') {return { cvssScore: null, severity: 'Low' };}
+    if (t === 'critical')                    return { cvssScore: null, severity: 'Critical' };
+    if (t === 'high')                        return { cvssScore: null, severity: 'High'     };
+    if (t === 'medium' || t === 'moderate')  return { cvssScore: null, severity: 'Medium'   };
+    if (t === 'low')                         return { cvssScore: null, severity: 'Low'      };
   }
 
   // Nothing matched — default to Low
@@ -303,17 +303,17 @@ function parseNpmPackageLock(content) {
   if ((parsed.lockfileVersion ?? 1) >= 2 && parsed.packages) {
     // v2 / v3: flat packages map keyed by "node_modules/name"
     for (const [key, val] of Object.entries(parsed.packages)) {
-      if (!key) {continue;} // root entry
+      if (!key) continue;  // root entry
       // Strip leading node_modules/ and any nested node_modules/ segments
       const name = key.replace(/^node_modules\//, '').replace(/\/node_modules\//g, '/');
-      if (name && val.version) {pkgs.push({ name, version: val.version, ecosystem: 'npm' });}
+      if (name && val.version) pkgs.push({ name, version: val.version, ecosystem: 'npm' });
     }
   } else if (parsed.dependencies) {
     // v1: recursive dependencies tree
     const walk = (deps) => {
       for (const [name, val] of Object.entries(deps)) {
-        if (val.version) {pkgs.push({ name, version: val.version, ecosystem: 'npm' });}
-        if (val.dependencies) {walk(val.dependencies);}
+        if (val.version) pkgs.push({ name, version: val.version, ecosystem: 'npm' });
+        if (val.dependencies) walk(val.dependencies);
       }
     };
     walk(parsed.dependencies);
@@ -327,13 +327,12 @@ function parseYarnLock(content) {
   const blocks = content.split(/\n{2,}/);
   for (const block of blocks) {
     const lines = block.trim().split('\n');
-    if (!lines.length || lines[0].startsWith('#') || lines[0].startsWith('__metadata')) {continue;}
+    if (!lines.length || lines[0].startsWith('#') || lines[0].startsWith('__metadata')) continue;
 
     // Find version inside the block
-    const versionLine = lines.find((l) => (/^\s+version\s/).test(l));
-    if (!versionLine) {continue;}
-    const version = versionLine.trim().replace(/^version\s+"?/, '').
-replace(/"$/, '');
+    const versionLine = lines.find(l => /^\s+version\s/.test(l));
+    if (!versionLine) continue;
+    const version = versionLine.trim().replace(/^version\s+"?/, '').replace(/"$/, '');
 
     // Header may list multiple specifiers: "pkg@^1.0, pkg@^2.0":
     //   or: pkg@^1.0, pkg@^2.0:
@@ -341,8 +340,8 @@ replace(/"$/, '');
     const firstEntry = header.split(',')[0].trim().replace(/^"|"$/g, '');
     // Strip version specifier (everything from the last @ that isn't the start of a scoped pkg)
     const atIdx = firstEntry.lastIndexOf('@');
-    const name = atIdx > 0 ? firstEntry.slice(0, atIdx) : firstEntry;
-    if (name && version) {pkgs.push({ name: name.replace(/^"|"$/g, ''), version, ecosystem: 'npm' });}
+    const name  = atIdx > 0 ? firstEntry.slice(0, atIdx) : firstEntry;
+    if (name && version) pkgs.push({ name: name.replace(/^"|"$/g, ''), version, ecosystem: 'npm' });
   }
   return pkgs;
 }
@@ -372,10 +371,10 @@ function parseRequirementsTxt(content) {
   const pkgs = [];
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
-    if (!line || line.startsWith('#') || line.startsWith('-')) {continue;}
+    if (!line || line.startsWith('#') || line.startsWith('-')) continue;
     // Accept only == pinned versions; skip ranges (>=, ~=, etc.) as version is ambiguous
     const m = line.match(/^([A-Za-z0-9_.\-\[\]]+)\s*==\s*([\w.\-+]+)/);
-    if (m) {pkgs.push({ name: m[1].split('[')[0], version: m[2], ecosystem: 'PyPI' });}
+    if (m) pkgs.push({ name: m[1].split('[')[0], version: m[2], ecosystem: 'PyPI' });
   }
   return pkgs;
 }
@@ -387,7 +386,7 @@ function parsePipfileLock(content) {
   for (const section of ['default', 'develop']) {
     const deps = parsed[section] ?? {};
     for (const [name, val] of Object.entries(deps)) {
-      if (!val.version) {continue;}
+      if (!val.version) continue;
       pkgs.push({ name, version: val.version.replace(/^==/, ''), ecosystem: 'PyPI' });
     }
   }
@@ -399,15 +398,15 @@ function parseGoSum(content) {
   const seen = new Set();
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
-    if (!line) {continue;}
+    if (!line) continue;
     // Format: module version h1:hash  OR  module version/go.mod h1:hash
     const parts = line.split(/\s+/);
-    if (parts.length < 2) {continue;}
-    const name = parts[0];
+    if (parts.length < 2) continue;
+    const name       = parts[0];
     const versionRaw = parts[1];
-    if (versionRaw.endsWith('/go.mod')) {continue;} // skip go.mod-only entries
+    if (versionRaw.endsWith('/go.mod')) continue;  // skip go.mod-only entries
     const version = versionRaw.replace(/^v/, '');
-    const key = `${name}@${version}`;
+    const key     = `${name}@${version}`;
     if (!seen.has(key)) {
       seen.add(key);
       pkgs.push({ name, version, ecosystem: 'Go' });
@@ -421,9 +420,9 @@ function parseCargoLock(content) {
   // TOML format — split on [[package]] section headers
   const sections = content.split(/\[\[package\]\]/);
   for (const section of sections.slice(1)) {
-    const nameM = section.match(/name\s*=\s*"([^"]+)"/);
+    const nameM    = section.match(/name\s*=\s*"([^"]+)"/);
     const versionM = section.match(/version\s*=\s*"([^"]+)"/);
-    if (nameM && versionM) {pkgs.push({ name: nameM[1], version: versionM[1], ecosystem: 'crates.io' });}
+    if (nameM && versionM) pkgs.push({ name: nameM[1], version: versionM[1], ecosystem: 'crates.io' });
   }
   return pkgs;
 }
@@ -438,8 +437,8 @@ function parseGemfileLock(content) {
       // A non-indented line (or section header like PLATFORMS) ends the specs block
       if (!raw.startsWith('    ')) { inSpecs = false; continue; }
       // Gem line: "    gemname (version)" — exactly 4 spaces of indent
-      const m = raw.match(/^ {4}([A-Za-z0-9_\-]+)\s+\(([^)]+)\)/);
-      if (m) {pkgs.push({ name: m[1], version: m[2].split(',')[0].trim(), ecosystem: 'RubyGems' });}
+      const m = raw.match(/^    ([A-Za-z0-9_\-]+)\s+\(([^)]+)\)/);
+      if (m) pkgs.push({ name: m[1], version: m[2].split(',')[0].trim(), ecosystem: 'RubyGems' });
     }
   }
   return pkgs;
@@ -453,7 +452,7 @@ function parseNugetPackagesLock(content) {
   for (const frameworkDeps of Object.values(deps)) {
     for (const [name, val] of Object.entries(frameworkDeps)) {
       const version = val.resolved ?? val.requested;
-      if (name && version) {pkgs.push({ name, version, ecosystem: 'NuGet' });}
+      if (name && version) pkgs.push({ name, version, ecosystem: 'NuGet' });
     }
   }
   return pkgs;
@@ -476,13 +475,13 @@ function parseComposerLock(content) {
 // ── SBOM parsers ──────────────────────────────────────────────────────────
 
 function ecosystemFromPurl(purl = '') {
-  if (purl.startsWith('pkg:npm')) {return 'npm';}
-  if (purl.startsWith('pkg:pypi')) {return 'PyPI';}
-  if (purl.startsWith('pkg:maven')) {return 'Maven';}
-  if (purl.startsWith('pkg:nuget')) {return 'NuGet';}
-  if (purl.startsWith('pkg:cargo')) {return 'crates.io';}
-  if (purl.startsWith('pkg:gem')) {return 'RubyGems';}
-  if (purl.startsWith('pkg:golang')) {return 'Go';}
+  if (purl.startsWith('pkg:npm'))    return 'npm';
+  if (purl.startsWith('pkg:pypi'))   return 'PyPI';
+  if (purl.startsWith('pkg:maven'))  return 'Maven';
+  if (purl.startsWith('pkg:nuget'))  return 'NuGet';
+  if (purl.startsWith('pkg:cargo'))  return 'crates.io';
+  if (purl.startsWith('pkg:gem'))    return 'RubyGems';
+  if (purl.startsWith('pkg:golang')) return 'Go';
   return 'npm';
 }
 
@@ -491,8 +490,8 @@ function parseSpdxJson(content) {
   let parsed;
   try { parsed = JSON.parse(content); } catch { return []; }
   for (const pkg of parsed.packages ?? []) {
-    if (!pkg.name || !pkg.versionInfo) {continue;}
-    const purl = (pkg.externalRefs ?? []).find((r) => r.referenceType === 'purl')?.referenceLocator ?? '';
+    if (!pkg.name || !pkg.versionInfo) continue;
+    const purl = (pkg.externalRefs ?? []).find(r => r.referenceType === 'purl')?.referenceLocator ?? '';
     pkgs.push({ name: pkg.name, version: pkg.versionInfo, ecosystem: ecosystemFromPurl(purl) });
   }
   return pkgs;
@@ -503,7 +502,7 @@ function parseCycloneDxJson(content) {
   let parsed;
   try { parsed = JSON.parse(content); } catch { return []; }
   for (const comp of parsed.components ?? []) {
-    if (!comp.name || !comp.version) {continue;}
+    if (!comp.name || !comp.version) continue;
     pkgs.push({ name: comp.name, version: comp.version, ecosystem: ecosystemFromPurl(comp.purl ?? '') });
   }
   return pkgs;
@@ -533,7 +532,7 @@ async function walkDirForPackages(dir, maxDepth = 12) {
   const packages = [];
 
   async function walk(currentDir, depth) {
-    if (depth > maxDepth) {return;}
+    if (depth > maxDepth) return;
     let entries;
     try { entries = await fsP.readdir(currentDir, { withFileTypes: true }); }
     catch { return; }
@@ -548,7 +547,7 @@ async function walkDirForPackages(dir, maxDepth = 12) {
         const quickType = detectLockfileType(entry.name, '');
         if (quickType) {
           try {
-            const content = await fsP.readFile(path.join(currentDir, entry.name), 'utf-8');
+            const content   = await fsP.readFile(path.join(currentDir, entry.name), 'utf-8');
             // Re-check with content snippet for SBOM sniffing
             const finalType = detectLockfileType(entry.name, content.slice(0, 2000));
             if (finalType) {
@@ -594,7 +593,9 @@ async function extractPackagesFromGitRepo(repoUrl) {
   try {
     logger.info(`git-scan: cloning ${repoUrl} → ${tmpDir}`);
     try {
-      await execFileAsync(gitBin, ['clone', '--depth', '1', '--single-branch', repoUrl, tmpDir,], {
+      await execFileAsync(gitBin, [
+        'clone', '--depth', '1', '--single-branch', repoUrl, tmpDir,
+      ], {
         timeout: 120_000,
         env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: 'echo' },
       });
@@ -602,9 +603,9 @@ async function extractPackagesFromGitRepo(repoUrl) {
       const raw = (spawnErr.stderr || spawnErr.stdout || '').trim();
       // git writes progress ("Cloning into...") to stderr alongside error lines.
       // Extract only the fatal/error line so the stored message is meaningful.
-      const errorLine = raw.split('\n').
-        map((l) => l.trim()).
-        find((l) => l.startsWith('fatal:') || l.startsWith('error:'));
+      const errorLine = raw.split('\n')
+        .map(l => l.trim())
+        .find(l => l.startsWith('fatal:') || l.startsWith('error:'));
       throw new Error(errorLine || raw || spawnErr.message);
     }
 
@@ -631,13 +632,13 @@ async function extractPackagesFromGitRepo(repoUrl) {
  */
 async function extractPackagesFromContainer(imageName) {
   // Basic image name validation (no shell meta-chars)
-  if (!(/^[a-zA-Z0-9._\-/:@]+$/).test(imageName) || imageName.length > 512) {
+  if (!/^[a-zA-Z0-9._\-/:@]+$/.test(imageName) || imageName.length > 512) {
     throw new Error('Invalid container image name');
   }
 
   const dockerBin = await resolveBin('docker');
-  const tarBin = await resolveBin('tar');
-  const tmpDir = await fsP.mkdtemp(path.join(os.tmpdir(), 'ct-container-'));
+  const tarBin    = await resolveBin('tar');
+  const tmpDir    = await fsP.mkdtemp(path.join(os.tmpdir(), 'ct-container-'));
   let containerId = null;
   try {
     // 1. Pull image
@@ -659,7 +660,7 @@ async function extractPackagesFromContainer(imageName) {
     await execFileAsync(tarBin, [
       'xf', tarPath, '-C', fsDir,
       '--overwrite',
-    ], { timeout: 120_000 }).catch((err) => {
+    ], { timeout: 120_000 }).catch(err => {
       // Container image tarballs often contain device nodes, hard links, and
       // other special entries that BusyBox/GNU tar can't extract into a regular
       // tmpfs directory. Those failures are harmless — we only need package
@@ -689,21 +690,21 @@ async function extractPackagesFromContainer(imageName) {
  */
 export function detectLockfileType(filename = '', content = '') {
   const name = filename.toLowerCase();
-  if (name === 'package-lock.json') {return 'npm-package-lock';}
-  if (name === 'yarn.lock') {return 'yarn';}
-  if (name === 'pnpm-lock.yaml') {return 'pnpm';}
-  if (name === 'requirements.txt') {return 'requirements-txt';}
-  if (name === 'pipfile.lock') {return 'pipfile-lock';}
-  if (name === 'go.sum') {return 'go-sum';}
-  if (name === 'cargo.lock') {return 'cargo-lock';}
-  if (name === 'gemfile.lock') {return 'gemfile-lock';}
-  if (name === 'packages.lock.json') {return 'nuget-packages-lock';}
-  if (name === 'composer.lock') {return 'composer-lock';}
+  if (name === 'package-lock.json')  return 'npm-package-lock';
+  if (name === 'yarn.lock')          return 'yarn';
+  if (name === 'pnpm-lock.yaml')     return 'pnpm';
+  if (name === 'requirements.txt')   return 'requirements-txt';
+  if (name === 'pipfile.lock')       return 'pipfile-lock';
+  if (name === 'go.sum')             return 'go-sum';
+  if (name === 'cargo.lock')         return 'cargo-lock';
+  if (name === 'gemfile.lock')       return 'gemfile-lock';
+  if (name === 'packages.lock.json') return 'nuget-packages-lock';
+  if (name === 'composer.lock')      return 'composer-lock';
   // SBOM — try content sniffing too (for files with non-standard names)
   const snippet = content.slice(0, 2000);
-  if (name.endsWith('.spdx.json') || snippet.includes('"SPDXID"')) {return 'spdx-json';}
-  if (name.includes('cyclonedx') || snippet.includes('"bomFormat"')) {return 'cyclonedx-json';}
-  if (name === 'bom.json' && snippet.includes('"CycloneDX"')) {return 'cyclonedx-json';}
+  if (name.endsWith('.spdx.json')    || snippet.includes('"SPDXID"'))           return 'spdx-json';
+  if (name.includes('cyclonedx')     || snippet.includes('"bomFormat"'))        return 'cyclonedx-json';
+  if (name === 'bom.json'            && snippet.includes('"CycloneDX"'))        return 'cyclonedx-json';
   return null;
 }
 
@@ -715,18 +716,18 @@ export function detectLockfileType(filename = '', content = '') {
  */
 export function parseLockfile(type, content) {
   switch (type) {
-    case 'npm-package-lock': return parseNpmPackageLock(content);
-    case 'yarn': return parseYarnLock(content);
-    case 'pnpm': return parsePnpmLock(content);
-    case 'requirements-txt': return parseRequirementsTxt(content);
-    case 'pipfile-lock': return parsePipfileLock(content);
-    case 'go-sum': return parseGoSum(content);
-    case 'cargo-lock': return parseCargoLock(content);
-    case 'gemfile-lock': return parseGemfileLock(content);
+    case 'npm-package-lock':    return parseNpmPackageLock(content);
+    case 'yarn':                return parseYarnLock(content);
+    case 'pnpm':                return parsePnpmLock(content);
+    case 'requirements-txt':    return parseRequirementsTxt(content);
+    case 'pipfile-lock':        return parsePipfileLock(content);
+    case 'go-sum':              return parseGoSum(content);
+    case 'cargo-lock':          return parseCargoLock(content);
+    case 'gemfile-lock':        return parseGemfileLock(content);
     case 'nuget-packages-lock': return parseNugetPackagesLock(content);
-    case 'composer-lock': return parseComposerLock(content);
-    case 'spdx-json': return parseSpdxJson(content);
-    case 'cyclonedx-json': return parseCycloneDxJson(content);
+    case 'composer-lock':       return parseComposerLock(content);
+    case 'spdx-json':           return parseSpdxJson(content);
+    case 'cyclonedx-json':      return parseCycloneDxJson(content);
     default: return [];
   }
 }
@@ -750,21 +751,21 @@ async function fetchVulnIdsByPackage(packages) {
   const entries = [];
 
   for (let i = 0; i < packages.length; i += OSV_BATCH_SIZE) {
-    const chunk = packages.slice(i, i + OSV_BATCH_SIZE);
-    const queries = chunk.map((p) => ({
+    const chunk   = packages.slice(i, i + OSV_BATCH_SIZE);
+    const queries = chunk.map(p => ({
       package: { name: p.name, ecosystem: p.ecosystem },
       version: p.version,
     }));
     try {
-      const response = await postJson(OSV_API_URL, { queries });
+      const response    = await postJson(OSV_API_URL, { queries });
       const batchResult = response.results ?? [];
       for (let j = 0; j < chunk.length; j++) {
-        const ids = (batchResult[j]?.vulns ?? []).map((v) => v.id).filter(Boolean);
+        const ids = (batchResult[j]?.vulns ?? []).map(v => v.id).filter(Boolean);
         entries.push({ pkg: chunk[j], vulnIds: ids });
       }
     } catch (err) {
       logger.warn(`OSV querybatch failed (offset ${i}): ${err.message}`);
-      for (const pkg of chunk) {entries.push({ pkg, vulnIds: [] });}
+      for (const pkg of chunk) entries.push({ pkg, vulnIds: [] });
     }
   }
   return entries;
@@ -782,7 +783,7 @@ async function fetchAdvisoryDetails(vulnIds) {
   for (let i = 0; i < vulnIds.length; i += OSV_DETAIL_CONCURRENCY) {
     const batch = vulnIds.slice(i, i + OSV_DETAIL_CONCURRENCY);
     const settled = await Promise.allSettled(
-      batch.map((id) => getJson(`${OSV_VULN_BASE_URL}/${id}`))
+      batch.map(id => getJson(`${OSV_VULN_BASE_URL}/${id}`))
     );
     for (let j = 0; j < batch.length; j++) {
       const result = settled[j];
@@ -806,7 +807,7 @@ async function queryOsvBatch(packages) {
   const entries = await fetchVulnIdsByPackage(packages);
 
   // Step 2: collect all unique vuln IDs that were actually returned
-  const allIds = [...new Set(entries.flatMap((e) => e.vulnIds))];
+  const allIds = [...new Set(entries.flatMap(e => e.vulnIds))];
   logger.info(`osv-scanner: ${packages.length} packages → ${allIds.length} unique vulns to enrich`);
 
   // Step 3: fetch full advisory details for all unique IDs
@@ -817,9 +818,9 @@ async function queryOsvBatch(packages) {
   // Step 4: reassemble per-package results with full advisory objects
   return entries.map(({ pkg, vulnIds }) => ({
     ...pkg,
-    vulns: vulnIds.
-      map((id) => advisoryMap.get(id)).
-      filter(Boolean), // drop any IDs we couldn't fetch
+    vulns: vulnIds
+      .map(id => advisoryMap.get(id))
+      .filter(Boolean),           // drop any IDs we couldn't fetch
   }));
 }
 
@@ -827,7 +828,7 @@ function extractFixedVersion(affected = []) {
   for (const a of affected) {
     for (const range of a.ranges ?? []) {
       for (const event of range.events ?? []) {
-        if (event.fixed) {return event.fixed;}
+        if (event.fixed) return event.fixed;
       }
     }
   }
@@ -844,24 +845,23 @@ async function _executeOsvScan(scanId, packages, ignoredVulnIds) {
   let vulnsFound = 0;
   try {
     // Deduplicate by name@version@ecosystem
-    const seen = new Set();
-    const unique = packages.filter((p) => {
+    const seen   = new Set();
+    const unique = packages.filter(p => {
       const key = `${p.name}@${p.version}@${p.ecosystem}`;
-      if (seen.has(key)) {return false;}
+      if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    await db('osv_scan_runs').where({ id: scanId }).
-update({ packages_scanned: unique.length });
+    await db('osv_scan_runs').where({ id: scanId }).update({ packages_scanned: unique.length });
 
-    const results = await queryOsvBatch(unique);
+    const results  = await queryOsvBatch(unique);
     const findings = [];
 
     for (const result of results) {
       for (const vuln of result.vulns) {
-        const isIgnored = ignoredVulnIds.includes(vuln.id);
-        const title = vuln.summary ?? vuln.id;
+        const isIgnored   = ignoredVulnIds.includes(vuln.id);
+        const title       = vuln.summary ?? vuln.id;
         const description = vuln.details ?? '';
 
         const { cvssScore, severity } = extractSeverityFromVuln(vuln);
@@ -880,7 +880,7 @@ update({ packages_scanned: unique.length });
           stride_categories: mapToStride(title, description),
           fixed_version:     fixedVersion,
           affected_versions: JSON.stringify(vuln.affected ?? []),
-          references:        JSON.stringify((vuln.references ?? []).map((r) => r.url).filter(Boolean)),
+          references:        JSON.stringify((vuln.references ?? []).map(r => r.url).filter(Boolean)),
           is_ignored:        isIgnored,
         });
         vulnsFound++;
@@ -892,8 +892,7 @@ update({ packages_scanned: unique.length });
       await db('osv_scan_findings').insert(findings.slice(i, i + INSERT_CHUNK));
     }
 
-    await db('osv_scan_runs').where({ id: scanId }).
-update({
+    await db('osv_scan_runs').where({ id: scanId }).update({
       status:      'complete',
       vulns_found: vulnsFound,
       finished_at: db.fn.now(),
@@ -902,8 +901,7 @@ update({
     logger.info(`osv-scan ${scanId}: packages=${unique.length} vulns=${vulnsFound}`);
   } catch (err) {
     logger.error(`osv-scan ${scanId} failed: ${err.message}`);
-    await db('osv_scan_runs').where({ id: scanId }).
-update({
+    await db('osv_scan_runs').where({ id: scanId }).update({
       status:        'error',
       error_message: err.message,
       finished_at:   db.fn.now(),
@@ -916,8 +914,7 @@ update({
  * Packages are already parsed by the controller before this is called.
  */
 export async function runScan(scanId, packages, ignoredVulnIds = []) {
-  await db('osv_scan_runs').where({ id: scanId }).
-update({ status: 'running', started_at: db.fn.now() });
+  await db('osv_scan_runs').where({ id: scanId }).update({ status: 'running', started_at: db.fn.now() });
   await _executeOsvScan(scanId, packages, ignoredVulnIds);
 }
 
@@ -930,16 +927,14 @@ update({ status: 'running', started_at: db.fn.now() });
  * @param {string[]} ignoredVulnIds
  */
 export async function runGitScan(scanId, repoUrl, ignoredVulnIds = []) {
-  await db('osv_scan_runs').where({ id: scanId }).
-update({ status: 'running', started_at: db.fn.now() });
+  await db('osv_scan_runs').where({ id: scanId }).update({ status: 'running', started_at: db.fn.now() });
 
   let packages;
   try {
     packages = await extractPackagesFromGitRepo(repoUrl);
   } catch (err) {
     logger.error(`git-scan ${scanId}: clone/parse failed: ${err.message}`);
-    await db('osv_scan_runs').where({ id: scanId }).
-update({
+    await db('osv_scan_runs').where({ id: scanId }).update({
       status:        'error',
       error_message: err.message,
       finished_at:   db.fn.now(),
@@ -948,8 +943,7 @@ update({
   }
 
   if (packages.length === 0) {
-    await db('osv_scan_runs').where({ id: scanId }).
-update({
+    await db('osv_scan_runs').where({ id: scanId }).update({
       status:        'error',
       error_message: 'No supported lockfiles found in the repository',
       finished_at:   db.fn.now(),
@@ -970,16 +964,14 @@ update({
  * @param {string[]} ignoredVulnIds
  */
 export async function runContainerScan(scanId, imageName, ignoredVulnIds = []) {
-  await db('osv_scan_runs').where({ id: scanId }).
-update({ status: 'running', started_at: db.fn.now() });
+  await db('osv_scan_runs').where({ id: scanId }).update({ status: 'running', started_at: db.fn.now() });
 
   let packages;
   try {
     packages = await extractPackagesFromContainer(imageName);
   } catch (err) {
     logger.error(`container-scan ${scanId}: extraction failed: ${err.message}`);
-    await db('osv_scan_runs').where({ id: scanId }).
-update({
+    await db('osv_scan_runs').where({ id: scanId }).update({
       status:        'error',
       error_message: err.message,
       finished_at:   db.fn.now(),
@@ -988,8 +980,7 @@ update({
   }
 
   if (packages.length === 0) {
-    await db('osv_scan_runs').where({ id: scanId }).
-update({
+    await db('osv_scan_runs').where({ id: scanId }).update({
       status:        'complete',
       vulns_found:   0,
       packages_scanned: 0,

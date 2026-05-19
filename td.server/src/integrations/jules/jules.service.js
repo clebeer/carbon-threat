@@ -16,8 +16,8 @@ const logger = loggerHelper.get('integrations/jules/jules.service.js');
  */
 async function getJulesApiKey(orgId) {
   try {
-    let q = db('integration_configs').
-      where({ platform: 'jules', is_enabled: true });
+    let q = db('integration_configs')
+      .where({ platform: 'jules', is_enabled: true });
 
     if (orgId === undefined || orgId === null) {
       q = q.whereNull('org_id');
@@ -31,7 +31,7 @@ async function getJulesApiKey(orgId) {
       const payload = JSON.parse(row.config_encrypted);
       const config = decryptModel(payload);
       const key = config.apiKey || config.api_key;
-      if (key) {return key;}
+      if (key) return key;
     }
   } catch (err) {
     logger.warn('Failed to read Jules API key from integration_configs, falling back to env var', err.message);
@@ -47,23 +47,23 @@ function buildPrompt(finding, promptOverride) {
 }
 
 function deriveStatus(activities) {
-  if (!activities || activities.length === 0) {return 'pending';}
+  if (!activities || activities.length === 0) return 'pending';
 
-  const types = activities.map((a) => a.activityType ?? a.type ?? '');
+  const types = activities.map(a => a.activityType ?? a.type ?? '');
 
-  if (types.some((t) => t.includes('PULL_REQUEST') || t.includes('COMPLETE'))) {return 'done';}
-  if (types.some((t) => t.includes('ERROR') || t.includes('FAILED'))) {return 'error';}
-  if (types.some((t) => t.includes('AWAIT') || t.includes('APPROVAL'))) {return 'awaiting_approval';}
-  if (types.some((t) => t.includes('EXECUT') || t.includes('RUN') || t.includes('CODE'))) {return 'running';}
-  if (types.some((t) => t.includes('PLAN'))) {return 'planning';}
+  if (types.some(t => t.includes('PULL_REQUEST') || t.includes('COMPLETE'))) return 'done';
+  if (types.some(t => t.includes('ERROR') || t.includes('FAILED'))) return 'error';
+  if (types.some(t => t.includes('AWAIT') || t.includes('APPROVAL'))) return 'awaiting_approval';
+  if (types.some(t => t.includes('EXECUT') || t.includes('RUN') || t.includes('CODE'))) return 'running';
+  if (types.some(t => t.includes('PLAN'))) return 'planning';
 
   return 'pending';
 }
 
 function extractPrUrl(activities) {
   for (const a of activities ?? []) {
-    if (a.pullRequest?.url) {return a.pullRequest.url;}
-    if (a.pullRequests?.length) {return a.pullRequests[0].url;}
+    if (a.pullRequest?.url) return a.pullRequest.url;
+    if (a.pullRequests?.length) return a.pullRequests[0].url;
   }
   return null;
 }
@@ -71,7 +71,7 @@ function extractPrUrl(activities) {
 function extractPlanSummary(activities) {
   for (const a of activities ?? []) {
     if (a.plan?.steps || a.plan?.description) {
-      return a.plan.description ?? a.plan.steps?.map((s) => `• ${s.description ?? s}`).join('\n') ?? null;
+      return a.plan.description ?? a.plan.steps?.map(s => `• ${s.description ?? s}`).join('\n') ?? null;
     }
   }
   return null;
@@ -91,12 +91,10 @@ export async function createSession({
   user,
   orgId,
 }) {
-  const finding = await db('osv_scan_findings').where({ id: findingId }).
-first();
-  if (!finding) {throw Object.assign(new Error('Finding not found'), { statusCode: 404 });}
+  const finding = await db('osv_scan_findings').where({ id: findingId }).first();
+  if (!finding) throw Object.assign(new Error('Finding not found'), { statusCode: 404 });
 
-  const scanRun = await db('osv_scan_runs').where({ id: finding.scan_id }).
-first();
+  const scanRun = await db('osv_scan_runs').where({ id: finding.scan_id }).first();
   if (!canAccessOsvScanRun(scanRun, user)) {
     throw Object.assign(new Error('Finding not found'), { statusCode: 404 });
   }
@@ -136,8 +134,8 @@ first();
 
 export async function getSessionWithActivities(id, viewer, orgId) {
   const session = await julesRepo.getSessionById(id);
-  if (!session) {return null;}
-  if (!canAccessJulesSession(session, viewer)) {return null;}
+  if (!session) return null;
+  if (!canAccessJulesSession(session, viewer)) return null;
 
   if (!session.jules_session_id || ['done', 'error'].includes(session.status)) {
     return { session, activities: [] };
@@ -149,14 +147,14 @@ export async function getSessionWithActivities(id, viewer, orgId) {
     const data = await julesClient.getSessionActivities(session.jules_session_id, apiKey);
     activities = data.activities ?? [];
 
-    const newStatus = deriveStatus(activities);
-    const prUrl = extractPrUrl(activities);
+    const newStatus   = deriveStatus(activities);
+    const prUrl       = extractPrUrl(activities);
     const planSummary = extractPlanSummary(activities);
 
     const updates = {};
-    if (newStatus !== session.status) {updates.status = newStatus;}
-    if (prUrl && prUrl !== session.pr_url) {updates.pr_url = prUrl;}
-    if (planSummary && !session.plan_summary) {updates.plan_summary = planSummary;}
+    if (newStatus !== session.status)         updates.status       = newStatus;
+    if (prUrl && prUrl !== session.pr_url)    updates.pr_url       = prUrl;
+    if (planSummary && !session.plan_summary) updates.plan_summary = planSummary;
 
     if (Object.keys(updates).length) {
       await julesRepo.updateSession(id, updates);
@@ -187,12 +185,12 @@ export async function listSessions({ page, limit, viewer }) {
 
 export async function approvePlan(id, viewer, orgId) {
   const session = await julesRepo.getSessionById(id);
-  if (!session) {throw Object.assign(new Error('Session not found'), { statusCode: 404 });}
+  if (!session) throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   if (!canAccessJulesSession(session, viewer)) {
     throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   }
-  if (!session.jules_session_id) {throw Object.assign(new Error('Session has no Jules ID'), { statusCode: 409 });}
-  if (session.status !== 'awaiting_approval') {throw Object.assign(new Error('Session is not awaiting approval'), { statusCode: 409 });}
+  if (!session.jules_session_id) throw Object.assign(new Error('Session has no Jules ID'), { statusCode: 409 });
+  if (session.status !== 'awaiting_approval') throw Object.assign(new Error('Session is not awaiting approval'), { statusCode: 409 });
 
   const apiKey = await getJulesApiKey(orgId);
   await julesClient.approvePlan(session.jules_session_id, apiKey);
@@ -201,11 +199,11 @@ export async function approvePlan(id, viewer, orgId) {
 
 export async function sendMessage(id, message, viewer, orgId) {
   const session = await julesRepo.getSessionById(id);
-  if (!session) {throw Object.assign(new Error('Session not found'), { statusCode: 404 });}
+  if (!session) throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   if (!canAccessJulesSession(session, viewer)) {
     throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   }
-  if (!session.jules_session_id) {throw Object.assign(new Error('Session has no Jules ID'), { statusCode: 409 });}
+  if (!session.jules_session_id) throw Object.assign(new Error('Session has no Jules ID'), { statusCode: 409 });
 
   const apiKey = await getJulesApiKey(orgId);
   await julesClient.sendMessage(session.jules_session_id, message, apiKey);
@@ -218,5 +216,5 @@ export async function deleteSession(id, viewer) {
     throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   }
   const deleted = await julesRepo.deleteSession(id);
-  if (!deleted) {throw Object.assign(new Error('Session not found'), { statusCode: 404 });}
+  if (!deleted) throw Object.assign(new Error('Session not found'), { statusCode: 404 });
 }

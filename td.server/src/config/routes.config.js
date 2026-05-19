@@ -202,27 +202,27 @@ const routes = (router) => {
 
     // ── MITRE ATT&CK Framework ────────────────────────────────────────────
     // Sync + status (admin only for triggering sync; all roles can read)
-    router.get('/api/attack/status', requireRole('admin', 'analyst', 'viewer'), attackController.getSyncStatusHandler);
-    router.post('/api/attack/sync', requireRole('admin'), auditMiddleware('ATTACK_SYNC'), attackController.triggerSync);
+    router.get('/api/attack/status',                requireRole('admin', 'analyst', 'viewer'), attackController.getSyncStatusHandler);
+    router.post('/api/attack/sync',                 requireRole('admin'), auditMiddleware('ATTACK_SYNC'), attackController.triggerSync);
 
     // Reference data (all authenticated roles)
-    router.get('/api/attack/tactics', requireRole('admin', 'analyst', 'viewer'), attackController.listTactics);
-    router.get('/api/attack/techniques', requireRole('admin', 'analyst', 'viewer'), attackController.listTechniques);
-    router.get('/api/attack/techniques/:attackId', requireRole('admin', 'analyst', 'viewer'), attackController.getTechniqueDetails);
-    router.get('/api/attack/groups', requireRole('admin', 'analyst', 'viewer'), attackController.listGroups);
-    router.get('/api/attack/mitigations', requireRole('admin', 'analyst', 'viewer'), attackController.listMitigationsHandler);
+    router.get('/api/attack/tactics',               requireRole('admin', 'analyst', 'viewer'), attackController.listTactics);
+    router.get('/api/attack/techniques',            requireRole('admin', 'analyst', 'viewer'), attackController.listTechniques);
+    router.get('/api/attack/techniques/:attackId',  requireRole('admin', 'analyst', 'viewer'), attackController.getTechniqueDetails);
+    router.get('/api/attack/groups',                requireRole('admin', 'analyst', 'viewer'), attackController.listGroups);
+    router.get('/api/attack/mitigations',           requireRole('admin', 'analyst', 'viewer'), attackController.listMitigationsHandler);
 
     // Analysis — model coverage report
-    router.get('/api/attack/analysis/:modelId', requireRole('admin', 'analyst', 'viewer'), attackController.analyzeModel);
+    router.get('/api/attack/analysis/:modelId',     requireRole('admin', 'analyst', 'viewer'), attackController.analyzeModel);
 
     // Threat → technique mappings (analyst+ can create/delete; viewer can read)
-    router.get('/api/attack/mappings', requireRole('admin', 'analyst', 'viewer'), attackController.listMappingsHandler);
-    router.post('/api/attack/mappings', requireRole('admin', 'analyst'), auditMiddleware('ATTACK_MAPPING_CREATE'), attackController.createMappingHandler);
-    router.delete('/api/attack/mappings/:id', requireRole('admin', 'analyst'), auditMiddleware('ATTACK_MAPPING_DELETE'), attackController.deleteMappingHandler);
+    router.get('/api/attack/mappings',              requireRole('admin', 'analyst', 'viewer'), attackController.listMappingsHandler);
+    router.post('/api/attack/mappings',             requireRole('admin', 'analyst'), auditMiddleware('ATTACK_MAPPING_CREATE'), attackController.createMappingHandler);
+    router.delete('/api/attack/mappings/:id',       requireRole('admin', 'analyst'), auditMiddleware('ATTACK_MAPPING_DELETE'), attackController.deleteMappingHandler);
 
     // Reports
-    router.get('/api/attack/reports/:modelId', requireRole('admin', 'analyst', 'viewer'), attackController.getReportHandler);
-    router.get('/api/attack/reports/:modelId/export', requireRole('admin', 'analyst', 'viewer'), attackController.exportReportHandler);
+    router.get('/api/attack/reports/:modelId',         requireRole('admin', 'analyst', 'viewer'), attackController.getReportHandler);
+    router.get('/api/attack/reports/:modelId/export',  requireRole('admin', 'analyst', 'viewer'), attackController.exportReportHandler);
 
     // Integration configs — admin manages credentials; analyst/viewer can list/export
     router.get('/api/integrations', requireRole('admin', 'analyst', 'viewer'), integrationsController.listConfigs);
@@ -236,13 +236,13 @@ const routes = (router) => {
     router.get('/api/jules/status', integrationsController.getJulesStatus);
 
     // Jules AI remediation
-    router.get('/api/jules/sources', requireRole('admin', 'analyst', 'viewer'), julesController.listSources);
-    router.post('/api/jules/sessions', requireRole('admin', 'analyst'), julesController.createSession);
-    router.get('/api/jules/sessions', requireRole('admin', 'analyst', 'viewer'), julesController.listSessions);
-    router.get('/api/jules/sessions/:id', requireRole('admin', 'analyst', 'viewer'), julesController.getSession);
-    router.post('/api/jules/sessions/:id/approve', requireRole('admin', 'analyst'), julesController.approveSessionPlan);
-    router.post('/api/jules/sessions/:id/message', requireRole('admin', 'analyst'), julesController.sendSessionMessage);
-    router.delete('/api/jules/sessions/:id', requireRole('admin'), julesController.deleteSession);
+    router.get('/api/jules/sources',               requireRole('admin', 'analyst', 'viewer'), julesController.listSources);
+    router.post('/api/jules/sessions',             requireRole('admin', 'analyst'),           julesController.createSession);
+    router.get('/api/jules/sessions',              requireRole('admin', 'analyst', 'viewer'), julesController.listSessions);
+    router.get('/api/jules/sessions/:id',          requireRole('admin', 'analyst', 'viewer'), julesController.getSession);
+    router.post('/api/jules/sessions/:id/approve', requireRole('admin', 'analyst'),           julesController.approveSessionPlan);
+    router.post('/api/jules/sessions/:id/message', requireRole('admin', 'analyst'),           julesController.sendSessionMessage);
+    router.delete('/api/jules/sessions/:id',       requireRole('admin'),                      julesController.deleteSession);
 };
 
 const config = (app) => {

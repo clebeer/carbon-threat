@@ -11,16 +11,15 @@ export async function createSession({ julesSessionId, findingId, findingType, so
     automation_mode:  automationMode,
     status:           'pending',
     created_by:       createdBy ?? null,
-  }).
-returning('*');
+  }).returning('*');
   return row;
 }
 
 export async function updateSession(id, fields) {
-  const [row] = await db('jules_sessions').
-    where({ id }).
-    update({ ...fields, updated_at: db.fn.now() }).
-    returning('*');
+  const [row] = await db('jules_sessions')
+    .where({ id })
+    .update({ ...fields, updated_at: db.fn.now() })
+    .returning('*');
   return row;
 }
 
@@ -52,11 +51,9 @@ export async function listSessions({
 }
 
 export async function getSessionById(id) {
-  return db('jules_sessions').where({ id }).
-first();
+  return db('jules_sessions').where({ id }).first();
 }
 
 export async function deleteSession(id) {
-  return db('jules_sessions').where({ id }).
-delete();
+  return db('jules_sessions').where({ id }).delete();
 }

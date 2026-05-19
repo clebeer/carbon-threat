@@ -30,9 +30,9 @@ export async function runSeeds() {
 
     let files = [];
     try {
-      files = (await fs.promises.readdir(seedDir)).
-        filter((f) => f.endsWith('.js')).
-        sort();
+      files = (await fs.promises.readdir(seedDir))
+        .filter((f) => f.endsWith('.js'))
+        .sort();
     } catch {
       logger.info('No seed directory found — skipping seeds');
       return;

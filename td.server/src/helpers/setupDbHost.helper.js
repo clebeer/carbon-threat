@@ -21,7 +21,7 @@ const LITERAL_HOSTS = new Set([
  * @returns {number|null}
  */
 function ipv4ToInt(parts) {
-  if (!parts.every((n) => n >= 0 && n <= 255)) {return null;}
+  if (!parts.every((n) => n >= 0 && n <= 255)) return null;
   return ((parts[0] << 24) >>> 0) +
     ((parts[1] << 16) | (parts[2] << 8) | parts[3]);
 }
@@ -32,28 +32,28 @@ function ipv4ToInt(parts) {
  */
 function isPermittedIpv4(ipv4Literal) {
   const parts = ipv4Literal.split('.').map(Number);
-  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) {return false;}
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return false;
 
   const addr = ipv4ToInt(parts);
-  if (addr === null) {return false;}
+  if (addr === null) return false;
 
-  if (parts[0] === 169 && parts[1] === 254) {return false;}
+  if (parts[0] === 169 && parts[1] === 254) return false;
 
   const a0 = ipv4ToInt([0, 0, 0, 0]) >>> 0;
   const b009 = ipv4ToInt([0, 255, 255, 255]) >>> 0;
-  if ((addr >>> 0) >= a0 && (addr >>> 0) <= b009) {return false;}
+  if ((addr >>> 0) >= a0 && (addr >>> 0) <= b009) return false;
 
   const a10 = ipv4ToInt([10, 0, 0, 0]) >>> 0;
   const b10 = ipv4ToInt([10, 255, 255, 255]) >>> 0;
-  if ((addr >>> 0) >= a10 && (addr >>> 0) <= b10) {return true;}
+  if ((addr >>> 0) >= a10 && (addr >>> 0) <= b10) return true;
 
   const a172 = ipv4ToInt([172, 16, 0, 0]) >>> 0;
   const b172 = ipv4ToInt([172, 31, 255, 255]) >>> 0;
-  if ((addr >>> 0) >= a172 && (addr >>> 0) <= b172) {return true;}
+  if ((addr >>> 0) >= a172 && (addr >>> 0) <= b172) return true;
 
   const a192 = ipv4ToInt([192, 168, 0, 0]) >>> 0;
   const b192 = ipv4ToInt([192, 168, 255, 255]) >>> 0;
-  if ((addr >>> 0) >= a192 && (addr >>> 0) <= b192) {return true;}
+  if ((addr >>> 0) >= a192 && (addr >>> 0) <= b192) return true;
 
   const a127 = ipv4ToInt([127, 0, 0, 0]) >>> 0;
   const b127 = ipv4ToInt([127, 255, 255, 255]) >>> 0;
@@ -67,8 +67,8 @@ function isPermittedIpv4(ipv4Literal) {
  * @returns {boolean}
  */
 function isPermittedIpv6Literal(ip) {
-  const mapped = (/^::ffff:(\d+)\.(\d+)\.(\d+)\.(\d+)$/i).exec(ip);
-  if (mapped) {return isPermittedIpv4(`${mapped[1]}.${mapped[2]}.${mapped[3]}.${mapped[4]}`);}
+  const mapped = /^::ffff:(\d+)\.(\d+)\.(\d+)\.(\d+)$/i.exec(ip);
+  if (mapped) return isPermittedIpv4(`${mapped[1]}.${mapped[2]}.${mapped[3]}.${mapped[4]}`);
   return ip === '::1';
 }
 
@@ -77,8 +77,8 @@ function isPermittedIpv6Literal(ip) {
  * @returns {boolean}
  */
 function isPermittedResolved(ip) {
-  if (net.isIPv4(ip)) {return isPermittedIpv4(ip);}
-  if (net.isIPv6(ip)) {return isPermittedIpv6Literal(ip);}
+  if (net.isIPv4(ip)) return isPermittedIpv4(ip);
+  if (net.isIPv6(ip)) return isPermittedIpv6Literal(ip);
   return false;
 }
 
@@ -88,7 +88,7 @@ function isPermittedResolved(ip) {
  */
 export async function validateEnterpriseSetupPgHost(host) {
   const hRaw = String(host ?? '').trim();
-  if (!hRaw) {return { ok: false, error: 'host is required' };}
+  if (!hRaw) return { ok: false, error: 'host is required' };
 
   const lowered = hRaw.toLowerCase();
   if (LITERAL_HOSTS.has(lowered) || lowered === '127.0.0.1') {

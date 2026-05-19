@@ -32,18 +32,18 @@ import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
 import { assertThreatModelAccess } from '../helpers/scope.helper.js';
 import {
+  syncAttackData,
+  getSyncStatus,
+  getTactics,
+  getTechniques,
+  getTechniqueById,
+  getGroups,
+  getMitigations,
   analyzeModelCoverage,
+  listMappings,
   createMapping,
   deleteMapping,
   generateReport,
-  getGroups,
-  getMitigations,
-  getSyncStatus,
-  getTactics,
-  getTechniqueById,
-  getTechniques,
-  listMappings,
-  syncAttackData,
 } from '../services/attackFramework.js';
 
 const logger = loggerHelper.get('controllers/attackController.js');
@@ -67,10 +67,10 @@ export async function triggerSync(req, res) {
     // Check if a sync is already in-flight (pending or running).
     // Skip rows that have been stuck for > 30 minutes — assume they crashed.
     const staleThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const inFlight = await db('attack_sync_log').
-      whereIn('status', ['pending', 'running']).
-      where('started_at', '>', staleThreshold).
-      first();
+    const inFlight = await db('attack_sync_log')
+      .whereIn('status', ['pending', 'running'])
+      .where('started_at', '>', staleThreshold)
+      .first();
     if (inFlight) {
       return res.status(409).json({
         error: 'A sync is already in progress',
@@ -79,19 +79,19 @@ export async function triggerSync(req, res) {
     }
 
     // Mark any stale in-flight rows as errored so they don't block future syncs
-    await db('attack_sync_log').
-      whereIn('status', ['pending', 'running']).
-      where('started_at', '<=', staleThreshold).
-      update({ status: 'error', error_message: 'Timed out — no response for 30 minutes', finished_at: db.fn.now() });
+    await db('attack_sync_log')
+      .whereIn('status', ['pending', 'running'])
+      .where('started_at', '<=', staleThreshold)
+      .update({ status: 'error', error_message: 'Timed out — no response for 30 minutes', finished_at: db.fn.now() });
 
-    const [log] = await db('attack_sync_log').
-      insert({
+    const [log] = await db('attack_sync_log')
+      .insert({
         domain:       'enterprise-attack',
         status:       'pending',
         triggered_by: req.user?.id ?? null,
         started_at:   db.fn.now(),
-      }).
-      returning('*');
+      })
+      .returning('*');
 
     // Fire-and-forget — respond immediately with 202
     res.status(202).json({
@@ -99,7 +99,8 @@ export async function triggerSync(req, res) {
       syncId:  log.id,
     });
 
-    syncAttackData(log.id).catch((err) => logger.error(`syncAttackData unhandled error for ${log.id}: ${err.message}`)
+    syncAttackData(log.id).catch(err =>
+      logger.error(`syncAttackData unhandled error for ${log.id}: ${err.message}`)
     );
   } catch (err) {
     logger.error('triggerSync failed', err);
@@ -126,7 +127,7 @@ export async function listTechniques(req, res) {
     tactic,
     search,
     type,
-    limit = '100',
+    limit  = '100',
     offset = '0',
   } = req.query;
 
@@ -135,7 +136,7 @@ export async function listTechniques(req, res) {
       tacticAttackId: tactic,
       search,
       type,
-      limit:  Math.min(parseInt(limit, 10) || 100, 500),
+      limit:  Math.min(parseInt(limit,  10) || 100, 500),
       offset: parseInt(offset, 10) || 0,
     });
     return res.json(result);
@@ -149,7 +150,7 @@ export async function getTechniqueDetails(req, res) {
   const { attackId } = req.params;
   try {
     const tech = await getTechniqueById(attackId);
-    if (!tech) {return res.status(404).json({ error: 'Technique not found' });}
+    if (!tech) return res.status(404).json({ error: 'Technique not found' });
     return res.json({ technique: tech });
   } catch (err) {
     logger.error('getTechniqueDetails failed', err);
@@ -164,7 +165,7 @@ export async function listGroups(req, res) {
   try {
     const result = await getGroups({
       search,
-      limit:  Math.min(parseInt(limit, 10) || 100, 500),
+      limit:  Math.min(parseInt(limit,  10) || 100, 500),
       offset: parseInt(offset, 10) || 0,
     });
     return res.json(result);
@@ -181,7 +182,7 @@ export async function listMitigationsHandler(req, res) {
   try {
     const result = await getMitigations({
       search,
-      limit:  Math.min(parseInt(limit, 10) || 100, 200),
+      limit:  Math.min(parseInt(limit,  10) || 100, 200),
       offset: parseInt(offset, 10) || 0,
     });
     return res.json(result);
@@ -267,7 +268,7 @@ export async function createMappingHandler(req, res) {
 export async function deleteMappingHandler(req, res) {
   try {
     const deleted = await deleteMapping(req.params.id);
-    if (!deleted) {return res.status(404).json({ error: 'Mapping not found' });}
+    if (!deleted) return res.status(404).json({ error: 'Mapping not found' });
     return res.json({ message: 'Mapping deleted' });
   } catch (err) {
     logger.error('deleteMapping failed', err);
@@ -304,7 +305,7 @@ export async function exportReportHandler(req, res) {
 
   try {
     const model = await assertThreatModelAccess(req, modelId);
-    if (!model) {return res.status(404).json({ error: 'Threat model not found' });}
+    if (!model) return res.status(404).json({ error: 'Threat model not found' });
 
     const safeName = (model.title ?? modelId).replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
 
