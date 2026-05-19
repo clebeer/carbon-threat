@@ -17,3 +17,7 @@
 ## 2026-05-20 - [Native Radio Inputs Inside Custom Labels]
 **Learning:** When building custom radio selectors that wrap a native `<input type="radio">` inside a `<label>`, adding custom ARIA roles (`role="radio"`) and keyboard event handlers to the label is an accessibility anti-pattern. The correct approach is to remove `readOnly` attributes, group inputs with a `name` attribute, and rely on native browser behavior (e.g., arrow key navigation) by binding the state update to the input's `onChange` event.
 **Action:** Use native `<input type="radio" name="groupName" onChange={...}>` within labels instead of trying to reinvent radio group keyboard interactions with custom `div` groups and `onClick` events.
+
+## 2024-05-16 - Tooltips on disabled buttons
+**Learning:** Found several disabled buttons where the reason for being disabled was not visually clear to the user (e.g. Export buttons without threats).
+**Action:** When creating or modifying conditionally disabled buttons, consider adding a native `title` attribute or a tooltip to explain the disabled state (e.g., "No threats to export"). This improves context and reduces user friction.
