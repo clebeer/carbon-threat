@@ -170,8 +170,17 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
               {(['local', 'external'] as DbType[]).map(opt => (
-                <label key={opt} style={radioCard(db.type === opt)} onClick={() => setDbField({ type: opt })}>
-                  <input type="radio" readOnly checked={db.type === opt} style={{ marginTop: '2px', accentColor: 'var(--primary)', flexShrink: 0 }} />
+                <label
+                  key={opt}
+                  style={radioCard(db.type === opt)}
+                >
+                  <input
+                    type="radio"
+                    name="dbType"
+                    checked={db.type === opt}
+                    onChange={() => setDbField({ type: opt })}
+                    style={{ marginTop: '2px', accentColor: 'var(--primary)', flexShrink: 0 }}
+                  />
                   <div>
                     <div style={{ color: 'var(--on-surface)', fontWeight: 600, fontSize: '14px', marginBottom: '3px' }}>
                       {opt === 'local' ? 'Local PostgreSQL' : 'External PostgreSQL'}
@@ -253,8 +262,17 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
               {([['local', 'var(--primary)'], ['saml', 'var(--secondary)']] as [AuthType, string][]).map(([opt, accent]) => (
-                <label key={opt} style={radioCard(authType === opt, accent)} onClick={() => setAuthType(opt)}>
-                  <input type="radio" readOnly checked={authType === opt} style={{ marginTop: '2px', accentColor: accent, flexShrink: 0 }} />
+                <label
+                  key={opt}
+                  style={radioCard(authType === opt, accent)}
+                >
+                  <input
+                    type="radio"
+                    name="authType"
+                    checked={authType === opt}
+                    onChange={() => setAuthType(opt)}
+                    style={{ marginTop: '2px', accentColor: accent, flexShrink: 0 }}
+                  />
                   <div>
                     <div style={{ color: 'var(--on-surface)', fontWeight: 600, fontSize: '14px', marginBottom: '3px' }}>
                       {opt === 'local' ? 'Local Authentication' : 'Enterprise SSO (SAML 2.0)'}
