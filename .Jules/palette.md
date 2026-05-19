@@ -13,3 +13,7 @@
 ## 2024-05-08 - [Applying Standard Tab and Expand/Collapse Accessibility to Custom Components]
 **Learning:** Many interactive flex-based components in the project, such as `ThreatCard.tsx`, visually act like standard UI patterns (collapsible accordions and tabbed interfaces) but lack the necessary HTML elements and ARIA attributes for screen readers and keyboard users to interpret their states effectively.
 **Action:** When implementing or modifying custom visual accordion groups and tab groups, always pair `aria-expanded` and `aria-controls` for expand/collapse states (and hide decorative carets with `aria-hidden="true"`), and utilize the standard ARIA tablist pattern (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, `role="tabpanel"`, `aria-labelledby`) to ensure standard accessibility compliance across the application.
+
+## 2026-05-20 - [Native Radio Inputs Inside Custom Labels]
+**Learning:** When building custom radio selectors that wrap a native `<input type="radio">` inside a `<label>`, adding custom ARIA roles (`role="radio"`) and keyboard event handlers to the label is an accessibility anti-pattern. The correct approach is to remove `readOnly` attributes, group inputs with a `name` attribute, and rely on native browser behavior (e.g., arrow key navigation) by binding the state update to the input's `onChange` event.
+**Action:** Use native `<input type="radio" name="groupName" onChange={...}>` within labels instead of trying to reinvent radio group keyboard interactions with custom `div` groups and `onClick` events.
