@@ -1,13 +1,13 @@
-import db from './db/knex.js';
-import jsonwebtoken from 'jsonwebtoken';
-import loggerHelper from './helpers/logger.helper.js';
 import WebSocket from 'ws';
 import yjsConfig from 'y-websocket/bin/utils.js';
+import jsonwebtoken from 'jsonwebtoken';
+import db from './db/knex.js';
+import loggerHelper from './helpers/logger.helper.js';
 
 const { setupWSConnection } = yjsConfig;
 const logger = loggerHelper.get('websocket.js');
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Resolve a Yjs docName to a threat_model row and verify the authenticated
@@ -20,7 +20,7 @@ async function authorizeDocAccess(docName, payload) {
   if (!docName || typeof docName !== 'string') {return null;}
 
   // Accept either a bare UUID or a "prefix-<UUID>" form; reject anything else.
-  const match = docName.match(UUID_RE) || docName.match(/(?:[0-9a-f-]{36})$/iu);
+  const match = docName.match(UUID_RE) || docName.match(/([0-9a-f-]{36})$/i);
   const modelId = match ? match[0] : null;
   if (!modelId || !UUID_RE.test(modelId)) {return null;}
 
@@ -144,75 +144,70 @@ setInterval(() => {
 
 // ── WebSocket server ──────────────────────────────────────────────────────────
 
-function getDocName(req) {
-  const currentURL = req.url ? new URL(req.url, 'http://localhost') : null;
-  return currentURL ? currentURL.pathname.replace(/^\/+/u, '').split('?')[0] || '' : '';
-}
-
-// eslint-disable-next-line max-lines-per-function
-function handleWSConnection(ws, req) {
-  const ip = getIp(req);
-
-  // 1. Rate limit check
-  if (isRateLimited(ip)) {
-    ws.close(4029, 'Too Many Requests');
-    return;
-  }
-
-  // Track open connection; release on close regardless of auth outcome
-  ws.on('close', () => {
-    releaseConn(ip);
-    const docName = ws._ctDocName || '(unknown)';
-    logger.debug(`[Yjs] User disconnected from document: ${docName}`);
-  });
-
-  // 2. Authentication
-  const token = extractToken(req);
-  if (!token) {
-    logger.warn(`[WS] Connection rejected from ${ip}: missing token`);
-    ws.close(4001, 'Unauthorized: missing token');
-    return;
-  }
-
-  const payload = validateToken(token);
-  if (!payload) {
-    logger.warn(`[WS] Connection rejected from ${ip}: invalid or expired token`);
-    ws.close(4003, 'Forbidden: invalid or expired token');
-    return;
-  }
-
-  // 3. Resolve document name from URL path  (e.g. /ws/tm-uuid → 'tm-uuid')
-  const docName = getDocName(req);
-
-  if (!docName) {
-    logger.warn(`[WS] Connection rejected from ${ip}: missing document name`);
-    ws.close(4004, 'Bad Request: missing document');
-    return;
-  }
-
-  // 4. Authorize access to the requested document BEFORE handing off to Yjs
-  authorizeDocAccess(docName, payload).then((model) => {
-    if (!model) {
-      logger.warn(`[WS] Connection rejected from ${ip}: user ${payload.user?.email ?? payload.sub} not authorized for doc ${docName}`);
-      ws.close(4003, 'Forbidden: document access denied');
-      return;
-    }
-
-    ws._ctDocName = docName; // stored for the close handler above
-
-    setupWSConnection(ws, req, { docName });
-    logger.info(`[Yjs] ${payload.user?.email ?? payload.sub ?? 'user'} connected to document: ${docName} (ip=${ip})`);
-  }).
-  catch((err) => {
-    logger.error(`[WS] Authorization check failed for ${docName}: ${err.message}`);
-    ws.close(1011, 'Internal Error');
-  });
-}
-
 export function startWebsocketServer(server) {
   const wss = new WebSocket.Server({ server });
 
-  wss.on('connection', handleWSConnection);
+  wss.on('connection', (ws, req) => {
+    const ip = getIp(req);
+
+    // 1. Rate limit check
+    if (isRateLimited(ip)) {
+      ws.close(4029, 'Too Many Requests');
+      return;
+    }
+
+    // Track open connection; release on close regardless of auth outcome
+    ws.on('close', () => {
+      releaseConn(ip);
+      const docName = ws._ctDocName || '(unknown)';
+      logger.debug(`[Yjs] User disconnected from document: ${docName}`);
+    });
+
+    // 2. Authentication
+    const token = extractToken(req);
+    if (!token) {
+      logger.warn(`[WS] Connection rejected from ${ip}: missing token`);
+      ws.close(4001, 'Unauthorized: missing token');
+      return;
+    }
+
+    const payload = validateToken(token);
+    if (!payload) {
+      logger.warn(`[WS] Connection rejected from ${ip}: invalid or expired token`);
+      ws.close(4003, 'Forbidden: invalid or expired token');
+      return;
+    }
+
+    // 3. Resolve document name from URL path  (e.g. /ws/tm-uuid → 'tm-uuid')
+    const currentURL = req.url ? new URL(req.url, 'http://localhost') : null;
+    const docName = currentURL
+      ? currentURL.pathname.replace(/^\/+/, '').split('?')[0] || ''
+      : '';
+
+    if (!docName) {
+      logger.warn(`[WS] Connection rejected from ${ip}: missing document name`);
+      ws.close(4004, 'Bad Request: missing document');
+      return;
+    }
+
+    // 4. Authorize access to the requested document BEFORE handing off to Yjs
+    authorizeDocAccess(docName, payload).then((model) => {
+      if (!model) {
+        logger.warn(`[WS] Connection rejected from ${ip}: user ${payload.user?.email ?? payload.sub} not authorized for doc ${docName}`);
+        ws.close(4003, 'Forbidden: document access denied');
+        return;
+      }
+
+      ws._ctDocName = docName; // stored for the close handler above
+
+      setupWSConnection(ws, req, { docName });
+      logger.info(`[Yjs] ${payload.user?.email ?? payload.sub ?? 'user'} connected to document: ${docName} (ip=${ip})`);
+    }).
+catch((err) => {
+      logger.error(`[WS] Authorization check failed for ${docName}: ${err.message}`);
+      ws.close(1011, 'Internal Error');
+    });
+  });
 
   return wss;
 }

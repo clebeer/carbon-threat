@@ -1,21 +1,22 @@
-import bcrypt from 'bcrypt';
-import db from './db/knex.js';
-import env from './env/Env.js';
-import envConfig from './config/env.config.js';
 import express from 'express';
+import path from 'path';
+import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+
+import env from './env/Env.js';
+import envConfig from './config/env.config';
 import expressHelper from './helpers/express.helper.js';
 import https from './config/https.config.js';
 import loggerHelper from './helpers/logger.helper.js';
-import { openApiSpec } from './config/openapi.js';
 import parsers from './config/parsers.config.js';
-import path from 'path';
-import rateLimit from 'express-rate-limit';
 import routes from './config/routes.config.js';
+import securityHeaders from './config/securityheaders.config.js';
 import { runMigrations } from './db/migrate.js';
 import { runSeeds } from './db/seed.js';
-import securityHeaders from './config/securityheaders.config.js';
-import swaggerUi from 'swagger-ui-express';
+import db from './db/knex.js';
+import bcrypt from 'bcrypt';
 import { upDir } from './helpers/path.helper.js';
+import { openApiSpec } from './config/openapi.js';
 
 /**
  * Validates that critical secret environment variables meet minimum entropy
@@ -36,14 +37,16 @@ function assertSecretEntropy() {
         const value = process.env[key];
         if (!value) {
             errors.push(`${key} is not set`);
-        } else if (value.length < minLength) {
+            continue;
+        }
+        if (value.length < minLength) {
             errors.push(`${key} is too short (${value.length} chars, minimum ${minLength})`);
-        } else {
-            // Reject keys with very low character variety (e.g. 'asdfasdfasdf', 'aaaaaaa')
-            const uniqueChars = new Set(value).size;
-            if (uniqueChars < 8) {
-                errors.push(`${key} has insufficient entropy (only ${uniqueChars} unique characters — use openssl rand -base64 48)`);
-            }
+            continue;
+        }
+        // Reject keys with very low character variety (e.g. 'asdfasdfasdf', 'aaaaaaa')
+        const uniqueChars = new Set(value).size;
+        if (uniqueChars < 8) {
+            errors.push(`${key} has insufficient entropy (only ${uniqueChars} unique characters — use openssl rand -base64 48)`);
         }
     }
 
@@ -95,63 +98,6 @@ const limiter = rateLimit({
     legacyHeaders: false // Disable the `X-RateLimit-*` headers
 });
 
-// eslint-disable-next-line max-lines-per-function
-async function configureApp(logger) {
-    // Reject weak/missing secrets before accepting any requests
-    assertSecretEntropy();
-
-    // Run pending database migrations before accepting any requests
-    await runMigrations();
-
-    // Run domain-pack seeds (idempotent — safe on every boot)
-    await runSeeds();
-
-    // Auto-bootstrap default admin when no users exist and env vars are set
-    await bootstrapDefaultAdmin(logger);
-
-    const app = expressHelper.getInstance();
-    // Trust exactly one proxy hop (nginx) — avoids ERR_ERL_PERMISSIVE_TRUST_PROXY
-    app.set('trust proxy', 1);
-    // rate limiting only for production environemnts, otherwise automated e2e tests fail
-    if (process.env.NODE_ENV === 'production') {
-        app.use(limiter);
-        logger.info('Apply rate limiting in production environments');
-    } else {
-        logger.warn('Rate limiting disabled for development environments');
-    }
-
-    // security headers
-    securityHeaders.config(app);
-
-    // Force HTTPS in production
-    app.use(https.middleware);
-
-    // static content
-    app.use('/', express.static(siteDir));
-    app.use('/public', express.static(siteDir));
-    app.use('/docs', express.static(docsDir));
-
-    // parsers
-    parsers.config(app);
-
-    // OpenAPI / Swagger UI — mount before routes so middleware does not block
-    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
-        customSiteTitle: 'CarbonThreat API Docs',
-        swaggerOptions: { persistAuthorization: true },
-    }));
-    app.get('/api-docs.json', (_req, res) => res.json(openApiSpec));
-
-    // routes
-    routes.config(app);
-
-    // env will always supply a value for the PORT
-    app.set('port', env.get().config.PORT);
-    logger.info('Express server listening on ' + app.get('port'));
-
-    logger.info('OWASP Threat Dragon application started');
-    return app;
-}
-
 const create = async () => {
     let logger;
 
@@ -161,7 +107,59 @@ const create = async () => {
         loggerHelper.level(env.get().config.LOG_LEVEL);
         logger = loggerHelper.get('app.js');
 
-        return await configureApp(logger);
+        // Reject weak/missing secrets before accepting any requests
+        assertSecretEntropy();
+
+        // Run pending database migrations before accepting any requests
+        await runMigrations();
+
+        // Run domain-pack seeds (idempotent — safe on every boot)
+        await runSeeds();
+
+        // Auto-bootstrap default admin when no users exist and env vars are set
+        await bootstrapDefaultAdmin(logger);
+
+        const app = expressHelper.getInstance();
+        // Trust exactly one proxy hop (nginx) — avoids ERR_ERL_PERMISSIVE_TRUST_PROXY
+        app.set('trust proxy', 1);
+        // rate limiting only for production environemnts, otherwise automated e2e tests fail
+        if (process.env.NODE_ENV === 'production') {
+            app.use(limiter);
+            logger.info('Apply rate limiting in production environments');
+        } else {
+            logger.warn('Rate limiting disabled for development environments');
+        }
+
+        // security headers
+        securityHeaders.config(app);
+
+        // Force HTTPS in production
+        app.use(https.middleware);
+
+        // static content
+        app.use('/', express.static(siteDir));
+        app.use('/public', express.static(siteDir));
+        app.use('/docs', express.static(docsDir));
+
+        // parsers
+        parsers.config(app);
+
+        // OpenAPI / Swagger UI — mount before routes so bearer middleware does not block
+        app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
+            customSiteTitle: 'CarbonThreat API Docs',
+            swaggerOptions: { persistAuthorization: true },
+        }));
+        app.get('/api-docs.json', (_req, res) => res.json(openApiSpec));
+
+        // routes
+        routes.config(app);
+
+        // env will always supply a value for the PORT
+        app.set('port', env.get().config.PORT);
+        logger.info('Express server listening on ' + app.get('port'));
+
+        logger.info('OWASP Threat Dragon application started');
+        return app;
     } catch (e) {
         if (!logger) { logger = console; }
         logger.error('OWASP Threat Dragon failed to start');
