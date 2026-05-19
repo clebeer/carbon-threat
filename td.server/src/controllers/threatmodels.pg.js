@@ -13,7 +13,6 @@
  *   DELETE /api/threatmodels/:id               → archive (soft delete)
  */
 
-import crypto from 'crypto';
 import db from '../db/knex.js';
 import { decryptModel, encryptModel } from '../security/encryption.js';
 import loggerHelper from '../helpers/logger.helper.js';
@@ -200,7 +199,8 @@ function convertTdJson(json) {
       // Edges have source + target
       if (cell.source && cell.target) {
         edges.push({
-          id:     cell.id ?? `e-${crypto.randomUUID()}`,
+          id:     cell.id ?? `e-${Math.random().toString(36).
+slice(2)}`,
           source: cell.source,
           target: cell.target,
           data:   { label: cell.attrs?.text?.value ?? cell.value ?? '' },
