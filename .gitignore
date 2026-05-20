@@ -350,3 +350,5 @@
 !td.server/test/security/*.spec.js
 !.Jules/
 !.Jules/*.md
+!td.server/test/auth/
+!td.server/test/auth/*.spec.js
