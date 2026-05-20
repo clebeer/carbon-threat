@@ -167,13 +167,14 @@ first();
       })});
     }
 
-    for (const conf of configs) {
-      await targetDb.raw(
-        `INSERT INTO app_config (key, value)
-         VALUES (?, ?)
-         ON CONFLICT (key) DO UPDATE SET value = ?, updated_at = NOW()`,
-        [conf.key, conf.value, conf.value]
-      );
+    if (configs.length > 0) {
+      await targetDb('app_config').
+        insert(configs).
+        onConflict('key').
+        merge({
+          value: targetDb.raw('EXCLUDED.value'),
+          updated_at: targetDb.raw('NOW()')
+        });
     }
 
     // 4. Create root admin (local auth only, and only when no users exist yet).
