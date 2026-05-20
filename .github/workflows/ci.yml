@@ -73,6 +73,8 @@ jobs:
         env:
           ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
           JWT_SECRET: "test-jwt-secret-for-ci"
+          ENCRYPTION_JWT_SIGNING_KEY: "dGVzdC1qd3Qtc2lnbmluZy1rZXktZm9yLWNpLXRlc3RpbmctcHVycG9zZS1vbmx5"
+          ENCRYPTION_JWT_REFRESH_SIGNING_KEY: "dGVzdC1qd3QtcmVmcmVzaC1zaWduaW5nLWtleS1mb3ItY2ktdGVzdGluZy1wdXJwb3Nl"
 
   security-audit:
     name: Security Audit
