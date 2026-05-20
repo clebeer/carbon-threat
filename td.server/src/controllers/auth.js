@@ -105,7 +105,7 @@ const refresh = async (req, res) => {
     return responseWrapper.sendResponseAsync(async () => {
         const { provider, user } = tokenBody;
 
-        // SECURITY FIX (FIX-4): Refresh token rotation.
+
         // Remove the old refresh token and issue a new one on every refresh.
         // This limits the window of exploitation if a token is intercepted.
         await tokenRepo.remove(oldRefreshToken);
