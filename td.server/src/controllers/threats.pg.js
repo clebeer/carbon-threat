@@ -281,12 +281,21 @@ first();
     const edges = content.edges || [];
     const candidates = generateThreats(nodes, edges);
 
+    const ruleIds = candidates.map((c) => c.rule_id).filter(Boolean);
+    let existingRecords = [];
+    if (ruleIds.length > 0) {
+      existingRecords = await db('threats').
+        where({ model_id: modelId }).
+        whereIn('rule_id', ruleIds);
+    }
+    const existingMap = new Map();
+    for (const record of existingRecords) {
+      existingMap.set(record.rule_id, record);
+    }
+
     const inserted = [];
     for (const candidate of candidates) {
-      const existing = candidate.rule_id
-        ? await db('threats').where({ model_id: modelId, rule_id: candidate.rule_id }).
-first()
-        : null;
+      const existing = candidate.rule_id ? existingMap.get(candidate.rule_id) : null;
 
       if (existing) {
         inserted.push(existing);
