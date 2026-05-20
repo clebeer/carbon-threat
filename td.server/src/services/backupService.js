@@ -83,19 +83,29 @@ export async function restoreBackup(knex, backupData) {
     if (!data[table] || !Array.isArray(data[table])) {continue;}
 
     let count = 0;
-    for (const row of data[table]) {
+    const rows = data[table];
+    const chunkSize = 100;
+
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
       try {
-        const exists = await knex(table).where('id', row.id).
-first();
-        if (exists) {
-          await knex(table).where('id', row.id).
-update(row);
-        } else {
-          await knex(table).insert(row);
-        }
-        count++;
+        // Fast path: batch upsert chunk
+        await knex(table).insert(chunk).
+onConflict('id').
+merge();
+        count += chunk.length;
       } catch (err) {
-        result.errors.push(`${table}/${row.id}: ${err.message}`);
+        // Fallback: individual row processing if chunk fails
+        for (const row of chunk) {
+          try {
+            await knex(table).insert(row).
+onConflict('id').
+merge();
+            count++;
+          } catch (rowErr) {
+            result.errors.push(`${table}/${row.id}: ${rowErr.message}`);
+          }
+        }
       }
     }
     result.restored[table] = count;
