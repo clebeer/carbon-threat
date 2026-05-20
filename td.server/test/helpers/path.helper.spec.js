@@ -11,4 +11,8 @@ describe('helpers/path.helper.js', () => {
     it('has an OS agnostic path separator', () => {
         expect(upDir).to.contain(path.sep);
     });
+
+    it('is explicitly correct across platforms', () => {
+        expect(upDir).to.equal(`..${path.sep}`);
+    });
 });
