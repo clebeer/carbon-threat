@@ -21,3 +21,6 @@
 ## 2024-05-16 - Tooltips on disabled buttons
 **Learning:** Found several disabled buttons where the reason for being disabled was not visually clear to the user (e.g. Export buttons without threats).
 **Action:** When creating or modifying conditionally disabled buttons, consider adding a native `title` attribute or a tooltip to explain the disabled state (e.g., "No threats to export"). This improves context and reduces user friction.
+## 2024-05-20 - [Tooltip Context on Disabled Buttons]
+**Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
+**Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
