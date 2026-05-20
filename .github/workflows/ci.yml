@@ -71,8 +71,8 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm test
         env:
-          ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
-          JWT_SECRET: test-jwt-secret-for-ci
+          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          JWT_SECRET: "test-jwt-secret-for-ci"
 
   security-audit:
     name: Security Audit
