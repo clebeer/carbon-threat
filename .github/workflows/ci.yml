@@ -69,12 +69,18 @@ jobs:
           cache: npm
           cache-dependency-path: td.server/package-lock.json
       - run: npm ci --legacy-peer-deps
+      - name: Generate test secrets
+        run: |
+          echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
+          echo "JWT_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+          echo "ENCRYPTION_JWT_SIGNING_KEY=$(openssl rand -base64 48)" >> $GITHUB_ENV
+          echo "ENCRYPTION_JWT_REFRESH_SIGNING_KEY=$(openssl rand -base64 48)" >> $GITHUB_ENV
       - run: npm test
         env:
-          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-          JWT_SECRET: "test-jwt-secret-for-ci"
-          ENCRYPTION_JWT_SIGNING_KEY: "dGVzdC1qd3Qtc2lnbmluZy1rZXktZm9yLWNpLXRlc3RpbmctcHVycG9zZS1vbmx5"
-          ENCRYPTION_JWT_REFRESH_SIGNING_KEY: "dGVzdC1qd3QtcmVmcmVzaC1zaWduaW5nLWtleS1mb3ItY2ktdGVzdGluZy1wdXJwb3Nl"
+          ENCRYPTION_KEY: ${{ env.ENCRYPTION_KEY }}
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+          ENCRYPTION_JWT_SIGNING_KEY: ${{ env.ENCRYPTION_JWT_SIGNING_KEY }}
+          ENCRYPTION_JWT_REFRESH_SIGNING_KEY: ${{ env.ENCRYPTION_JWT_REFRESH_SIGNING_KEY }}
 
   security-audit:
     name: Security Audit
