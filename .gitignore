@@ -122,6 +122,8 @@
 !ct.client/tsconfig*
 !ct.client/package.json
 !ct.client/package-lock.json
+!ct.client/eslint.config.js
+!ct.client/vitest.config.ts
 
 # Docker orchestration
 !docker-compose.yml
