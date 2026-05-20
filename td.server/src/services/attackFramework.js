@@ -539,13 +539,21 @@ export async function analyzeModelCoverage(modelId) {
   const coveredCount = tacticCoverage.filter((t) => t.covered).length;
   const coverageScore = tactics.length ? Math.round((coveredCount / tactics.length) * 100) : 0;
 
+  // Build a lookup map of uncovered tactics
+  const uncoveredTacticMap = new Map();
+  for (const tac of tacticCoverage) {
+    if (!tac.covered) {
+      uncoveredTacticMap.set(tac.attack_id, tac);
+    }
+  }
+
   // STRIDE → tactic recommendations (for un-covered tactics)
   const recommendations = [];
   for (const threat of threats) {
     const tacticIds = STRIDE_TO_TACTICS[threat.stride_category] ?? [];
     for (const tacId of tacticIds) {
-      const tac = tacticCoverage.find((t) => t.attack_id === tacId);
-      if (tac && !tac.covered) {
+      const tac = uncoveredTacticMap.get(tacId);
+      if (tac) {
         recommendations.push({
           threat_id:      threat.id,
           threat_title:   threat.title,
