@@ -21,6 +21,7 @@ function sanitizeName(name) {
     return null;
   }
   // Limit length and strip control characters
+  // eslint-disable-next-line no-control-regex -- intentional: strip ASCII control chars for safety
   const cleaned = name.replace(/[\x00-\x1f\x7f]/g, '').trim().
 substring(0, 200);
   return cleaned || null;

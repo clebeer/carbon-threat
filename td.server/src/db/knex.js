@@ -1,6 +1,6 @@
 import Knex from 'knex';
 import path from 'path';
-import { upDir } from '../helpers/path.helper.js';
+// upDir removed — was unused (migrations resolved via path.join + __dirname)
 
 /**
  * Resolves the database connection from environment variables.

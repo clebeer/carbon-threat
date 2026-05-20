@@ -27,6 +27,7 @@ export default function BackupView() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate data-fetching via async callback
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleCreate = useCallback(async () => {

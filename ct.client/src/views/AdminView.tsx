@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listUsers, createUser, deactivateUser, type User, type UserRole } from '../api/users';
 import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';

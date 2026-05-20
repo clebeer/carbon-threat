@@ -38,6 +38,7 @@ export async function getSmtpConfig(_req, res) {
     const cfg = await loadSmtp();
     if (!cfg) {return res.json({ smtp: null });}
     // Never return the password over the API
+    // eslint-disable-next-line no-unused-vars -- destructuring to exclude password from response
     const { password: _pw, ...safe } = cfg;
     return res.json({ smtp: safe });
   } catch (err) {
