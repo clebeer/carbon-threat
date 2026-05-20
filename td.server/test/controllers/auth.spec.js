@@ -1,5 +1,11 @@
-import { expect } from 'chai';
+/* global describe, it, beforeEach, afterEach */
+/* eslint-disable no-unused-expressions */
+import chai from 'chai';
 import sinon from 'sinon';
+import sinonChai from 'sinon-chai';
+
+chai.use(sinonChai);
+const expect = chai.expect;
 
 import auth from '../../src/controllers/auth.js';
 import env from '../../src/env/Env.js';
@@ -25,6 +31,10 @@ describe('controllers/auth.js', () => {
         sinon.stub(responseWrapper, 'sendResponse').callsFake((fn) => fn());
         sinon.stub(responseWrapper, 'sendResponseAsync').callsFake(async (p) => { await p(); });
         sinon.stub(tokenRepo, 'add');
+    });
+
+    afterEach(() => {
+        sinon.restore();
     });
 
     describe('login', () => {
@@ -189,7 +199,8 @@ describe('controllers/auth.js', () => {
             beforeEach(async () => {
                 mockRequest.body.refreshToken = 'foobar';
                 sinon.stub(tokenRepo, 'verify').resolves({ provider, user });
-                sinon.stub(jwtHelper, 'createAsync').resolves({ accessToken: 'blah' });
+                sinon.stub(tokenRepo, 'remove').resolves();
+                sinon.stub(jwtHelper, 'createAsync').resolves({ accessToken: 'blah', refreshToken: 'new-refresh' });
                 await auth.refresh(mockRequest, mockResponse);
             });
 
@@ -201,8 +212,16 @@ describe('controllers/auth.js', () => {
                 expect(responseWrapper.sendResponseAsync).to.have.been.calledOnce;
             });
 
+            it('removes the old refresh token', () => {
+                expect(tokenRepo.remove).to.have.been.calledWith(mockRequest.body.refreshToken);
+            });
+
             it('creates a new token', () => {
                 expect(jwtHelper.createAsync).to.have.been.calledWith(provider.name, provider, user);
+            });
+
+            it('adds the new refresh token', () => {
+                expect(tokenRepo.add).to.have.been.calledWith('new-refresh');
             });
         });
     });
