@@ -81,8 +81,8 @@ function parseDrawioXml(xml: string): DrawioShape[] {
         targetId: target,
       });
     });
-  } catch (err) {
-    console.error('Draw.io parse error:', err);
+  } catch {
+    // Ignore parse errors to gracefully return any shapes successfully parsed so far
   }
 
   return shapes;
