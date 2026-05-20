@@ -70,6 +70,9 @@ jobs:
           cache-dependency-path: td.server/package-lock.json
       - run: npm ci --legacy-peer-deps
       - run: npm test
+        env:
+          ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+          JWT_SECRET: test-jwt-secret-for-ci
 
   security-audit:
     name: Security Audit
