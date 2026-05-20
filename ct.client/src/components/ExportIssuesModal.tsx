@@ -103,7 +103,7 @@ export default function ExportIssuesModal({
         ) : (
           <>
             {/* Platform selector */}
-            <label style={labelStyle}>TARGET PLATFORM</label>
+            <label id="platform-label" style={labelStyle}>TARGET PLATFORM</label>
             {loadingConfigs ? (
               <div style={{ fontSize: '13px', color: 'var(--on-surface-muted)', marginBottom: '20px' }}>Loading integrations…</div>
             ) : enabledExportable.length === 0 ? (
@@ -111,10 +111,12 @@ export default function ExportIssuesModal({
                 No integrations enabled. Go to <strong>Admin → Integrations</strong> to configure GitHub, Jira, or ServiceNow.
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
+              <div role="radiogroup" aria-labelledby="platform-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
                 {enabledExportable.map((c) => (
                   <button
                     key={c.platform}
+                    role="radio"
+                    aria-checked={platform === c.platform}
                     onClick={() => setPlatform(c.platform)}
                     style={{
                       padding: '12px 8px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center',
@@ -134,8 +136,9 @@ export default function ExportIssuesModal({
             )}
 
             {/* Title */}
-            <label style={labelStyle}>ISSUE TITLE</label>
+            <label htmlFor="issue-title" style={labelStyle}>ISSUE TITLE</label>
             <input
+              id="issue-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -144,8 +147,9 @@ export default function ExportIssuesModal({
             />
 
             {/* Description */}
-            <label style={{ ...labelStyle, marginTop: '16px' }}>DESCRIPTION</label>
+            <label htmlFor="issue-description" style={{ ...labelStyle, marginTop: '16px' }}>DESCRIPTION</label>
             <textarea
+              id="issue-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the threat, affected components, and recommended mitigation…"
@@ -171,6 +175,7 @@ export default function ExportIssuesModal({
               <button
                 onClick={() => exportMutation.mutate()}
                 disabled={!canExport || exportMutation.isPending}
+                title={!canExport ? "Please select a platform and fill in the title and description" : undefined}
                 style={{
                   flex: 2, padding: '11px', borderRadius: '8px', border: 'none',
                   background: canExport && !exportMutation.isPending ? 'var(--primary)' : 'rgba(0,242,255,0.2)',
