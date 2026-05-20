@@ -127,6 +127,7 @@
 !docker-compose.yml
 !td.server/test/
 !td.server/test/*.spec.js
+!td.server/test/setupEnv.js
 !td.server/test/config/
 !td.server/test/config/*.spec.js
 !td.server/test/controllers/
