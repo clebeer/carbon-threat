@@ -192,6 +192,7 @@ function CloudProviderTab({
               style={{ flex: 1, padding: '7px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '13px', outline: 'none' }}
             />
             <button onClick={handleImport} disabled={!importTitle.trim()}
+              title={!importTitle.trim() ? "Enter a model title to import" : undefined}
               style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 700, fontSize: '12px', cursor: importTitle.trim() ? 'pointer' : 'not-allowed', opacity: importTitle.trim() ? 1 : 0.5 }}>
               Import
             </button>
@@ -209,6 +210,7 @@ function CloudProviderTab({
             {models.filter(m => !m.is_archived).map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
           </select>
           <button onClick={handleExport} disabled={!exportModelId}
+            title={!exportModelId ? "Select a model to export" : undefined}
             style={{ padding: '7px 16px', borderRadius: '6px', border: `1px solid ${meta.color}40`, background: exportModelId ? `${meta.color}18` : 'transparent', color: exportModelId ? meta.color : 'var(--on-surface-muted)', fontWeight: 700, fontSize: '12px', cursor: exportModelId ? 'pointer' : 'not-allowed' }}>
             Export
           </button>
