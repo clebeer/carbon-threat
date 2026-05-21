@@ -225,6 +225,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
                 <button
                   onClick={testDbConnection}
                   disabled={dbTest === 'testing' || !db.host || !db.user || !db.password || !db.name}
+                  title={dbTest === 'testing' ? 'Connection test in progress' : (!db.host || !db.user || !db.password || !db.name) ? 'Fill all database fields to test connection' : undefined}
                   style={{
                     padding: '10px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
                     fontFamily: 'var(--font-label)', letterSpacing: '0.5px', transition: 'all 0.2s',
@@ -247,7 +248,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
               </div>
             )}
 
-            <button onClick={() => advance(2)} disabled={!canAdvanceStep1()} style={primaryBtnStyle(canAdvanceStep1())}>
+            <button onClick={() => advance(2)} disabled={!canAdvanceStep1()} title={!canAdvanceStep1() ? 'Test database connection to continue' : undefined} style={primaryBtnStyle(canAdvanceStep1())}>
               Continue to Authentication →
             </button>
           </div>
@@ -458,6 +459,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
               <button
                 onClick={handleFinish}
                 disabled={loading}
+                title={loading ? 'Initialization in progress' : undefined}
                 style={{ ...primaryBtnStyle(!loading), opacity: loading ? 0.65 : 1 }}
               >
                 {loading ? 'Initializing…' : 'Initialize CarbonThreat'}

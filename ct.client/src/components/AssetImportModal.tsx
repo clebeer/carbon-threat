@@ -142,6 +142,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
         <button
           onClick={handleParse}
           disabled={!rawText.trim()}
+          title={!rawText.trim() ? 'Paste JSON or CSV data to parse' : undefined}
           style={{
             padding: '8px 20px', borderRadius: '6px', border: 'none',
             background: rawText.trim() ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
@@ -191,6 +192,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
           <button
             onClick={handleImport}
             disabled={!preview || preview.assets.length === 0 || importing}
+            title={!preview || preview.assets.length === 0 ? 'No assets to import' : importing ? 'Importing assets...' : undefined}
             style={{
               padding: '8px 20px', borderRadius: '6px', border: 'none',
               background: (preview && preview.assets.length > 0 && !importing) ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
