@@ -136,25 +136,16 @@ describe('AdminView', () => {
         await user.click(inviteToggle);
       }
 
-      // Fill in invite form fields
-      const emailInput = screen.queryByPlaceholderText(/email/i);
-      const passwordInput = screen.queryByPlaceholderText(/password/i);
+      // Fill in invite form fields — Field renders proper <label> elements
+      await user.type(screen.getByLabelText(/email/i), 'newuser@ct.com');
+      await user.type(screen.getByLabelText(/password/i), 'SecurePass123!');
 
-      if (emailInput && passwordInput) {
-        await user.type(emailInput, 'newuser@ct.com');
-        await user.type(passwordInput, 'SecurePass123!');
+      await user.click(screen.getByRole('button', { name: /create user/i }));
 
-        const createBtn = screen.queryByRole('button', { name: /create|add|invite/i });
-        if (createBtn) {
-          await user.click(createBtn);
-
-          // Form submission fires; button may stay disabled briefly during mutation
-          // We just verify no crash occurred
-          await waitFor(() => {
-            expect(screen.getByText('admin@ct.com')).toBeInTheDocument();
-          });
-        }
-      }
+      // Form submission fires; we just verify no crash occurred
+      await waitFor(() => {
+        expect(screen.getByText('admin@ct.com')).toBeInTheDocument();
+      });
     });
 
     it('shows 409 error when email already exists', async () => {
@@ -173,22 +164,15 @@ describe('AdminView', () => {
         await user.click(inviteToggle);
       }
 
-      const emailInput = screen.queryByPlaceholderText(/email/i);
-      const passwordInput = screen.queryByPlaceholderText(/password/i);
+      // Fill in invite form fields — Field renders proper <label> elements
+      await user.type(screen.getByLabelText(/email/i), 'existing@ct.com');
+      await user.type(screen.getByLabelText(/password/i), 'SecurePass123!');
 
-      if (emailInput && passwordInput) {
-        await user.type(emailInput, 'existing@ct.com');
-        await user.type(passwordInput, 'SecurePass123!');
+      await user.click(screen.getByRole('button', { name: /create user/i }));
 
-        const createBtn = screen.queryByRole('button', { name: /create|add|invite/i });
-        if (createBtn) {
-          await user.click(createBtn);
-
-          await waitFor(() =>
-            expect(screen.getByText(/already exists/i)).toBeInTheDocument()
-          , { timeout: 3000 });
-        }
-      }
+      await waitFor(() =>
+        expect(screen.getByText(/already exists/i)).toBeInTheDocument()
+      , { timeout: 3000 });
     });
   });
 

@@ -1,6 +1,7 @@
 import React, { useState, FormEvent } from 'react';
 import { login } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
+import { Field, Button } from '../components/ui';
 
 interface LoginViewProps {
   onSuccess: () => void;
@@ -91,49 +92,33 @@ export default function LoginView({ onSuccess }: LoginViewProps) {
         </p>
 
         <form onSubmit={handleSubmit} noValidate>
-          {/* Email */}
-          <label
-            htmlFor="ct-email"
-            style={{ display: 'block', fontSize: '12px', color: 'var(--on-surface-muted)', marginBottom: '6px', letterSpacing: '0.5px' }}
-          >
-            EMAIL
-          </label>
-          <input
-            id="ct-email"
+          <Field
+            label="Email"
             type="email"
             autoComplete="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
           />
 
-          {/* Password */}
-          <label
-            htmlFor="ct-password"
-            style={{ display: 'block', fontSize: '12px', color: 'var(--on-surface-muted)', marginBottom: '6px', marginTop: '20px', letterSpacing: '0.5px' }}
-          >
-            PASSWORD
-          </label>
-          <input
-            id="ct-password"
+          <Field
+            label="Password"
             type="password"
             autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
           />
 
-          {/* Error */}
           {error && (
             <p
+              role="alert"
               style={{
-                margin: '16px 0 0',
-                fontSize: '13px',
+                margin: 'var(--space-4) 0 0',
+                fontSize: 'var(--text-sm)',
                 color: 'var(--error)',
                 padding: '10px 14px',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-md)',
                 background: 'rgba(255, 77, 79, 0.08)',
                 border: '1px solid rgba(255, 77, 79, 0.2)',
               }}
@@ -142,27 +127,13 @@ export default function LoginView({ onSuccess }: LoginViewProps) {
             </p>
           )}
 
-          {/* Submit */}
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            style={{
-              marginTop: '28px',
-              width: '100%',
-              padding: '13px',
-              borderRadius: '8px',
-              border: 'none',
-              background: loading ? 'rgba(0, 242, 255, 0.4)' : 'var(--primary)',
-              color: '#000',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              letterSpacing: '0.5px',
-              transition: 'all 0.2s',
-            }}
+            loading={loading}
+            style={{ marginTop: 'var(--space-6)', width: '100%' }}
           >
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
+            Sign In
+          </Button>
         </form>
 
         <p
@@ -183,15 +154,3 @@ export default function LoginView({ onSuccess }: LoginViewProps) {
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '11px 14px',
-  borderRadius: '8px',
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.04)',
-  color: '#e2e8f0',
-  fontSize: '14px',
-  outline: 'none',
-  fontFamily: 'var(--font-display)',
-};
