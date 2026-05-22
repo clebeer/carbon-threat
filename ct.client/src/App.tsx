@@ -74,7 +74,7 @@ export default function App() {
   const [activeModelTitle, setActiveModelTitle] = useState<string>('');
   const { theme, toggle: toggleTheme } = useGlobalTheme();
 
-  const { isAuthenticated, user, refreshToken, setAuth, clearAuth } = useAuthStore();
+  const { isAuthenticated, user, refreshToken, setAuth, clearAuth, hasPermission } = useAuthStore();
 
   // Check if Jules integration is enabled — controls menu visibility
   const { data: julesStatus } = useJulesStatus();
@@ -199,7 +199,7 @@ export default function App() {
           })}
 
           {/* Admin-only menu — separator + admin items */}
-          {user?.role === 'admin' && (
+          {hasPermission('users:manage') && (
             <>
               <div style={{ margin: '12px 8px 8px', borderTop: '1px solid rgba(255,255,255,0.06)' }} />
               <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', letterSpacing: '1px', padding: '0 8px', margin: '0 0 6px 0', fontFamily: 'var(--font-label)' }}>ADMIN</p>
@@ -265,7 +265,7 @@ export default function App() {
             </button>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <IconAdmin /> {user?.email}
-              {user?.role === 'admin' && <span style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'var(--primary-glow)', color: 'var(--primary)', fontWeight: 600, letterSpacing: '0.5px' }}>ADMIN</span>}
+              {hasPermission('roles:manage') && <span style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'var(--primary-glow)', color: 'var(--primary)', fontWeight: 600, letterSpacing: '0.5px' }}>ADMIN</span>}
             </span>
           </div>
         </div>

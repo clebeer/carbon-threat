@@ -3,6 +3,7 @@ import { useJulesStore } from '../store/julesStore';
 import { JulesStatusBadge } from '../components/Jules/JulesStatusBadge';
 import { JulesSessionDetail } from '../components/Jules/JulesSessionDetail';
 import type { JulesSession } from '../api/jules';
+import { Spinner } from '../components/ui';
 
 export default function JulesView() {
   const { sessions, total, fetchSessions, fetchSessionDetail, startPolling, clearDetail } = useJulesStore();
@@ -47,7 +48,7 @@ export default function JulesView() {
         </p>
       </div>
 
-      {loading && <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px' }}>Carregando sessões…</p>}
+      {loading && <Spinner label="Carregando sessões" />}
 
       {error && (
         <div style={{ padding: '12px 16px', background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)', borderRadius: '8px', color: 'var(--error)', fontSize: '13px', marginBottom: '16px' }}>
@@ -65,10 +66,13 @@ export default function JulesView() {
       {sessions.length > 0 && (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>
+              Jules remediation sessions
+            </caption>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 {['Finding', 'Repositório', 'Modo', 'Status', 'PR', 'Data', ''].map(h => (
-                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--on-surface-muted)', fontWeight: 500, letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
+                  <th key={h} scope="col" style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--on-surface-muted)', fontWeight: 500, letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}

@@ -48,6 +48,29 @@ export const MOCK_AI_SUGGESTIONS = [
   },
 ];
 
+export const MOCK_CUSTOM_ROLE = {
+  id:              'role-custom-1',
+  slug:            'custom-analyst',
+  name:            'Custom Analyst',
+  description:     'A custom analyst role',
+  is_system:       false,
+  is_active:       true,
+  permission_keys: ['scanner:read', 'threats:read'],
+  user_count:      0,
+  created_at:      new Date().toISOString(),
+  updated_at:      new Date().toISOString(),
+};
+
+export const MOCK_ROLES_LIST = [
+  { id: 'role-admin', slug: 'admin', name: 'Administrator', description: 'Full access', is_system: true, is_active: true, permission_keys: ['roles:manage', 'users:manage'], user_count: 1, created_at: '', updated_at: '' },
+  MOCK_CUSTOM_ROLE,
+];
+
+export const MOCK_PERMISSION_GROUPS = [
+  { domain: 'Scanner', permissions: [{ key: 'scanner:read', label: 'View', description: 'View scans' }, { key: 'scanner:run', label: 'Run', description: 'Run scans' }] },
+  { domain: 'Threats', permissions: [{ key: 'threats:read', label: 'View', description: 'View threats' }] },
+];
+
 // ── handlers ──────────────────────────────────────────────────────────────────
 
 export const handlers = [
@@ -125,5 +148,25 @@ export const handlers = [
   // AI
   http.post('/api/ai/suggest', () =>
     HttpResponse.json({ nodeId: 'node-1', suggestions: MOCK_AI_SUGGESTIONS })
+  ),
+
+  // Roles
+  http.get('/api/roles', () =>
+    HttpResponse.json({ roles: MOCK_ROLES_LIST })
+  ),
+  http.get('/api/roles/:id', ({ params }) =>
+    HttpResponse.json({ role: MOCK_ROLES_LIST.find((r) => r.id === params.id) ?? MOCK_ROLES_LIST[0] })
+  ),
+  http.post('/api/roles', () =>
+    HttpResponse.json({ role: MOCK_CUSTOM_ROLE }, { status: 201 })
+  ),
+  http.put('/api/roles/:id', ({ params }) =>
+    HttpResponse.json({ role: { ...MOCK_CUSTOM_ROLE, id: params.id as string } })
+  ),
+  http.delete('/api/roles/:id', () =>
+    HttpResponse.json({ message: 'Role deleted' })
+  ),
+  http.get('/api/permissions', () =>
+    HttpResponse.json({ permissions: MOCK_PERMISSION_GROUPS })
   ),
 ];

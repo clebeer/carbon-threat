@@ -6,11 +6,12 @@ import {
   type Platform,
   type IntegrationSummary,
 } from '../api/integrations';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import Spinner from './ui/Spinner';
 
 interface ExportIssuesModalProps {
-  /** Pre-filled title (e.g. from the selected threat) */
   defaultTitle?: string;
-  /** Pre-filled description */
   defaultDescription?: string;
   onClose: () => void;
 }
@@ -62,146 +63,135 @@ export default function ExportIssuesModal({
   const canExport = platform !== '' && title.trim().length > 0 && description.trim().length > 0;
 
   return (
-    /* Backdrop */
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.65)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      {/* Modal panel — stop propagation so clicks inside don't close */}
-      <div
-        className="glass-panel"
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: '520px', maxHeight: '80vh', overflowY: 'auto', padding: '32px', borderRadius: '16px' }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <div style={{ fontSize: '10px', letterSpacing: '1px', color: 'var(--secondary)', marginBottom: '4px' }}>EXPORT THREAT</div>
-            <h2 style={{ margin: 0, fontSize: '20px', color: '#fff', fontFamily: 'var(--font-display)' }}>Create Issue</h2>
-          </div>
-          <button aria-label="Close" onClick={onClose}
-            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--on-surface-muted)', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
-          >×</button>
-        </div>
+    <Modal open onClose={onClose} title="Create Issue" style={{ width: 520, maxHeight: '80vh', overflowY: 'auto' }}>
+      {/* Sub-label */}
+      <div style={{ fontSize: 'var(--text-xs)', letterSpacing: '1px', color: 'var(--secondary)', marginBottom: 'var(--space-4)' }}>
+        EXPORT THREAT
+      </div>
 
-        {/* Success state */}
-        {successMsg ? (
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <div style={{ fontSize: '32px', marginBottom: '16px' }}>✓</div>
-            <div style={{ color: 'var(--primary)', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>{successMsg}</div>
-            <button
-              onClick={onClose}
-              style={{ marginTop: '16px', padding: '10px 24px', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Done
-            </button>
+      {/* Success state */}
+      {successMsg ? (
+        <div style={{ textAlign: 'center', padding: 'var(--space-6) 0' }}>
+          <div style={{ fontSize: 32, marginBottom: 'var(--space-4)' }}>✓</div>
+          <div style={{ color: 'var(--primary)', fontSize: 'var(--text-md)', fontWeight: 'var(--weight-semibold)' as unknown as number, marginBottom: 'var(--space-2)' }}>
+            {successMsg}
           </div>
-        ) : (
-          <>
-            {/* Platform selector */}
-            <label id="platform-label" style={labelStyle}>TARGET PLATFORM</label>
+          <Button variant="primary" style={{ marginTop: 'var(--space-4)' }} onClick={onClose}>
+            Done
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* Platform selector */}
+          <div style={{ marginBottom: 'var(--space-5)' }}>
+            <p style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.8px', color: 'var(--on-surface-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>
+              Target Platform
+            </p>
             {loadingConfigs ? (
-              <div style={{ fontSize: '13px', color: 'var(--on-surface-muted)', marginBottom: '20px' }}>Loading integrations…</div>
+              <Spinner label="Loading integrations" />
             ) : enabledExportable.length === 0 ? (
-              <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.2)', fontSize: '13px', color: 'var(--error)', marginBottom: '20px' }}>
+              <div style={{ padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.2)', fontSize: 'var(--text-sm)', color: 'var(--error)' }}>
                 No integrations enabled. Go to <strong>Admin → Integrations</strong> to configure GitHub, Jira, or ServiceNow.
               </div>
             ) : (
-              <div role="radiogroup" aria-labelledby="platform-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
+              <div role="radiogroup" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
                 {enabledExportable.map((c) => (
                   <button
                     key={c.platform}
+                    type="button"
                     role="radio"
                     aria-checked={platform === c.platform}
                     onClick={() => setPlatform(c.platform)}
                     style={{
-                      padding: '12px 8px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center',
-                      border: platform === c.platform ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+                      padding: 'var(--space-3) var(--space-2)', borderRadius: 'var(--radius-md)',
+                      cursor: 'pointer', textAlign: 'center',
+                      border: platform === c.platform ? '1px solid var(--primary)' : '1px solid var(--border-medium)',
                       background: platform === c.platform ? 'rgba(0,242,255,0.1)' : 'rgba(255,255,255,0.03)',
                       color: platform === c.platform ? 'var(--primary)' : 'var(--on-surface-muted)',
                       transition: 'all 0.2s',
                     }}
                   >
-                    <div style={{ fontSize: '20px', marginBottom: '4px' }}>{PLATFORM_ICONS[c.platform]}</div>
-                    <div style={{ fontSize: '12px', fontWeight: platform === c.platform ? 600 : 400 }}>
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>{PLATFORM_ICONS[c.platform]}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: platform === c.platform ? 'var(--weight-semibold)' as unknown as number : 400 }}>
                       {PLATFORM_LABELS[c.platform]}
                     </div>
                   </button>
                 ))}
               </div>
             )}
+          </div>
 
-            {/* Title */}
-            <label htmlFor="issue-title" style={labelStyle}>ISSUE TITLE</label>
+          {/* Title */}
+          <div style={{ marginBottom: 'var(--space-4)' }}>
+            <label htmlFor="export-title" style={labelStyle}>Issue Title</label>
             <input
-              id="issue-title"
+              id="export-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. [HIGH] SQL Injection in /api/users endpoint"
               style={inputStyle}
             />
+          </div>
 
-            {/* Description */}
-            <label htmlFor="issue-description" style={{ ...labelStyle, marginTop: '16px' }}>DESCRIPTION</label>
+          {/* Description */}
+          <div style={{ marginBottom: 'var(--space-4)' }}>
+            <label htmlFor="export-description" style={labelStyle}>Description</label>
             <textarea
-              id="issue-description"
+              id="export-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the threat, affected components, and recommended mitigation…"
               rows={5}
               style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-display)' }}
             />
+          </div>
 
-            {/* Error */}
-            {exportMutation.isError && (
-              <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.2)', fontSize: '12px', color: 'var(--error)' }}>
-                {(exportMutation.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Export failed'}
-              </div>
-            )}
+          {/* Error */}
+          {exportMutation.isError && (
+            <p role="alert" style={{ marginBottom: 'var(--space-3)', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.2)', fontSize: 'var(--text-xs)', color: 'var(--error)' }}>
+              {(exportMutation.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Export failed'}
+            </p>
+          )}
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button
-                onClick={onClose}
-                style={{ flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--on-surface-muted)', fontSize: '14px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => exportMutation.mutate()}
-                disabled={!canExport || exportMutation.isPending}
-                title={!canExport ? "Please select a platform and fill in the title and description" : undefined}
-                style={{
-                  flex: 2, padding: '11px', borderRadius: '8px', border: 'none',
-                  background: canExport && !exportMutation.isPending ? 'var(--primary)' : 'rgba(0,242,255,0.2)',
-                  color: canExport && !exportMutation.isPending ? '#000' : 'var(--on-surface-muted)',
-                  fontSize: '14px', fontWeight: 600, cursor: canExport && !exportMutation.isPending ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {exportMutation.isPending ? 'Exporting…' : `Export to ${platform ? PLATFORM_LABELS[platform] : '—'}`}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <Button variant="secondary" style={{ flex: 1 }} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              style={{ flex: 2 }}
+              loading={exportMutation.isPending}
+              disabled={!canExport}
+              onClick={() => exportMutation.mutate()}
+            >
+              {exportMutation.isPending ? 'Exporting…' : `Export to ${platform ? PLATFORM_LABELS[platform] : '—'}`}
+            </Button>
+          </div>
+        </>
+      )}
+    </Modal>
   );
 }
 
 const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '11px', letterSpacing: '0.8px',
-  color: 'var(--on-surface-muted)', marginBottom: '8px',
+  display: 'block',
+  fontSize: 'var(--text-xs)',
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+  color: 'var(--on-surface-muted)',
+  marginBottom: 'var(--space-1)',
 };
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '10px 14px',
-  borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.04)', color: '#e2e8f0',
-  fontSize: '13px', outline: 'none',
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: 'var(--space-3) var(--space-4)',
+  borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--border-medium)',
+  background: 'var(--surface-container)',
+  color: 'var(--on-surface)',
+  fontSize: 'var(--text-sm)',
+  outline: 'none',
 };
