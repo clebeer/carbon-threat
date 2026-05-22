@@ -1,24 +1,39 @@
 import React, { useState } from 'react';
+import Modal from '../ui/Modal';
+import Field from '../ui/Field';
+import Button from '../ui/Button';
 
-export function RenameModal({ current, onConfirm, onCancel }: { current: string; onConfirm: (n: string) => void; onCancel: () => void }) {
+export function RenameModal({ current, onConfirm, onCancel }: {
+  current: string;
+  onConfirm: (n: string) => void;
+  onCancel: () => void;
+}) {
   const [val, setVal] = useState(current);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onConfirm(val);
+  }
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}>
-      <div className="glass-panel" style={{ padding: '24px', width: '320px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-muted)', fontFamily: 'var(--font-label)', letterSpacing: '0.5px' }}>RENAME NODE</p>
-        <input
+    <Modal open onClose={onCancel} title="Rename Node" style={{ width: 320 }}>
+      <form onSubmit={handleSubmit}>
+        <Field
+          label="Name"
           autoFocus
-          type="text"
           value={val}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal(e.target.value)}
-          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') onConfirm(val); if (e.key === 'Escape') onCancel(); }}
-          style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '4px', fontSize: '14px', outline: 'none' }}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
         />
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-surface-muted)', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={() => onConfirm(val)} style={{ flex: 1, padding: '8px', background: 'var(--primary)', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Rename</button>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+          <Button variant="secondary" style={{ flex: 1 }} onClick={onCancel} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" style={{ flex: 1 }} type="submit">
+            Rename
+          </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

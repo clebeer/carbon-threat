@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import { listThreatModels, type ThreatModelSummary } from '../api/threatmodels';
 import { listThreats, type Threat } from '../api/threats';
+import { Spinner } from '../components/ui';
 import { apiClient } from '../api/client';
 import ExportIssuesModal from '../components/ExportIssuesModal';
 
@@ -605,7 +606,7 @@ export default function ReportsView() {
       )}
 
       {isLoading && (
-        <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px' }}>Loading models…</p>
+        <Spinner label="Loading models" />
       )}
 
       {isError && (

@@ -4,7 +4,7 @@ import { listUsers, createUser, deactivateUser, type User, type UserRole } from 
 import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';
 import { listBackups, createBackup, downloadBackup, deleteBackup, listSchedules, createSchedule, deleteSchedule, restoreBackup as restoreBackupApi, type BackupRecord, type BackupSchedule } from '../api/backup';
 import { useAuthStore } from '../store/authStore';
-import { Field, Select as UISelect, Button } from '../components/ui';
+import { Field, Select as UISelect, Button, Spinner, useToast } from '../components/ui';
 
 // ── RBAC helpers ────────────────────────────────────────────────────────────
 
@@ -67,6 +67,7 @@ export default function AdminView() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin     = currentUser?.role === 'admin';
   const qc          = useQueryClient();
+  const { notify }  = useToast();
 
   // ── Tabs ──
   const [activeTab, setActiveTab] = useState<'users' | 'backup'>('users');
@@ -74,13 +75,10 @@ export default function AdminView() {
   const [showInvite, setShowInvite]   = useState(false);
   const [form, setForm]               = useState<InviteFormState>({ email: '', display_name: '', password: '', role: 'analyst' });
   const [formError, setFormError]     = useState<string | null>(null);
-  const [syncNotice, setSyncNotice]   = useState<string | null>(null);
 
   // ── Backup state ──
   const [bkCreating, setBkCreating] = useState(false);
-  const [bkError, setBkError] = useState('');
   const [bkRestoring, setBkRestoring] = useState(false);
-  const [bkRestoreResult, setBkRestoreResult] = useState<{ restored: Record<string, number>; errors: string[] } | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
   const [scheduleFreq, setScheduleFreq] = useState('daily');
@@ -127,10 +125,10 @@ export default function AdminView() {
   const syncMutation = useMutation({
     mutationFn: triggerVulnFeedSync,
     onSuccess: () => {
-      setSyncNotice('Sync started — the database will update in the background.');
-      setTimeout(() => { refetchFeed(); setSyncNotice(null); }, 5000);
+      notify('Sync started — the database will update in the background.', 'success');
+      setTimeout(() => refetchFeed(), 5000);
     },
-    onError: () => setSyncNotice('Sync request failed. Check server logs.'),
+    onError: () => notify('Sync request failed. Check server logs.', 'error'),
   });
 
   // ── Backup queries ──
@@ -148,53 +146,58 @@ export default function AdminView() {
 
   const handleBkCreate = useCallback(async () => {
     setBkCreating(true);
-    setBkError('');
     try {
       await createBackup();
       bkRefetch();
+      notify('Backup created successfully.', 'success');
     } catch {
-      setBkError('Failed to create backup');
+      notify('Failed to create backup.', 'error');
     } finally {
       setBkCreating(false);
     }
-  }, [bkRefetch]);
+  }, [bkRefetch, notify]);
 
   const handleBkDelete = useCallback(async (id: string) => {
     if (!confirm('Delete this backup?')) return;
     try {
       await deleteBackup(id);
       bkRefetch();
+      notify('Backup deleted.', 'success');
     } catch {
-      setBkError('Failed to delete backup');
+      notify('Failed to delete backup.', 'error');
     }
-  }, [bkRefetch]);
+  }, [bkRefetch, notify]);
 
   const handleBkDownload = useCallback(async (id: string) => {
     try {
       await downloadBackup(id);
     } catch {
-      setBkError('Failed to download backup');
+      notify('Failed to download backup.', 'error');
     }
-  }, []);
+  }, [notify]);
 
   const handleBkRestore = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setBkRestoring(true);
-    setBkRestoreResult(null);
-    setBkError('');
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       const result = await restoreBackupApi(data);
-      setBkRestoreResult(result);
       bkRefetch();
+      const summary = Object.entries(result.restored).map(([t, c]) => `${t}: ${c}`).join(' · ');
+      const hasErrors = result.errors.length > 0;
+      notify(
+        `Restore complete — ${summary}${hasErrors ? ` (${result.errors.length} warning${result.errors.length > 1 ? 's' : ''})` : ''}`,
+        hasErrors ? 'warning' : 'success',
+        8000,
+      );
     } catch (err) {
-      setBkError(err instanceof Error ? err.message : 'Restore failed');
+      notify(err instanceof Error ? err.message : 'Restore failed.', 'error');
     } finally {
       setBkRestoring(false);
     }
-  }, [bkRefetch]);
+  }, [bkRefetch, notify]);
 
   const handleCreateSchedule = useCallback(async () => {
     if (!scheduleName.trim()) return;
@@ -203,20 +206,22 @@ export default function AdminView() {
       qc.invalidateQueries({ queryKey: ['backup-schedules'] });
       setScheduleName('');
       setShowScheduleForm(false);
+      notify('Schedule created.', 'success');
     } catch {
-      setBkError('Failed to create schedule');
+      notify('Failed to create schedule.', 'error');
     }
-  }, [scheduleName, scheduleFreq, qc]);
+  }, [scheduleName, scheduleFreq, qc, notify]);
 
   const handleDeleteSchedule = useCallback(async (id: string) => {
     if (!confirm('Delete this schedule?')) return;
     try {
       await deleteSchedule(id);
       qc.invalidateQueries({ queryKey: ['backup-schedules'] });
+      notify('Schedule deleted.', 'success');
     } catch {
-      setBkError('Failed to delete schedule');
+      notify('Failed to delete schedule.', 'error');
     }
-  }, [qc]);
+  }, [qc, notify]);
 
   const formatSize = (bytes: number) => {
     if (!bytes) return '—';
@@ -287,37 +292,18 @@ export default function AdminView() {
               Vulnerability advisories from OSV (Open Source Vulnerabilities). Mapped to STRIDE categories and used to enrich threat analysis.
             </p>
           </div>
-          <button
-            onClick={() => { setSyncNotice(null); syncMutation.mutate(); }}
-            disabled={syncMutation.isPending || feedStatus?.lastRun?.status === 'running'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '9px 20px', borderRadius: '6px', cursor: 'pointer',
-              fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.5px',
-              border: '1px solid var(--primary)', fontWeight: 600, transition: 'all 0.2s',
-              background: (syncMutation.isPending || feedStatus?.lastRun?.status === 'running')
-                ? 'rgba(0,242,255,0.05)'
-                : 'rgba(0,242,255,0.12)',
-              color: (syncMutation.isPending || feedStatus?.lastRun?.status === 'running')
-                ? 'rgba(0,242,255,0.4)'
-                : 'var(--primary)',
-            }}
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={syncMutation.isPending || feedStatus?.lastRun?.status === 'running'}
+            onClick={() => syncMutation.mutate()}
+            style={{ border: '1px solid var(--primary)', color: 'var(--primary)', background: 'rgba(0,242,255,0.08)' }}
           >
-            {(syncMutation.isPending || feedStatus?.lastRun?.status === 'running') ? (
-              <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>↻</span> Syncing…</>
-            ) : (
-              <> ↻ Update Threat DB</>
-            )}
-          </button>
+            ↻ Update Threat DB
+          </Button>
         </div>
 
-        {syncNotice && (
-          <div style={{ padding: '10px 14px', background: 'rgba(0,242,255,0.06)', border: '1px solid rgba(0,242,255,0.2)', borderRadius: '6px', fontSize: '12px', color: 'var(--primary)', marginBottom: '16px' }}>
-            {syncNotice}
-          </div>
-        )}
-
-        {feedLoading && <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)', margin: 0 }}>Loading status…</p>}
+        {feedLoading && <Spinner label="Loading feed status" />}
 
         {feedStatus && (
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -452,7 +438,7 @@ export default function AdminView() {
             </form>
           )}
 
-          {isLoading && <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)' }}>Loading users…</p>}
+          {isLoading && <Spinner label="Loading users" />}
           {usersError  && <p style={{ fontSize: '13px', color: 'var(--error)' }}>Failed to load users.</p>}
 
           {!isLoading && (
@@ -519,48 +505,16 @@ export default function AdminView() {
                 Create, download, and restore application backups
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => bkFileRef.current?.click()}
-                disabled={bkRestoring}
-                style={{
-                  padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'transparent', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '12px',
-                }}
-              >
-                {bkRestoring ? 'Restoring…' : '📤 Restore from file'}
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <Button variant="secondary" size="sm" loading={bkRestoring} onClick={() => bkFileRef.current?.click()}>
+                📤 Restore from file
                 <input ref={bkFileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleBkRestore} />
-              </button>
-              <button
-                onClick={handleBkCreate}
-                disabled={bkCreating}
-                style={{
-                  padding: '8px 20px', borderRadius: '6px', border: 'none',
-                  background: bkCreating ? 'rgba(255,255,255,0.1)' : 'var(--primary)',
-                  color: bkCreating ? 'var(--on-surface-muted)' : '#000',
-                  cursor: bkCreating ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 700,
-                }}
-              >
-                {bkCreating ? 'Creating…' : '+ Create Backup'}
-              </button>
+              </Button>
+              <Button variant="primary" size="sm" loading={bkCreating} onClick={handleBkCreate}>
+                + Create Backup
+              </Button>
             </div>
           </div>
-
-          {bkError && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '16px', padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>{bkError}</div>}
-
-          {bkRestoreResult && (
-            <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
-              <div style={{ color: '#10b981', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Restore complete</div>
-              <div style={{ fontSize: '12px', color: 'var(--on-surface-muted)' }}>
-                {Object.entries(bkRestoreResult.restored).map(([table, count]) => `${table}: ${count}`).join(' · ')}
-              </div>
-              {bkRestoreResult.errors.length > 0 && (
-                <div style={{ marginTop: '8px', fontSize: '11px', color: '#f59e0b' }}>
-                  {bkRestoreResult.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Schedules */}
           <div style={{ marginBottom: '24px' }}>
@@ -613,7 +567,7 @@ export default function AdminView() {
           <div>
             <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 12px 0' }}>Backups ({backups.length})</h4>
             {bkLoading ? (
-              <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)' }}>Loading backups…</p>
+              <Spinner label="Loading backups" />
             ) : backups.length === 0 ? (
               <div style={{ color: 'var(--on-surface-muted)', fontSize: '12px', padding: '24px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '8px' }}>No backups yet. Click "Create Backup" to get started.</div>
             ) : (

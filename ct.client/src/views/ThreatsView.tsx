@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listThreats, updateThreat, deleteThreat, type Threat, type ThreatStatus, type StrideCategory } from '../api/threats';
 import { listThreatModels, type ThreatModelSummary } from '../api/threatmodels';
 import ThreatCard from '../components/ThreatCard';
+import { Spinner } from '../components/ui';
 
 const STRIDE_LIST: StrideCategory[] = ['Spoofing', 'Tampering', 'Repudiation', 'Information Disclosure', 'DoS', 'Elevation of Privilege'];
 const STATUS_LIST: ThreatStatus[] = ['Open', 'Investigating', 'Mitigated', 'Not Applicable'];
@@ -152,7 +153,7 @@ export default function ThreatsView() {
 
       {/* Threat list */}
       <div className="glass-panel" style={{ padding: '20px' }}>
-        {isLoading && <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px', margin: 0 }}>Loading threats…</p>}
+        {isLoading && <Spinner label="Loading threats" />}
 
         {!isLoading && filterModel === 'all' && threats.length === 0 && (
           <div style={{ padding: '32px', textAlign: 'center' }}>

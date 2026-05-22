@@ -9,6 +9,8 @@ export interface ModalProps {
   /** Max width of the dialog surface. Defaults to 600px. */
   width?: number;
   footer?: React.ReactNode;
+  /** Additional inline styles applied to the dialog panel. */
+  style?: React.CSSProperties;
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -17,7 +19,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [ta
  * Accessible dialog: rendered in a portal, labelled by its title, traps focus
  * while open, closes on Esc / backdrop click, and restores focus on close.
  */
-const Modal = ({ open, onClose, title, children, width = 600, footer }: ModalProps) => {
+const Modal = ({ open, onClose, title, children, width = 600, footer, style }: ModalProps) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -83,7 +85,7 @@ const Modal = ({ open, onClose, title, children, width = 600, footer }: ModalPro
         aria-labelledby={titleId}
         tabIndex={-1}
         className="glass-panel"
-        style={{ width: '100%', maxWidth: width, padding: 'var(--space-6)', maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ width: '100%', maxWidth: width, padding: 'var(--space-6)', maxHeight: '90vh', overflowY: 'auto', ...style }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
           <h2 id={titleId} style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--on-surface)' }}>{title}</h2>

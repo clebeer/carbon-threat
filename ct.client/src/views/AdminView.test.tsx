@@ -20,6 +20,7 @@ import {
 } from '../test/handlers';
 import { useAuthStore } from '../store/authStore';
 import { setInMemoryToken } from '../api/client';
+import { ToastProvider } from '../components/ui';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,9 +48,11 @@ function renderAdmin() {
     user: userEvent.setup(),
     qc,
     ...render(
-      <QueryClientProvider client={qc}>
-        <AdminView />
-      </QueryClientProvider>
+      <ToastProvider>
+        <QueryClientProvider client={qc}>
+          <AdminView />
+        </QueryClientProvider>
+      </ToastProvider>
     ),
   };
 }
