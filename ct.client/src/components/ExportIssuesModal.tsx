@@ -16,22 +16,16 @@ interface ExportIssuesModalProps {
   onClose: () => void;
 }
 
-const PLATFORM_LABELS: Record<Platform, string> = {
+const PLATFORM_LABELS: Partial<Record<Platform, string>> = {
   github:      'GitHub Issues',
   jira:        'Jira Software',
   servicenow:  'ServiceNow',
-  openai:      'OpenAI',
-  ollama:      'Ollama',
-  jules:       'Jules',
 };
 
-const PLATFORM_ICONS: Record<Platform, string> = {
+const PLATFORM_ICONS: Partial<Record<Platform, string>> = {
   github:      '⌥',
   jira:        '⬡',
   servicenow:  '⚙',
-  openai:      '◈',
-  ollama:      '○',
-  jules:       '◎',
 };
 
 const EXPORTABLE: Platform[] = ['github', 'jira', 'servicenow'];

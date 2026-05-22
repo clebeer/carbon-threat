@@ -25,7 +25,7 @@ import * as cloudStorageController from '../controllers/cloudStorageController.j
 import * as vulnSyncController from '../controllers/vulnSync.js';
 import * as osvScannerController from '../controllers/osvScannerController.js';
 import * as attackController from '../controllers/attackController.js';
-import * as julesController from '../controllers/julesController.js';
+
 import * as assetLibraryController from '../controllers/assetLibraryController.js';
 import * as dashboardController from '../controllers/dashboardController.js';
 import * as backupController from '../controllers/backupController.js';
@@ -154,6 +154,9 @@ const routes = (router) => {
     router.post('/api/config/smtp/test', requireRole('admin'), smtpController.testSmtpConfig);
 
     // Audit log (admin only)
+    // Audit log export must be registered BEFORE the paginated list route to
+    // prevent '/export' being matched by the generic '/' handler.
+    router.get('/api/audit/export', requireRole('admin'), auditController.exportAuditLogsHandler);
     router.get('/api/audit', requireRole('admin'), auditController.listAuditLogs);
 
     // Vulnerability feed sync (admin only)
@@ -237,19 +240,6 @@ const routes = (router) => {
     router.put('/api/integrations/:platform', requireRole('admin'), auditMiddleware('INTEGRATION_UPSERT'), integrationsController.upsertConfig);
     router.delete('/api/integrations/:platform', requireRole('admin'), auditMiddleware('INTEGRATION_DELETE'), integrationsController.deleteConfig);
     router.post('/api/integrations/:platform/export', requireRole('admin', 'analyst'), auditMiddleware('INTEGRATION_EXPORT'), integrationsController.exportIssue);
-
-    // Jules integration — connection test (admin only) + status (all authenticated)
-    router.post('/api/integrations/jules/test', requireRole('admin'), auditMiddleware('JULES_TEST_CONNECTION'), integrationsController.testJulesConnection);
-    router.get('/api/jules/status', integrationsController.getJulesStatus);
-
-    // Jules AI remediation
-    router.get('/api/jules/sources', requireRole('admin', 'analyst', 'viewer'), julesController.listSources);
-    router.post('/api/jules/sessions', requireRole('admin', 'analyst'), julesController.createSession);
-    router.get('/api/jules/sessions', requireRole('admin', 'analyst', 'viewer'), julesController.listSessions);
-    router.get('/api/jules/sessions/:id', requireRole('admin', 'analyst', 'viewer'), julesController.getSession);
-    router.post('/api/jules/sessions/:id/approve', requireRole('admin', 'analyst'), julesController.approveSessionPlan);
-    router.post('/api/jules/sessions/:id/message', requireRole('admin', 'analyst'), julesController.sendSessionMessage);
-    router.delete('/api/jules/sessions/:id', requireRole('admin'), julesController.deleteSession);
 
     // ── Asset Library (import JSON/CSV) ──────────────────────────────────────
     router.post('/api/assets/import', requireRole('admin', 'analyst'), auditMiddleware('ASSET_IMPORT'), assetLibraryController.importAssets);

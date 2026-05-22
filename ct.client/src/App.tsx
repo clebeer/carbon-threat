@@ -8,14 +8,13 @@ import ThreatsView from './views/ThreatsView';
 import ReportsView from './views/ReportsView';
 import ScannerView from './views/ScannerView';
 import AttackView from './views/AttackView';
-import JulesView from './views/JulesView';
 import AdminView from './views/AdminView';
 import SettingsView from './views/SettingsView';
 import LoginView from './views/LoginView';
 import { useAuthStore } from './store/authStore';
 import { refreshSession } from './api/auth';
 import { logout } from './api/auth';
-import { useJulesStatus } from './hooks/useJulesStatus';
+
 import './index.css';
 
 // ── Global theme hook ────────────────────────────────────────────────────────
@@ -48,8 +47,6 @@ const IconSettings = () => <svg width="20" height="20" viewBox="0 0 24 24" fill=
 const IconLogout  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
 const IconScanner = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>;
 const IconAttack  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
-const IconJules   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>;
-
 const BASE_MENU = [
   { id: 'Dashboard', icon: <IconDashboard /> },
   { id: 'Projects',  icon: <IconFolder />    },
@@ -57,7 +54,6 @@ const BASE_MENU = [
   { id: 'Threats',   icon: <IconShield />    },
   { id: 'Scanner',   icon: <IconScanner />   },
   { id: 'ATT&CK',   icon: <IconAttack />    },
-  { id: 'Jules',    icon: <IconJules />     },
   { id: 'Reports',   icon: <IconFolder />    },
 ];
 
@@ -75,10 +71,6 @@ export default function App() {
   const { theme, toggle: toggleTheme } = useGlobalTheme();
 
   const { isAuthenticated, user, refreshToken, setAuth, clearAuth, hasPermission } = useAuthStore();
-
-  // Check if Jules integration is enabled — controls menu visibility
-  const { data: julesStatus } = useJulesStatus();
-  const julesEnabled = julesStatus?.configured && julesStatus?.enabled;
 
   // On mount: if we have a stored refresh token, restore the in-memory access
   // token.  We always attempt this regardless of isAuthenticated because the
@@ -136,7 +128,6 @@ export default function App() {
       case 'Threats': return <ThreatsView />;
       case 'Scanner': return <ScannerView />;
       case 'ATT&CK': return <AttackView />;
-      case 'Jules': return <JulesView />;
       case 'Modeling': return <ThreatFlow modelId={activeModelId} modelTitle={activeModelTitle} />;
       case 'Reports': return <ReportsView />;
       case 'Admin': return <AdminView />;
@@ -177,9 +168,8 @@ export default function App() {
         </div>
 
         <div style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column' }}>
-          {/* Base menu — all authenticated users, Jules only if integration enabled */}
+          {/* Base menu — all authenticated users */}
           {BASE_MENU.map(item => {
-            if (item.id === 'Jules' && !julesEnabled) return null;
             return (
             <div
               key={item.id}

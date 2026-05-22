@@ -1,4 +1,5 @@
 import db from '../db/knex.js';
+import { deliverToSiems } from '../services/siemDeliveryService.js';
 
 /**
  * Field names whose values must never be persisted in audit_logs.
@@ -67,13 +68,18 @@ export function redactSensitive(obj) {
 
 export async function logAudit(action, userId, resourceId, details, ipAddress) {
   try {
-    await db('audit_logs').insert({
+    const [inserted] = await db('audit_logs').insert({
       action,
       user_id:    userId === 'anonymous' ? null : userId,
       entity_id:  resourceId === 'N/A' ? null : resourceId,
       diff:       JSON.stringify(redactSensitive(details)),
       ip_address: ipAddress,
-    });
+    }).returning(['id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at']);
+
+    // Non-blocking SIEM push — never throws
+    if (inserted) {
+      deliverToSiems(inserted, db).catch(() => {});
+    }
   } catch (err) {
     console.error('Failed to write audit log', err);
   }

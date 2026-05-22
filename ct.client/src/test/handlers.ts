@@ -169,4 +169,29 @@ export const handlers = [
   http.get('/api/permissions', () =>
     HttpResponse.json({ permissions: MOCK_PERMISSION_GROUPS })
   ),
+
+  // Audit export
+  http.get('/api/audit/export', ({ request }) => {
+    const url    = new URL(request.url);
+    const format = url.searchParams.get('format') ?? 'csv';
+    const bodies: Record<string, string> = {
+      csv:  'id,action,entity_type,entity_id,user_id,ip_address,http_status,created_at\n1,USER_CREATE,USER,u-1,admin,,201,2025-01-15T10:00:00.000Z',
+      json: JSON.stringify({ exported_at: new Date().toISOString(), count: 1, logs: [] }),
+      cef:  'CEF:0|CarbonThreat|Enterprise|1.0|USER_CREATE|USER USER_CREATE|5|rt=1736935200000',
+      leef: 'LEEF:2.0|CarbonThreat|Enterprise|1.0|USER_CREATE|devTime=2025-01-15T10:00:00.000Z',
+      ecs:  JSON.stringify({ '@timestamp': '2025-01-15T10:00:00.000Z', 'event.action': 'USER_CREATE' }),
+    };
+    const contentTypes: Record<string, string> = {
+      csv: 'text/csv', json: 'application/json',
+      cef: 'text/plain', leef: 'text/plain', ecs: 'application/x-ndjson',
+    };
+    const body = bodies[format] ?? bodies['csv'];
+    const ct   = contentTypes[format] ?? 'text/csv';
+    return new HttpResponse(body, {
+      headers: {
+        'Content-Type': ct,
+        'Content-Disposition': `attachment; filename="audit-2025-01-15.${format}"`,
+      },
+    });
+  }),
 ];
