@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import { listUsers, createUser, updateUser, deactivateUser, type User, type UserRole } from '../api/users';
@@ -6,8 +6,10 @@ import {
   listIntegrations,
   upsertIntegration,
   deleteIntegration,
+  exportAuditLogs,
   type Platform,
   type IntegrationSummary,
+  type AuditExportFormat,
 } from '../api/integrations';
 import { useAuthStore } from '../store/authStore';
 
@@ -370,14 +372,34 @@ function UsersTab() {
 
 // ── Tab: Integrations ─────────────────────────────────────────────────────────
 
-const PLATFORM_META: Record<Platform, { label: string; fields: { key: string; label: string; placeholder: string; type?: string }[] }> = {
-  github:     { label: 'GitHub Issues',       fields: [{ key: 'token', label: 'Personal Access Token', placeholder: 'ghp_…', type: 'password' }, { key: 'repo', label: 'Repository', placeholder: 'owner/repo' }] },
-  jira:       { label: 'Jira Software',        fields: [{ key: 'serverUrl', label: 'Server URL', placeholder: 'https://org.atlassian.net' }, { key: 'email', label: 'Email', placeholder: 'you@example.com' }, { key: 'token', label: 'API Token', placeholder: '…', type: 'password' }, { key: 'projectKey', label: 'Project Key', placeholder: 'SEC' }] },
-  servicenow: { label: 'ServiceNow',           fields: [{ key: 'serverUrl', label: 'Instance URL', placeholder: 'https://org.service-now.com' }, { key: 'username', label: 'Username', placeholder: 'admin' }, { key: 'password', label: 'Password', placeholder: '••••••••', type: 'password' }] },
-  openai:     { label: 'OpenAI (Threat Bot)',  fields: [{ key: 'apiKey', label: 'API Key', placeholder: 'sk-…', type: 'password' }, { key: 'model', label: 'Model', placeholder: 'gpt-4-turbo-preview' }] },
-  ollama:     { label: 'Ollama / LM Studio',   fields: [{ key: 'url', label: 'Endpoint URL', placeholder: 'http://localhost:11434/v1/chat/completions' }, { key: 'model', label: 'Model name', placeholder: 'llama3' }] },
-  jules:      { label: 'Google Jules (AI Agent)', fields: [{ key: 'apiKey', label: 'API Key', placeholder: 'AIza…', type: 'password' }] },
+type PlatformField = { key: string; label: string; placeholder: string; type?: string };
+type PlatformMeta = { label: string; description?: string; fields: PlatformField[] };
+
+const PLATFORM_META: Record<Platform, PlatformMeta> = {
+  // ── Issue Trackers ────────────────────────────────────────────────────────
+  github:     { label: 'GitHub Issues',      description: 'Export threats as GitHub Issues', fields: [{ key: 'token', label: 'Personal Access Token', placeholder: 'ghp_…', type: 'password' }, { key: 'repo', label: 'Repository', placeholder: 'owner/repo' }] },
+  jira:       { label: 'Jira Software',       description: 'Create Jira tickets from threat findings', fields: [{ key: 'serverUrl', label: 'Server URL', placeholder: 'https://org.atlassian.net' }, { key: 'email', label: 'Email', placeholder: 'you@example.com' }, { key: 'token', label: 'API Token', placeholder: '…', type: 'password' }, { key: 'projectKey', label: 'Project Key', placeholder: 'SEC' }] },
+  servicenow: { label: 'ServiceNow',          description: 'Open ServiceNow incidents from threats', fields: [{ key: 'serverUrl', label: 'Instance URL', placeholder: 'https://org.service-now.com' }, { key: 'username', label: 'Username', placeholder: 'admin' }, { key: 'password', label: 'Password', placeholder: '••••••••', type: 'password' }] },
+  // ── AI Assistants ─────────────────────────────────────────────────────────
+  openai:     { label: 'OpenAI (Threat Bot)', description: 'AI-powered STRIDE threat suggestions', fields: [{ key: 'apiKey', label: 'API Key', placeholder: 'sk-…', type: 'password' }, { key: 'model', label: 'Model', placeholder: 'gpt-4-turbo-preview' }] },
+  ollama:     { label: 'Ollama / LM Studio',  description: 'Self-hosted local LLM for air-gapped environments', fields: [{ key: 'url', label: 'Endpoint URL', placeholder: 'http://localhost:11434/v1/chat/completions' }, { key: 'model', label: 'Model name', placeholder: 'llama3' }] },
+  // ── SIEM Push ─────────────────────────────────────────────────────────────
+  splunk:     { label: 'Splunk (HEC)',        description: 'Stream audit events to Splunk via HTTP Event Collector', fields: [{ key: 'serverUrl', label: 'HEC URL', placeholder: 'https://splunk.company.com:8088' }, { key: 'token', label: 'HEC Token', placeholder: 'Splunk token', type: 'password' }, { key: 'index', label: 'Index (optional)', placeholder: 'main' }] },
+  sentinel:   { label: 'Microsoft Sentinel',  description: 'Forward audit logs to Microsoft Sentinel Log Analytics', fields: [{ key: 'workspaceId', label: 'Workspace ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }, { key: 'sharedKey', label: 'Shared Key', placeholder: 'Primary key from Log Analytics', type: 'password' }, { key: 'logType', label: 'Log Type (optional)', placeholder: 'CarbonThreatAudit' }] },
+  elastic:    { label: 'Elastic SIEM',        description: 'Push audit events to Elasticsearch / Elastic Cloud', fields: [{ key: 'serverUrl', label: 'Elasticsearch URL', placeholder: 'https://cluster.es.io:9243' }, { key: 'apiKey', label: 'API Key', placeholder: 'base64-encoded Elastic API key', type: 'password' }, { key: 'indexName', label: 'Index Name (optional)', placeholder: 'carbonthreat-audit' }] },
+  webhook:    { label: 'Generic Webhook',     description: 'POST audit events as JSON to any HTTP endpoint', fields: [{ key: 'url', label: 'Endpoint URL', placeholder: 'https://siem.company.com/events' }, { key: 'secret', label: 'HMAC Secret (optional)', placeholder: 'Signing secret for X-CarbonThreat-Signature', type: 'password' }, { key: 'headers', label: 'Extra Headers (JSON, optional)', placeholder: '{"Authorization":"Bearer ..."}' }] },
+  // ── Notifications ─────────────────────────────────────────────────────────
+  slack:      { label: 'Slack',               description: 'Post security alerts to a Slack channel', fields: [{ key: 'webhookUrl', label: 'Incoming Webhook URL', placeholder: 'https://hooks.slack.com/services/…' }, { key: 'channel', label: 'Channel (optional override)', placeholder: '#security-alerts' }] },
+  teams:      { label: 'Microsoft Teams',     description: 'Send alerts to a Teams channel', fields: [{ key: 'webhookUrl', label: 'Webhook URL', placeholder: 'https://company.webhook.office.com/…' }] },
+  pagerduty:  { label: 'PagerDuty',           description: 'Open incidents automatically on critical findings', fields: [{ key: 'routingKey', label: 'Events API v2 Routing Key', placeholder: '32-character integration key', type: 'password' }] },
 };
+
+const PLATFORM_GROUPS: { label: string; platforms: Platform[] }[] = [
+  { label: 'Issue Trackers', platforms: ['github', 'jira', 'servicenow'] },
+  { label: 'AI Assistants',  platforms: ['openai', 'ollama'] },
+  { label: 'SIEM Push',      platforms: ['splunk', 'sentinel', 'elastic', 'webhook'] },
+  { label: 'Notifications',  platforms: ['slack', 'teams', 'pagerduty'] },
+];
 
 function IntegrationCard({ platform, existing }: { platform: Platform; existing: IntegrationSummary | undefined }) {
   const meta = PLATFORM_META[platform];
@@ -508,9 +530,18 @@ function IntegrationsTab() {
       {isLoading ? (
         <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px' }}>Loading…</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {(Object.keys(PLATFORM_META) as Platform[]).map(p => (
-            <IntegrationCard key={p} platform={p} existing={cfgMap[p]} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {PLATFORM_GROUPS.map(group => (
+            <div key={group.label}>
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', margin: '0 0 8px 4px' }}>
+                {group.label}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {group.platforms.map(p => (
+                  <IntegrationCard key={p} platform={p} existing={cfgMap[p]} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -520,15 +551,62 @@ function IntegrationsTab() {
 
 // ── Tab: Audit Logs ───────────────────────────────────────────────────────────
 
+const KNOWN_ACTIONS = [
+  'USER_CREATE', 'USER_UPDATE', 'USER_DEACTIVATE', 'USER_PASSWORD_CHANGE',
+  'MODEL_CREATE', 'MODEL_UPDATE', 'MODEL_ARCHIVE', 'MODEL_RESTORE', 'MODEL_IMPORT', 'MODEL_ANALYZE',
+  'THREAT_CREATE', 'THREAT_DELETE',
+  'ROLE_CREATE', 'ROLE_UPDATE', 'ROLE_DELETE',
+  'INTEGRATION_UPSERT', 'INTEGRATION_DELETE', 'INTEGRATION_EXPORT',
+  'AI_SUGGEST', 'SCAN_CREATE', 'SCAN_DELETE', 'SCANNER_POLICY_UPDATE',
+  'ATTACK_SYNC', 'ATTACK_MAPPING_CREATE', 'ATTACK_MAPPING_DELETE',
+  'BACKUP_CREATE', 'BACKUP_RESTORE', 'BACKUP_DELETE',
+  'TEMPLATE_BOOTSTRAP', 'TEMPLATE_IMPORT', 'TEMPLATE_DELETE', 'TEMPLATE_UPDATE', 'TEMPLATE_APPLY',
+  'SMTP_CONFIG_UPDATE', 'VULN_FEED_SYNC',
+  'ASSET_IMPORT', 'ASSET_DELETE',
+  'CLOUD_IMPORT', 'CLOUD_EXPORT',
+];
+
+const KNOWN_ENTITY_TYPES = ['USER', 'THREAT_MODEL', 'INTEGRATION', 'ROLE', 'SCANNER_SCAN', 'BACKUP', 'TEMPLATE', 'ASSET'];
+
+const EXPORT_FORMAT_EXT: Record<AuditExportFormat, string> = {
+  csv: 'csv', json: 'json', cef: 'cef', leef: 'leef', ecs: 'ndjson',
+};
+
+const selectSt: React.CSSProperties = {
+  padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(255,255,255,0.05)', color: 'var(--on-surface)', fontSize: '12px',
+};
+
 function AuditTab() {
-  const [page, setPage] = useState(1);
+  const [page, setPage]                   = useState(1);
+  const [filterAction, setFilterAction]   = useState('');
+  const [filterEntity, setFilterEntity]   = useState('');
+  const [filterFrom, setFilterFrom]       = useState('');
+  const [filterTo, setFilterTo]           = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({ action: '', entity: '', from: '', to: '' });
+  const [exportFormat, setExportFormat]   = useState<AuditExportFormat>('csv');
+  const [exporting, setExporting]         = useState(false);
   const limit = 25;
 
+  const applyFilters = useCallback(() => {
+    setPage(1);
+    setAppliedFilters({ action: filterAction, entity: filterEntity, from: filterFrom, to: filterTo });
+  }, [filterAction, filterEntity, filterFrom, filterTo]);
+
+  const buildQueryString = (p: number) => {
+    const params = new URLSearchParams({ page: String(p), limit: String(limit) });
+    if (appliedFilters.action) params.set('action', appliedFilters.action);
+    if (appliedFilters.entity) params.set('entity_type', appliedFilters.entity);
+    if (appliedFilters.from)   params.set('from', appliedFilters.from + 'T00:00:00Z');
+    if (appliedFilters.to)     params.set('to',   appliedFilters.to   + 'T23:59:59Z');
+    return params.toString();
+  };
+
   const { data, isLoading, isError } = useQuery<{ logs: AuditLog[]; total: number }>({
-    queryKey: ['audit-logs', page],
+    queryKey: ['audit-logs', page, appliedFilters],
     queryFn: async () => {
       const { data } = await apiClient.get<{ logs: AuditLog[]; total: number }>(
-        `/audit?page=${page}&limit=${limit}`
+        `/audit?${buildQueryString(page)}`
       );
       return data;
     },
@@ -546,6 +624,28 @@ function AuditTab() {
     return 'var(--on-surface-muted)';
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const blob = await exportAuditLogs(exportFormat, {
+        action:      appliedFilters.action      || undefined,
+        entity_type: appliedFilters.entity      || undefined,
+        from:        appliedFilters.from ? appliedFilters.from + 'T00:00:00Z' : undefined,
+        to:          appliedFilters.to   ? appliedFilters.to   + 'T23:59:59Z' : undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-export.${EXPORT_FORMAT_EXT[exportFormat]}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — could wire a toast here
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
@@ -555,11 +655,59 @@ function AuditTab() {
         </span>
       </div>
 
+      {/* ── Filter bar ── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', alignItems: 'flex-end' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', color: 'var(--on-surface-muted)', marginBottom: '4px', letterSpacing: '0.5px' }}>ACTION</label>
+          <select value={filterAction} onChange={e => setFilterAction(e.target.value)} style={selectSt}>
+            <option value=''>All</option>
+            {KNOWN_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', color: 'var(--on-surface-muted)', marginBottom: '4px', letterSpacing: '0.5px' }}>ENTITY TYPE</label>
+          <select value={filterEntity} onChange={e => setFilterEntity(e.target.value)} style={selectSt}>
+            <option value=''>All</option>
+            {KNOWN_ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', color: 'var(--on-surface-muted)', marginBottom: '4px', letterSpacing: '0.5px' }}>FROM</label>
+          <input type='date' value={filterFrom} onChange={e => setFilterFrom(e.target.value)} style={{ ...selectSt, cursor: 'pointer' }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', color: 'var(--on-surface-muted)', marginBottom: '4px', letterSpacing: '0.5px' }}>TO</label>
+          <input type='date' value={filterTo} onChange={e => setFilterTo(e.target.value)} style={{ ...selectSt, cursor: 'pointer' }} />
+        </div>
+        <button onClick={applyFilters}
+          style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 700, fontSize: '12px', cursor: 'pointer', alignSelf: 'flex-end' }}>
+          Apply
+        </button>
+
+        {/* ── Export controls ── */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '10px', color: 'var(--on-surface-muted)', marginBottom: '4px', letterSpacing: '0.5px' }}>FORMAT</label>
+            <select value={exportFormat} onChange={e => setExportFormat(e.target.value as AuditExportFormat)} style={selectSt}>
+              <option value='csv'>CSV</option>
+              <option value='json'>JSON</option>
+              <option value='cef'>CEF (SIEM)</option>
+              <option value='leef'>LEEF (QRadar)</option>
+              <option value='ecs'>ECS (Elastic)</option>
+            </select>
+          </div>
+          <button onClick={handleExport} disabled={exporting}
+            style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--on-surface)', fontSize: '12px', cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.6 : 1, alignSelf: 'flex-end' }}>
+            {exporting ? 'Exporting…' : '↓ Export'}
+          </button>
+        </div>
+      </div>
+
       {isLoading && <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px' }}>Loading audit trail…</p>}
       {isError   && <p style={{ color: 'var(--error)', fontSize: '13px' }}>Failed to load audit logs.</p>}
 
       {!isLoading && logs.length === 0 && !isError && (
-        <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px' }}>No audit events recorded yet.</p>
+        <p style={{ color: 'var(--on-surface-muted)', fontSize: '13px' }}>No audit events match the current filters.</p>
       )}
 
       {logs.length > 0 && (

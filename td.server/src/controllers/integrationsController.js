@@ -7,7 +7,9 @@ import { getOrgId } from '../helpers/scope.helper.js';
 
 const logger = loggerHelper.get('controllers/integrationsController.js');
 
-const VALID_PLATFORMS = ['github', 'jira', 'servicenow', 'openai', 'ollama', 'jules'];
+const VALID_PLATFORMS = ['github', 'jira', 'servicenow', 'openai', 'ollama',
+  'splunk', 'sentinel', 'elastic', 'webhook',
+  'slack', 'teams', 'pagerduty'];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -207,78 +209,3 @@ export async function exportIssue(req, res) {
   }
 }
 
-// ── Jules-specific endpoints ───────────────────────────────────────────────
-
-/**
- * POST /api/integrations/jules/test
- * Tests the Jules API key by calling GET /v1alpha/sources.
- * Admin only. Body: { apiKey: string }
- */
-export async function testJulesConnection(req, res) {
-  try {
-    const { apiKey } = req.body || {};
-    if (!apiKey) {
-      return res.status(400).json({ error: 'API key is required' });
-    }
-
-    const response = await axios.get('https://jules.googleapis.com/v1alpha/sources', {
-      headers: { 'X-Goog-Api-Key': apiKey },
-      timeout: 10_000,
-    });
-
-    const sourceCount = response.data.sources?.length ?? 0;
-    logger.info(`Jules connection test succeeded: ${sourceCount} sources found by user=${req.user.id}`);
-    return res.json({ success: true, sourceCount });
-  } catch (err) {
-    const status = err.response?.status;
-    let msg;
-    if (status === 401 || status === 403) {
-      msg = 'Invalid or unauthorized API key';
-    } else if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
-      msg = 'Connection timed out — check network connectivity';
-    } else {
-      msg = err.response?.data?.error?.message ?? err.message ?? 'Connection test failed';
-    }
-    logger.warn(`Jules connection test failed: ${msg} (HTTP ${status ?? 'N/A'})`);
-    return res.json({ success: false, error: msg });
-  }
-}
-
-/**
- * GET /api/jules/status
- * Returns whether Jules integration is configured, enabled, and reachable.
- * Available to all authenticated users (needed for menu visibility).
- */
-export async function getJulesStatus(req, res) {
-  try {
-    const row = await db('integration_configs').
-      where({ platform: 'jules', org_id: integrationOrgId(req) }).
-      first();
-
-    const configured = Boolean(row);
-    const enabled = row?.is_enabled ?? false;
-
-    // Optionally test connectivity if configured and enabled
-    let connected = false;
-    if (configured && enabled) {
-      try {
-        const config = decryptConfig(row.config_encrypted);
-        const apiKey = config.apiKey || config.api_key;
-        if (apiKey) {
-          await axios.get('https://jules.googleapis.com/v1alpha/sources', {
-            headers: { 'X-Goog-Api-Key': apiKey },
-            timeout: 5_000,
-          });
-          connected = true;
-        }
-      } catch {
-        connected = false;
-      }
-    }
-
-    return res.json({ configured, enabled, connected });
-  } catch (err) {
-    logger.error('getJulesStatus failed', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}

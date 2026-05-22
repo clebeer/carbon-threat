@@ -48,6 +48,29 @@ export const MOCK_AI_SUGGESTIONS = [
   },
 ];
 
+export const MOCK_CUSTOM_ROLE = {
+  id:              'role-custom-1',
+  slug:            'custom-analyst',
+  name:            'Custom Analyst',
+  description:     'A custom analyst role',
+  is_system:       false,
+  is_active:       true,
+  permission_keys: ['scanner:read', 'threats:read'],
+  user_count:      0,
+  created_at:      new Date().toISOString(),
+  updated_at:      new Date().toISOString(),
+};
+
+export const MOCK_ROLES_LIST = [
+  { id: 'role-admin', slug: 'admin', name: 'Administrator', description: 'Full access', is_system: true, is_active: true, permission_keys: ['roles:manage', 'users:manage'], user_count: 1, created_at: '', updated_at: '' },
+  MOCK_CUSTOM_ROLE,
+];
+
+export const MOCK_PERMISSION_GROUPS = [
+  { domain: 'Scanner', permissions: [{ key: 'scanner:read', label: 'View', description: 'View scans' }, { key: 'scanner:run', label: 'Run', description: 'Run scans' }] },
+  { domain: 'Threats', permissions: [{ key: 'threats:read', label: 'View', description: 'View threats' }] },
+];
+
 // ── handlers ──────────────────────────────────────────────────────────────────
 
 export const handlers = [
@@ -126,4 +149,49 @@ export const handlers = [
   http.post('/api/ai/suggest', () =>
     HttpResponse.json({ nodeId: 'node-1', suggestions: MOCK_AI_SUGGESTIONS })
   ),
+
+  // Roles
+  http.get('/api/roles', () =>
+    HttpResponse.json({ roles: MOCK_ROLES_LIST })
+  ),
+  http.get('/api/roles/:id', ({ params }) =>
+    HttpResponse.json({ role: MOCK_ROLES_LIST.find((r) => r.id === params.id) ?? MOCK_ROLES_LIST[0] })
+  ),
+  http.post('/api/roles', () =>
+    HttpResponse.json({ role: MOCK_CUSTOM_ROLE }, { status: 201 })
+  ),
+  http.put('/api/roles/:id', ({ params }) =>
+    HttpResponse.json({ role: { ...MOCK_CUSTOM_ROLE, id: params.id as string } })
+  ),
+  http.delete('/api/roles/:id', () =>
+    HttpResponse.json({ message: 'Role deleted' })
+  ),
+  http.get('/api/permissions', () =>
+    HttpResponse.json({ permissions: MOCK_PERMISSION_GROUPS })
+  ),
+
+  // Audit export
+  http.get('/api/audit/export', ({ request }) => {
+    const url    = new URL(request.url);
+    const format = url.searchParams.get('format') ?? 'csv';
+    const bodies: Record<string, string> = {
+      csv:  'id,action,entity_type,entity_id,user_id,ip_address,http_status,created_at\n1,USER_CREATE,USER,u-1,admin,,201,2025-01-15T10:00:00.000Z',
+      json: JSON.stringify({ exported_at: new Date().toISOString(), count: 1, logs: [] }),
+      cef:  'CEF:0|CarbonThreat|Enterprise|1.0|USER_CREATE|USER USER_CREATE|5|rt=1736935200000',
+      leef: 'LEEF:2.0|CarbonThreat|Enterprise|1.0|USER_CREATE|devTime=2025-01-15T10:00:00.000Z',
+      ecs:  JSON.stringify({ '@timestamp': '2025-01-15T10:00:00.000Z', 'event.action': 'USER_CREATE' }),
+    };
+    const contentTypes: Record<string, string> = {
+      csv: 'text/csv', json: 'application/json',
+      cef: 'text/plain', leef: 'text/plain', ecs: 'application/x-ndjson',
+    };
+    const body = bodies[format] ?? bodies['csv'];
+    const ct   = contentTypes[format] ?? 'text/csv';
+    return new HttpResponse(body, {
+      headers: {
+        'Content-Type': ct,
+        'Content-Disposition': `attachment; filename="audit-2025-01-15.${format}"`,
+      },
+    });
+  }),
 ];

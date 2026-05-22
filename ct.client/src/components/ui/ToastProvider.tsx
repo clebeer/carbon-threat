@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
-export type ToastVariant = 'info' | 'success' | 'error';
+export type ToastVariant = 'info' | 'success' | 'warning' | 'error';
 
 export interface Toast {
   id: number;
@@ -18,6 +18,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const COLORS: Record<ToastVariant, string> = {
   info: 'var(--primary)',
   success: 'var(--success)',
+  warning: 'var(--warning)',
   error: 'var(--error)',
 };
 

@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listUsers, createUser, deactivateUser, type User, type UserRole } from '../api/users';
 import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';
 import { listBackups, createBackup, downloadBackup, deleteBackup, listSchedules, createSchedule, deleteSchedule, restoreBackup as restoreBackupApi, type BackupRecord, type BackupSchedule } from '../api/backup';
+import { listRoles, createRole, updateRole, deleteRole, listPermissions, type Role, type PermissionGroup } from '../api/roles';
 import { useAuthStore } from '../store/authStore';
-import { Field, Select as UISelect, Button } from '../components/ui';
+import { Field, Select as UISelect, Button, Spinner, Modal, useToast } from '../components/ui';
 
 // ── RBAC helpers ────────────────────────────────────────────────────────────
 
@@ -63,24 +64,40 @@ const SEVERITY_COLOR: Record<string, string> = {
   Low:      'var(--on-surface-muted)',
 };
 
+// ── Role editor state ─────────────────────────────────────────────────────────
+
+interface RoleFormState {
+  name: string;
+  description: string;
+  permission_keys: string[];
+}
+
+const EMPTY_ROLE_FORM: RoleFormState = { name: '', description: '', permission_keys: [] };
+
 export default function AdminView() {
-  const currentUser = useAuthStore((s) => s.user);
-  const isAdmin     = currentUser?.role === 'admin';
-  const qc          = useQueryClient();
+  const currentUser  = useAuthStore((s) => s.user);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const isAdmin      = hasPermission('users:manage');
+  const canManageRoles = hasPermission('roles:manage');
+  const qc           = useQueryClient();
+  const { notify }   = useToast();
 
   // ── Tabs ──
-  const [activeTab, setActiveTab] = useState<'users' | 'backup'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'backup' | 'roles'>('users');
+
+  // ── Role editor state ──
+  const [roleModalOpen, setRoleModalOpen]       = useState(false);
+  const [editingRole, setEditingRole]           = useState<Role | null>(null);
+  const [roleForm, setRoleForm]                 = useState<RoleFormState>(EMPTY_ROLE_FORM);
+  const [roleFormError, setRoleFormError]       = useState<string | null>(null);
 
   const [showInvite, setShowInvite]   = useState(false);
   const [form, setForm]               = useState<InviteFormState>({ email: '', display_name: '', password: '', role: 'analyst' });
   const [formError, setFormError]     = useState<string | null>(null);
-  const [syncNotice, setSyncNotice]   = useState<string | null>(null);
 
   // ── Backup state ──
   const [bkCreating, setBkCreating] = useState(false);
-  const [bkError, setBkError] = useState('');
   const [bkRestoring, setBkRestoring] = useState(false);
-  const [bkRestoreResult, setBkRestoreResult] = useState<{ restored: Record<string, number>; errors: string[] } | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
   const [scheduleFreq, setScheduleFreq] = useState('daily');
@@ -127,10 +144,10 @@ export default function AdminView() {
   const syncMutation = useMutation({
     mutationFn: triggerVulnFeedSync,
     onSuccess: () => {
-      setSyncNotice('Sync started — the database will update in the background.');
-      setTimeout(() => { refetchFeed(); setSyncNotice(null); }, 5000);
+      notify('Sync started — the database will update in the background.', 'success');
+      setTimeout(() => refetchFeed(), 5000);
     },
-    onError: () => setSyncNotice('Sync request failed. Check server logs.'),
+    onError: () => notify('Sync request failed. Check server logs.', 'error'),
   });
 
   // ── Backup queries ──
@@ -148,53 +165,141 @@ export default function AdminView() {
 
   const handleBkCreate = useCallback(async () => {
     setBkCreating(true);
-    setBkError('');
     try {
       await createBackup();
       bkRefetch();
+      notify('Backup created successfully.', 'success');
     } catch {
-      setBkError('Failed to create backup');
+      notify('Failed to create backup.', 'error');
     } finally {
       setBkCreating(false);
     }
-  }, [bkRefetch]);
+  }, [bkRefetch, notify]);
 
   const handleBkDelete = useCallback(async (id: string) => {
     if (!confirm('Delete this backup?')) return;
     try {
       await deleteBackup(id);
       bkRefetch();
+      notify('Backup deleted.', 'success');
     } catch {
-      setBkError('Failed to delete backup');
+      notify('Failed to delete backup.', 'error');
     }
-  }, [bkRefetch]);
+  }, [bkRefetch, notify]);
 
   const handleBkDownload = useCallback(async (id: string) => {
     try {
       await downloadBackup(id);
     } catch {
-      setBkError('Failed to download backup');
+      notify('Failed to download backup.', 'error');
     }
-  }, []);
+  }, [notify]);
 
   const handleBkRestore = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setBkRestoring(true);
-    setBkRestoreResult(null);
-    setBkError('');
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       const result = await restoreBackupApi(data);
-      setBkRestoreResult(result);
       bkRefetch();
+      const summary = Object.entries(result.restored).map(([t, c]) => `${t}: ${c}`).join(' · ');
+      const hasErrors = result.errors.length > 0;
+      notify(
+        `Restore complete — ${summary}${hasErrors ? ` (${result.errors.length} warning${result.errors.length > 1 ? 's' : ''})` : ''}`,
+        hasErrors ? 'warning' : 'success',
+        8000,
+      );
     } catch (err) {
-      setBkError(err instanceof Error ? err.message : 'Restore failed');
+      notify(err instanceof Error ? err.message : 'Restore failed.', 'error');
     } finally {
       setBkRestoring(false);
     }
-  }, [bkRefetch]);
+  }, [bkRefetch, notify]);
+
+  // ── Roles queries + mutations ──
+  const { data: roles = [], isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles'],
+    queryFn:  listRoles,
+    enabled:  canManageRoles && activeTab === 'roles',
+  });
+
+  const { data: permissionGroups = [] } = useQuery<PermissionGroup[]>({
+    queryKey: ['permissions-catalog'],
+    queryFn:  listPermissions,
+    enabled:  canManageRoles && roleModalOpen,
+  });
+
+  const createRoleMutation = useMutation({
+    mutationFn: (data: RoleFormState) => createRole(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      setRoleModalOpen(false);
+      setRoleForm(EMPTY_ROLE_FORM);
+      setRoleFormError(null);
+      notify('Role created.', 'success');
+    },
+    onError: (e: { response?: { data?: { error?: string } } }) =>
+      setRoleFormError(e?.response?.data?.error ?? 'Failed to create role'),
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RoleFormState }) => updateRole(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      setRoleModalOpen(false);
+      setEditingRole(null);
+      setRoleForm(EMPTY_ROLE_FORM);
+      setRoleFormError(null);
+      notify('Role updated.', 'success');
+    },
+    onError: (e: { response?: { data?: { error?: string } } }) =>
+      setRoleFormError(e?.response?.data?.error ?? 'Failed to update role'),
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: deleteRole,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      notify('Role deleted.', 'success');
+    },
+    onError: (e: { response?: { data?: { error?: string } } }) =>
+      notify(e?.response?.data?.error ?? 'Failed to delete role', 'error'),
+  });
+
+  function openCreateRole() {
+    setEditingRole(null);
+    setRoleForm(EMPTY_ROLE_FORM);
+    setRoleFormError(null);
+    setRoleModalOpen(true);
+  }
+
+  function openEditRole(role: Role) {
+    setEditingRole(role);
+    setRoleForm({ name: role.name, description: role.description, permission_keys: role.permission_keys });
+    setRoleFormError(null);
+    setRoleModalOpen(true);
+  }
+
+  function handleRoleFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setRoleFormError(null);
+    if (editingRole) {
+      updateRoleMutation.mutate({ id: editingRole.id, data: roleForm });
+    } else {
+      createRoleMutation.mutate(roleForm);
+    }
+  }
+
+  function togglePermKey(key: string) {
+    setRoleForm((f) => ({
+      ...f,
+      permission_keys: f.permission_keys.includes(key)
+        ? f.permission_keys.filter((k) => k !== key)
+        : [...f.permission_keys, key],
+    }));
+  }
 
   const handleCreateSchedule = useCallback(async () => {
     if (!scheduleName.trim()) return;
@@ -203,20 +308,22 @@ export default function AdminView() {
       qc.invalidateQueries({ queryKey: ['backup-schedules'] });
       setScheduleName('');
       setShowScheduleForm(false);
+      notify('Schedule created.', 'success');
     } catch {
-      setBkError('Failed to create schedule');
+      notify('Failed to create schedule.', 'error');
     }
-  }, [scheduleName, scheduleFreq, qc]);
+  }, [scheduleName, scheduleFreq, qc, notify]);
 
   const handleDeleteSchedule = useCallback(async (id: string) => {
     if (!confirm('Delete this schedule?')) return;
     try {
       await deleteSchedule(id);
       qc.invalidateQueries({ queryKey: ['backup-schedules'] });
+      notify('Schedule deleted.', 'success');
     } catch {
-      setBkError('Failed to delete schedule');
+      notify('Failed to delete schedule.', 'error');
     }
-  }, [qc]);
+  }, [qc, notify]);
 
   const formatSize = (bytes: number) => {
     if (!bytes) return '—';
@@ -259,7 +366,11 @@ export default function AdminView() {
 
       {/* ── Tab bar ── */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '4px' }}>
-        {([['users', 'Users & Threat Intel'], ['backup', 'Backup & Restore']] as const).map(([key, label]) => (
+        {([
+          ['users',  'Users & Threat Intel'],
+          ['backup', 'Backup & Restore'],
+          ['roles',  'Role Profiles'],
+        ] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
@@ -287,37 +398,18 @@ export default function AdminView() {
               Vulnerability advisories from OSV (Open Source Vulnerabilities). Mapped to STRIDE categories and used to enrich threat analysis.
             </p>
           </div>
-          <button
-            onClick={() => { setSyncNotice(null); syncMutation.mutate(); }}
-            disabled={syncMutation.isPending || feedStatus?.lastRun?.status === 'running'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '9px 20px', borderRadius: '6px', cursor: 'pointer',
-              fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.5px',
-              border: '1px solid var(--primary)', fontWeight: 600, transition: 'all 0.2s',
-              background: (syncMutation.isPending || feedStatus?.lastRun?.status === 'running')
-                ? 'rgba(0,242,255,0.05)'
-                : 'rgba(0,242,255,0.12)',
-              color: (syncMutation.isPending || feedStatus?.lastRun?.status === 'running')
-                ? 'rgba(0,242,255,0.4)'
-                : 'var(--primary)',
-            }}
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={syncMutation.isPending || feedStatus?.lastRun?.status === 'running'}
+            onClick={() => syncMutation.mutate()}
+            style={{ border: '1px solid var(--primary)', color: 'var(--primary)', background: 'rgba(0,242,255,0.08)' }}
           >
-            {(syncMutation.isPending || feedStatus?.lastRun?.status === 'running') ? (
-              <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>↻</span> Syncing…</>
-            ) : (
-              <> ↻ Update Threat DB</>
-            )}
-          </button>
+            ↻ Update Threat DB
+          </Button>
         </div>
 
-        {syncNotice && (
-          <div style={{ padding: '10px 14px', background: 'rgba(0,242,255,0.06)', border: '1px solid rgba(0,242,255,0.2)', borderRadius: '6px', fontSize: '12px', color: 'var(--primary)', marginBottom: '16px' }}>
-            {syncNotice}
-          </div>
-        )}
-
-        {feedLoading && <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)', margin: 0 }}>Loading status…</p>}
+        {feedLoading && <Spinner label="Loading feed status" />}
 
         {feedStatus && (
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -452,7 +544,7 @@ export default function AdminView() {
             </form>
           )}
 
-          {isLoading && <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)' }}>Loading users…</p>}
+          {isLoading && <Spinner label="Loading users" />}
           {usersError  && <p style={{ fontSize: '13px', color: 'var(--error)' }}>Failed to load users.</p>}
 
           {!isLoading && (
@@ -508,6 +600,183 @@ export default function AdminView() {
       </div>
       </>)}
 
+      {/* ── Roles Tab ── */}
+      {activeTab === 'roles' && (
+        <div>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+            <div>
+              <h3 className="label-text glow-text-cyan" style={{ fontSize: '14px', margin: '0 0 4px', letterSpacing: '1px' }}>ROLE PROFILES</h3>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--on-surface-muted)' }}>
+                System roles are read-only. Create custom roles with a configurable set of permissions.
+              </p>
+            </div>
+            <Button variant="primary" size="sm" onClick={openCreateRole}>+ New Role</Button>
+          </div>
+
+          {rolesLoading && <Spinner label="Loading roles" />}
+
+          {!rolesLoading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {roles.map((role: Role) => (
+                <div
+                  key={role.id}
+                  className="glass-panel"
+                  style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', opacity: role.is_active ? 1 : 0.5 }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 600 }}>{role.name}</span>
+                      {role.is_system && (
+                        <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(0,242,255,0.08)', color: 'var(--primary)', border: '1px solid rgba(0,242,255,0.2)' }}>
+                          SYSTEM
+                        </span>
+                      )}
+                      <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)' }}>
+                        {role.permission_keys.length} permissions · {role.user_count} user{role.user_count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {role.description && (
+                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--on-surface-muted)' }}>{role.description}</p>
+                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {role.permission_keys.slice(0, 8).map((k) => (
+                        <span key={k} style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', color: 'var(--on-surface-muted)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                          {k}
+                        </span>
+                      ))}
+                      {role.permission_keys.length > 8 && (
+                        <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', color: 'var(--on-surface-muted)' }}>
+                          +{role.permission_keys.length - 8} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <Button variant="secondary" size="sm" onClick={() => openEditRole(role)}>
+                      {role.is_system ? 'View' : 'Edit'}
+                    </Button>
+                    {!role.is_system && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={deleteRoleMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Delete role "${role.name}"? This cannot be undone.`)) {
+                            deleteRoleMutation.mutate(role.id);
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {roles.length === 0 && !rolesLoading && (
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--on-surface-muted)', fontSize: '13px' }}>
+                  No roles found.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Role editor modal ── */}
+          <Modal
+            open={roleModalOpen}
+            onClose={() => { setRoleModalOpen(false); setEditingRole(null); setRoleForm(EMPTY_ROLE_FORM); }}
+            title={editingRole ? (editingRole.is_system ? `View: ${editingRole.name}` : `Edit: ${editingRole.name}`) : 'New Role'}
+            style={{ maxWidth: 680, maxHeight: '85vh', overflowY: 'auto' }}
+          >
+            <form onSubmit={handleRoleFormSubmit}>
+              <Field
+                label="Role Name"
+                required
+                value={roleForm.name}
+                onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))}
+                disabled={editingRole?.is_system}
+              />
+              <Field
+                label="Description"
+                value={roleForm.description}
+                onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))}
+                disabled={editingRole?.is_system}
+              />
+
+              {/* Permission matrix */}
+              <div style={{ marginTop: 'var(--space-4)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--on-surface-muted)', marginBottom: 'var(--space-3)' }}>
+                  Permissions — {roleForm.permission_keys.length} selected
+                </p>
+                {permissionGroups.map((group: PermissionGroup) => (
+                  <div key={group.domain} style={{ marginBottom: 'var(--space-4)' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.8px', margin: '0 0 var(--space-2)', textTransform: 'uppercase' }}>
+                      {group.domain}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {group.permissions.map((p) => {
+                        const checked = roleForm.permission_keys.includes(p.key);
+                        return (
+                          <label
+                            key={p.key}
+                            title={p.description}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              fontSize: '11px', padding: '4px 10px', borderRadius: '4px', cursor: editingRole?.is_system ? 'default' : 'pointer',
+                              background: checked ? 'rgba(0,242,255,0.12)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${checked ? 'rgba(0,242,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                              color: checked ? 'var(--primary)' : 'var(--on-surface-muted)',
+                              transition: 'all 0.15s',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => !editingRole?.is_system && togglePermKey(p.key)}
+                              disabled={editingRole?.is_system}
+                              style={{ width: 12, height: 12, accentColor: 'var(--primary)' }}
+                            />
+                            {p.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {roleFormError && (
+                <p role="alert" style={{ margin: '0 0 var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--error)' }}>
+                  {roleFormError}
+                </p>
+              )}
+
+              {!editingRole?.is_system && (
+                <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    style={{ flex: 1 }}
+                    onClick={() => { setRoleModalOpen(false); setEditingRole(null); setRoleForm(EMPTY_ROLE_FORM); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    style={{ flex: 1 }}
+                    loading={createRoleMutation.isPending || updateRoleMutation.isPending}
+                  >
+                    {editingRole ? 'Save Changes' : 'Create Role'}
+                  </Button>
+                </div>
+              )}
+            </form>
+          </Modal>
+        </div>
+      )}
+
       {activeTab === 'backup' && (
         <div className="glass-panel" style={{ padding: '24px', borderTop: '2px solid rgba(0,242,255,0.2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -519,48 +788,16 @@ export default function AdminView() {
                 Create, download, and restore application backups
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => bkFileRef.current?.click()}
-                disabled={bkRestoring}
-                style={{
-                  padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'transparent', color: 'var(--on-surface-muted)', cursor: 'pointer', fontSize: '12px',
-                }}
-              >
-                {bkRestoring ? 'Restoring…' : '📤 Restore from file'}
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <Button variant="secondary" size="sm" loading={bkRestoring} onClick={() => bkFileRef.current?.click()}>
+                📤 Restore from file
                 <input ref={bkFileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleBkRestore} />
-              </button>
-              <button
-                onClick={handleBkCreate}
-                disabled={bkCreating}
-                style={{
-                  padding: '8px 20px', borderRadius: '6px', border: 'none',
-                  background: bkCreating ? 'rgba(255,255,255,0.1)' : 'var(--primary)',
-                  color: bkCreating ? 'var(--on-surface-muted)' : '#000',
-                  cursor: bkCreating ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 700,
-                }}
-              >
-                {bkCreating ? 'Creating…' : '+ Create Backup'}
-              </button>
+              </Button>
+              <Button variant="primary" size="sm" loading={bkCreating} onClick={handleBkCreate}>
+                + Create Backup
+              </Button>
             </div>
           </div>
-
-          {bkError && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '16px', padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>{bkError}</div>}
-
-          {bkRestoreResult && (
-            <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
-              <div style={{ color: '#10b981', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Restore complete</div>
-              <div style={{ fontSize: '12px', color: 'var(--on-surface-muted)' }}>
-                {Object.entries(bkRestoreResult.restored).map(([table, count]) => `${table}: ${count}`).join(' · ')}
-              </div>
-              {bkRestoreResult.errors.length > 0 && (
-                <div style={{ marginTop: '8px', fontSize: '11px', color: '#f59e0b' }}>
-                  {bkRestoreResult.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Schedules */}
           <div style={{ marginBottom: '24px' }}>
@@ -613,7 +850,7 @@ export default function AdminView() {
           <div>
             <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 12px 0' }}>Backups ({backups.length})</h4>
             {bkLoading ? (
-              <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)' }}>Loading backups…</p>
+              <Spinner label="Loading backups" />
             ) : backups.length === 0 ? (
               <div style={{ color: 'var(--on-surface-muted)', fontSize: '12px', padding: '24px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '8px' }}>No backups yet. Click "Create Backup" to get started.</div>
             ) : (

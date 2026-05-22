@@ -12,7 +12,7 @@
 
 import React, { useRef, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { JulesButton } from '../components/Jules/JulesButton';
+
 import {
   listScans,
   getScanFindings,
@@ -270,9 +270,7 @@ function FindingsTable({
                   <td style={{ padding: '8px 10px', color: f.fixed_version ? '#52c41a' : 'var(--on-surface-muted)', fontFamily: 'monospace', fontSize: '11px' }}>
                     {f.fixed_version ?? '–'}
                   </td>
-                  <td style={{ padding: '8px 6px' }}>
-                    <JulesButton finding={f} />
-                  </td>
+                  <td style={{ padding: '8px 6px' }} />
                 </tr>
               ))}
             </tbody>

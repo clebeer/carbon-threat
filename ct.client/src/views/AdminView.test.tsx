@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,9 +17,12 @@ import AdminView from './AdminView';
 import {
   MOCK_USERS_LIST,
   MOCK_USER,
+  MOCK_ROLES_LIST,
+  MOCK_PERMISSION_GROUPS,
 } from '../test/handlers';
 import { useAuthStore } from '../store/authStore';
 import { setInMemoryToken } from '../api/client';
+import { ToastProvider } from '../components/ui';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,9 +50,11 @@ function renderAdmin() {
     user: userEvent.setup(),
     qc,
     ...render(
-      <QueryClientProvider client={qc}>
-        <AdminView />
-      </QueryClientProvider>
+      <ToastProvider>
+        <QueryClientProvider client={qc}>
+          <AdminView />
+        </QueryClientProvider>
+      </ToastProvider>
     ),
   };
 }
@@ -221,6 +226,99 @@ describe('AdminView', () => {
       MOCK_USERS_LIST.forEach((u) => {
         expect(screen.queryByText(u.email)).not.toBeInTheDocument();
       });
+    });
+  });
+
+  // ── roles tab ─────────────────────────────────────────────────────────────
+
+  describe('roles tab', () => {
+    it('renders the Role Profiles tab button', async () => {
+      renderAdmin();
+      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: /role profiles/i })).toBeInTheDocument();
+    });
+
+    it('shows role list when Roles tab is clicked', async () => {
+      const { user } = renderAdmin();
+      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: /role profiles/i }));
+
+      await waitFor(() => {
+        // Both system role and custom role names should appear
+        MOCK_ROLES_LIST.forEach((r) => {
+          expect(screen.getByText(r.name)).toBeInTheDocument();
+        });
+      });
+    });
+
+    it('marks system roles with a SYSTEM badge', async () => {
+      const { user } = renderAdmin();
+      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: /role profiles/i }));
+
+      await waitFor(() => {
+        const systemBadges = screen.queryAllByText(/^SYSTEM$/i);
+        expect(systemBadges.length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('opens the New Role modal when + New Role is clicked', async () => {
+      server.use(
+        http.get('/api/permissions', () =>
+          HttpResponse.json({ permissions: MOCK_PERMISSION_GROUPS })
+        )
+      );
+      const { user } = renderAdmin();
+      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: /role profiles/i }));
+      await waitFor(() => screen.getByRole('button', { name: /new role/i }));
+
+      await user.click(screen.getByRole('button', { name: /\+ new role/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('New Role')).toBeInTheDocument();
+      });
+    });
+
+    it('creates a role when the form is submitted', async () => {
+      server.use(
+        http.get('/api/permissions', () =>
+          HttpResponse.json({ permissions: MOCK_PERMISSION_GROUPS })
+        ),
+        http.post('/api/roles', () =>
+          HttpResponse.json({ role: MOCK_ROLES_LIST[1] }, { status: 201 })
+        )
+      );
+
+      const { user } = renderAdmin();
+      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
+
+      // Navigate to Roles tab
+      await user.click(screen.getByRole('button', { name: /role profiles/i }));
+      await waitFor(() => screen.getByRole('button', { name: /\+ new role/i }));
+      await user.click(screen.getByRole('button', { name: /\+ new role/i }));
+
+      // Fill in the modal form
+      await waitFor(() => screen.getByLabelText(/role name/i));
+      await user.type(screen.getByLabelText(/role name/i), 'My Custom Role');
+
+      // Submit the form directly — clicking the button inside a portal can fail
+      // to propagate the submit event in jsdom; fireEvent.submit bypasses that.
+      const dialog = screen.getByRole('dialog');
+      const form = dialog.querySelector('form');
+      if (form) {
+        fireEvent.submit(form);
+      } else {
+        await user.click(screen.getByRole('button', { name: /create role/i }));
+      }
+
+      // On success the modal closes (onSuccess calls setRoleModalOpen(false))
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      , { timeout: 3000 });
     });
   });
 });
