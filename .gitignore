@@ -352,3 +352,5 @@
 !.Jules/*.md
 !td.server/test/auth/
 !td.server/test/auth/*.spec.js
+!td.server/test/services/
+!td.server/test/services/*.spec.js
