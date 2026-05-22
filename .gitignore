@@ -34,7 +34,7 @@
 !cupcake/png/*.png
 !cupcake/png/*.gif
 # minimal.env intentionally excluded — contains real secrets, never commit
-!example.env
+!.env.example
 !package.json
 !package-lock.json
 
@@ -352,3 +352,12 @@
 !.Jules/*.md
 !td.server/test/auth/
 !td.server/test/auth/*.spec.js
+# STRIDE Engine (Python FastAPI microservice)
+!stride-engine/
+!stride-engine/*.py
+!stride-engine/requirements.txt
+!stride-engine/Dockerfile
+!stride-engine/tests/
+!stride-engine/tests/*.py
+
+ .venv/

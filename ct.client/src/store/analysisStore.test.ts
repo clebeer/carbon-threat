@@ -80,4 +80,43 @@ describe('useAnalysisStore', () => {
     useAnalysisStore.getState().setNodeFilter(null);
     expect(useAnalysisStore.getState().selectedNodeLabel).toBeNull();
   });
+
+  // STRIDE AI Analysis state
+  it('starts with strideLoading false, strideError null, strideResult null', () => {
+    const state = useAnalysisStore.getState();
+    expect(state.strideLoading).toBe(false);
+    expect(state.strideError).toBeNull();
+    expect(state.strideResult).toBeNull();
+  });
+
+  it('setStrideLoading sets loading state', () => {
+    useAnalysisStore.getState().setStrideLoading(true);
+    expect(useAnalysisStore.getState().strideLoading).toBe(true);
+    useAnalysisStore.getState().setStrideLoading(false);
+    expect(useAnalysisStore.getState().strideLoading).toBe(false);
+  });
+
+  it('setStrideError sets error state', () => {
+    useAnalysisStore.getState().setStrideError('API error');
+    expect(useAnalysisStore.getState().strideError).toBe('API error');
+    useAnalysisStore.getState().setStrideError(null);
+    expect(useAnalysisStore.getState().strideError).toBeNull();
+  });
+
+  it('setStrideResult sets result state', () => {
+    const result = { threats: [], improvement_suggestions: ['suggestion1'], analysisId: 'abc-123' };
+    useAnalysisStore.getState().setStrideResult(result);
+    expect(useAnalysisStore.getState().strideResult).toEqual(result);
+  });
+
+  it('clearStrideAnalysis resets all stride state', () => {
+    useAnalysisStore.getState().setStrideLoading(true);
+    useAnalysisStore.getState().setStrideError('err');
+    useAnalysisStore.getState().setStrideResult({ threats: [], improvement_suggestions: [], analysisId: 'x' });
+    useAnalysisStore.getState().clearStrideAnalysis();
+    const state = useAnalysisStore.getState();
+    expect(state.strideLoading).toBe(false);
+    expect(state.strideError).toBeNull();
+    expect(state.strideResult).toBeNull();
+  });
 });

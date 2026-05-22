@@ -13,10 +13,19 @@ export type ThreatSeverity = 'Critical' | 'High' | 'Medium' | 'Low';
 export type ThreatSource = 'manual' | 'rule' | 'ai';
 
 export interface OwaspRef {
-  type: 'OWASP_TOP10' | 'CHEAT_SHEET' | 'ASVS';
+  type: 'OWASP_TOP10' | 'CHEAT_SHEET' | 'ASVS' | 'OWASP_LLM' | 'OWASP_ASI';
   ref: string;
   title: string;
   url: string;
+}
+
+export interface DreadScore {
+  damage: number;
+  reproducibility: number;
+  exploitability: number;
+  affected_users: number;
+  discoverability: number;
+  average: number;
 }
 
 export interface Threat {
@@ -32,6 +41,8 @@ export interface Threat {
   source: ThreatSource;
   rule_id?: string;
   mitigation?: string;
+  dread?: DreadScore;
+  test_cases?: string;
   owasp_refs: OwaspRef[];
   created_at: string;
   updated_at: string;

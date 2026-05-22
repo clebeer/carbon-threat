@@ -1,0 +1,159 @@
+"""
+DREAD Risk Assessment — adapted from STRIDE-GPT for headless API usage.
+All Streamlit (st.*) references removed.
+"""
+import json
+import re
+
+import requests
+from anthropic import Anthropic
+from google import genai as google_genai
+from groq import Groq
+from mistralai.client import Mistral
+from openai import OpenAI
+
+from utils import create_reasoning_system_prompt, process_groq_response
+
+
+def create_dread_prompt(threat_model):
+    prompt = """Act as a cyber security expert with more than 20 years experience of using the DREAD risk assessment methodology to produce comprehensive risk assessments for a wide range of applications.
+
+You are provided with a threat model and must assess each threat using the DREAD methodology. For each threat, provide a score from 1-10 for each of the following categories:
+
+- Damage Potential: How much damage could this threat cause? (1 = minimal, 10 = catastrophic)
+- Reproducibility: How easy is it to reproduce this threat? (1 = very difficult, 10 = very easy)
+- Exploitability: How easy is it to exploit this threat? (1 = requires expert skills, 10 = trivial)
+- Affected Users: How many users would be affected? (1 = very few, 10 = all users)
+- Discoverability: How easy is it to discover this threat? (1 = very difficult, 10 = obvious)
+
+Calculate the overall Risk Score as the average of all five categories.
+
+"""
+    prompt += "THREAT MODEL:\n"
+    for i, threat in enumerate(threat_model):
+        prompt += f"\n{i+1}. Threat Type: {threat.get('Threat Type', 'Unknown')}\n"
+        prompt += f"   Scenario: {threat.get('Scenario', 'N/A')}\n"
+        prompt += f"   Potential Impact: {threat.get('Potential Impact', 'N/A')}\n"
+
+    prompt += """
+
+Provide your assessment as a JSON object with the key "Risk Assessment" containing an array of objects, each with:
+- "Threat Type": the threat type
+- "Scenario": the scenario
+- "Damage Potential": score (1-10)
+- "Reproducibility": score (1-10)
+- "Exploitability": score (1-10)
+- "Affected Users": score (1-10)
+- "Discoverability": score (1-10)
+- "Risk Score": average of all five scores (rounded to 1 decimal place)
+
+Example format:
+{
+  "Risk Assessment": [
+    {
+      "Threat Type": "Spoofing",
+      "Scenario": "Example scenario",
+      "Damage Potential": 8,
+      "Reproducibility": 7,
+      "Exploitability": 6,
+      "Affected Users": 9,
+      "Discoverability": 5,
+      "Risk Score": 7.0
+    }
+  ]
+}
+"""
+    return prompt
+
+
+# ── Provider functions ───────────────────────────────────────────────────────
+
+def get_dread_assessment(api_key, model_name, prompt):
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model_name,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=8192,
+    )
+    content = response.choices[0].message.content
+    if not content:
+        raise ValueError(f"Empty response from model {model_name}")
+    return json.loads(content)
+
+
+def get_dread_assessment_google(google_api_key, google_model, prompt):
+    client = google_genai.Client(api_key=google_api_key)
+    from google.genai import types as google_types
+    config = google_types.GenerateContentConfig(response_mime_type="application/json")
+    response = client.models.generate_content(model=google_model, contents=prompt, config=config)
+    return json.loads(response.text)
+
+
+def get_dread_assessment_mistral(mistral_api_key, mistral_model, prompt):
+    client = Mistral(api_key=mistral_api_key)
+    response = client.chat.complete(
+        model=mistral_model,
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return json.loads(response.choices[0].message.content)
+
+
+def get_dread_assessment_ollama(ollama_endpoint, ollama_model, ollama_timeout, prompt):
+    if not ollama_endpoint.endswith("/"):
+        ollama_endpoint += "/"
+    url = ollama_endpoint + "api/generate"
+    full_prompt = "You are a helpful assistant designed to output JSON.\n\n" + prompt
+    data = {"model": ollama_model, "prompt": full_prompt, "stream": False, "format": "json"}
+    response = requests.post(url, json=data, timeout=ollama_timeout)
+    response.raise_for_status()
+    return json.loads(response.json()["response"])
+
+
+def get_dread_assessment_anthropic(anthropic_api_key, anthropic_model, prompt):
+    client = Anthropic(api_key=anthropic_api_key)
+    response = client.messages.create(
+        model=anthropic_model,
+        max_tokens=32768,
+        system="You are a helpful assistant designed to output JSON.",
+        messages=[{"role": "user", "content": prompt}],
+        timeout=300,
+    )
+    full_content = "".join(block.text for block in response.content if getattr(block, "text", None))
+    full_content = full_content.strip()
+    if "```json" in full_content:
+        full_content = re.sub(r"```json\s*", "", full_content)
+        full_content = re.sub(r"```\s*$", "", full_content)
+    return json.loads(full_content)
+
+
+def get_dread_assessment_lm_studio(lm_studio_endpoint, model_name, prompt, api_key="not-needed"):
+    client = OpenAI(base_url=f"{lm_studio_endpoint}/v1", api_key=api_key)
+    response = client.chat.completions.create(
+        model=model_name,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=8192,
+    )
+    return json.loads(response.choices[0].message.content)
+
+
+def get_dread_assessment_groq(groq_api_key, groq_model, prompt):
+    client = Groq(api_key=groq_api_key)
+    response = client.chat.completions.create(
+        model=groq_model,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    _, response_content = process_groq_response(response.choices[0].message.content, groq_model, expect_json=True)
+    return response_content
