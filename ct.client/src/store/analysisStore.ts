@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+interface StrideAnalysisResult {
+  threats: any[];
+  improvement_suggestions: string[];
+  analysisId: string;
+}
+
 interface AnalysisState {
   highlightedNodeIds: Set<string>;
   highlightedEdgeIds: Set<string>;
@@ -10,6 +16,15 @@ interface AnalysisState {
   clearHighlight: () => void;
   setSelectedThreat: (id: string | null) => void;
   setNodeFilter: (id: string | null, label?: string | null) => void;
+
+  // STRIDE AI Analysis
+  strideLoading: boolean;
+  strideError: string | null;
+  strideResult: StrideAnalysisResult | null;
+  setStrideLoading: (loading: boolean) => void;
+  setStrideError: (error: string | null) => void;
+  setStrideResult: (result: StrideAnalysisResult | null) => void;
+  clearStrideAnalysis: () => void;
 }
 
 export const useAnalysisStore = create<AnalysisState>((set) => ({
@@ -44,4 +59,13 @@ export const useAnalysisStore = create<AnalysisState>((set) => ({
       // If clearing node filter, also clear highlight
       ...(id === null ? { highlightedNodeIds: new Set(), highlightedEdgeIds: new Set() } : {}),
     }),
+
+  // STRIDE AI Analysis state
+  strideLoading: false,
+  strideError: null,
+  strideResult: null,
+  setStrideLoading: (loading) => set({ strideLoading: loading }),
+  setStrideError: (error) => set({ strideError: error }),
+  setStrideResult: (result) => set({ strideResult: result }),
+  clearStrideAnalysis: () => set({ strideLoading: false, strideError: null, strideResult: null }),
 }));

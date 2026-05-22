@@ -260,6 +260,47 @@ export default function ThreatCard({ threat: t, modelTitle, onStatusChange, onDe
                   </div>
                 )}
 
+                {/* DREAD Score */}
+                {t.dread && (
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px' }}>📊</span>
+                      <span style={{ fontSize: '10px', color: '#f97316', fontWeight: 700, letterSpacing: '0.5px' }}>DREAD RISK ASSESSMENT</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#f97316', marginLeft: 'auto' }}>
+                        Score: {t.dread.average?.toFixed(1) ?? '—'} / 10
+                      </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '6px' }}>
+                      {[
+                        { label: 'Damage', value: t.dread.damage },
+                        { label: 'Reproducibility', value: t.dread.reproducibility },
+                        { label: 'Exploitability', value: t.dread.exploitability },
+                        { label: 'Affected Users', value: t.dread.affected_users },
+                        { label: 'Discoverability', value: t.dread.discoverability },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                          <span style={{ color: 'var(--on-surface-muted)', minWidth: '90px' }}>{item.label}</span>
+                          <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(item.value ?? 0) * 10}%`, borderRadius: '3px', background: (item.value ?? 0) >= 7 ? '#ef4444' : (item.value ?? 0) >= 4 ? '#f59e0b' : '#22c55e' }} />
+                          </div>
+                          <span style={{ color: '#f97316', fontWeight: 600, minWidth: '18px', textAlign: 'right' }}>{item.value ?? '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Test Cases */}
+                {t.test_cases && (
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '14px' }}>🧪</span>
+                      <span style={{ fontSize: '10px', color: '#8b5cf6', fontWeight: 700, letterSpacing: '0.5px' }}>SECURITY TEST CASES</span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{t.test_cases}</div>
+                  </div>
+                )}
+
                 {/* Affected components */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {(t.node_ids?.length ?? 0) > 0 && (

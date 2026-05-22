@@ -23,6 +23,8 @@ const OWASP_TYPE_STYLE: Record<string, { bg: string; color: string; border: stri
   OWASP_TOP10:  { bg: 'rgba(239,68,68,0.1)',   color: '#ef4444',  border: 'rgba(239,68,68,0.25)' },
   CHEAT_SHEET:  { bg: 'rgba(0,242,255,0.08)',  color: 'var(--primary)', border: 'rgba(0,242,255,0.2)' },
   CWE:          { bg: 'rgba(245,158,11,0.1)',  color: '#f59e0b',  border: 'rgba(245,158,11,0.25)' },
+  OWASP_LLM:    { bg: 'rgba(139,92,246,0.1)',  color: '#8b5cf6',  border: 'rgba(139,92,246,0.25)' },
+  OWASP_ASI:    { bg: 'rgba(236,72,153,0.1)',  color: '#ec4899',  border: 'rgba(236,72,153,0.25)' },
 };
 
 const STATUS_OPTIONS: ThreatStatus[] = ['Open', 'Investigating', 'Mitigated', 'Not Applicable'];
@@ -311,6 +313,25 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
                       <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: '6px' }}>
                         <div style={{ fontSize: '10px', color: '#22c55e', marginBottom: '3px', letterSpacing: '0.5px' }}>MITIGATION</div>
                         <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5 }}>{t.mitigation}</p>
+                      </div>
+                    )}
+                    {t.dread && (
+                      <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '10px', color: '#f59e0b', marginBottom: '6px', letterSpacing: '0.5px' }}>DREAD SCORE — avg {t.dread.average?.toFixed(1) ?? '—'}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px' }}>
+                          {(['damage', 'reproducibility', 'exploitability', 'affected_users', 'discoverability'] as const).map(k => (
+                            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+                              <span style={{ color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' }}>{k.replace('_', ' ')}</span>
+                              <span style={{ color: '#f59e0b', fontWeight: 600 }}>{t.dread![k]}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {t.test_cases && (
+                      <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '10px', color: '#8b5cf6', marginBottom: '3px', letterSpacing: '0.5px' }}>TEST CASES</div>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{t.test_cases}</p>
                       </div>
                     )}
                     <OwaspSection refs={t.owasp_refs} />
