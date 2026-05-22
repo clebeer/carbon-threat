@@ -36,6 +36,31 @@ services:
       retries: 5
       start_period: 10s
 
+  # ── STRIDE Engine (internal Python FastAPI microservice) ──────────────────
+  stride-engine:
+    build:
+      context: ./stride-engine
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      STRIDE_ENGINE_TOKEN: ${STRIDE_ENGINE_TOKEN:-changeme-stride-engine-token}
+      # LLM provider keys — only the engine needs these
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://host.docker.internal:11434}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-300}
+      LM_STUDIO_ENDPOINT: ${LM_STUDIO_ENDPOINT:-http://host.docker.internal:1234}
+    # NO ports published — internal only, accessible via Docker network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   # ── Express API + built React SPA ──────────────────────────────────────────
   carbonthreat:
     build:
@@ -53,6 +78,9 @@ services:
       # is never overwritten — required for git/curl HTTPS access.
       APP_TLS_CERT_PATH: /app/certs/fullchain.pem
       APP_TLS_KEY_PATH:  /app/certs/privkey.pem
+      # STRIDE Engine connection (internal network)
+      STRIDE_ENGINE_URL: http://stride-engine:8000
+      STRIDE_ENGINE_TOKEN: ${STRIDE_ENGINE_TOKEN:-changeme-stride-engine-token}
     ports:
       - "3001:3001"
     volumes:
@@ -62,6 +90,8 @@ services:
       # If Docker image scanning is needed, use a Docker socket proxy instead.
     depends_on:
       db:
+        condition: service_healthy
+      stride-engine:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1:3001/healthz || exit 1"]

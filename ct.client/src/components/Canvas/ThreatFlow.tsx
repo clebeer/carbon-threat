@@ -15,7 +15,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toPng, toSvg } from 'html-to-image';
 import { getThreatModel, updateThreatModel } from '../../api/threatmodels';
-import { type ThreatSuggestion } from '../../api/ai';
+/* ThreatSuggestion import removed — old AI panel replaced by StrideAnalysisPanel */
 import { useQuery } from '@tanstack/react-query';
 import { type DomainPack } from '../../api/domainPacks';
 import { useAnalysisStore } from '../../store/analysisStore';
@@ -33,7 +33,7 @@ import { EDGE_TYPES_LIST, EDGE_TYPE_STYLES } from './assets/edgeTypes';
 import { CyberNode, type CyberNodeData, cyberNodeState } from './CyberNode';
 import { TrustBoundaryNode } from './TrustBoundaryNode';
 import { DataFlowEdge } from './DataFlowEdge';
-import { AISuggestionsPanel, SeverityBadge } from './AISuggestionsPanel';
+import StrideAnalysisPanel from './StrideAnalysisPanel';
 import { NodeStencil } from './NodeStencil';
 import { RenameModal } from './RenameModal';
 import { EdgeLabelModal } from './EdgeLabelModal';
@@ -75,7 +75,6 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
   const [nodes, setNodes, onNodesChange] = useNodesState<CyberNodeData>(INIT_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INIT_EDGES);
   const [selectedNode, setSelectedNode] = useState<Node<CyberNodeData> | null>(null);
-  const [acceptedThreats, setAcceptedThreats] = useState<ThreatSuggestion[]>([]);
   const [renaming, setRenaming] = useState<Node<CyberNodeData> | null>(null);
   const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -536,22 +535,6 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
           <MiniMap nodeColor={miniMapNodeColor} style={{ background: 'var(--surface-container-high)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
         </ReactFlow>
 
-        {acceptedThreats.length > 0 && !threatPanelOpen && (
-          <div style={{ position: 'absolute', bottom: '24px', left: '24px', zIndex: 20 }}>
-            <div className="glass-panel" style={{ padding: '14px', maxWidth: '360px' }}>
-              <div style={{ fontSize: '10px', letterSpacing: '1px', color: 'var(--primary)', marginBottom: '8px' }}>AI THREATS LOG ({acceptedThreats.length})</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '160px', overflowY: 'auto' }}>
-                {acceptedThreats.map((t: ThreatSuggestion, i: number) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px' }}>
-                    <span style={{ color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                    <SeverityBadge severity={t.severity} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {!aiPanelOpen && !threatPanelOpen && (
           <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--on-surface-muted)', background: 'rgba(0,0,0,0.45)', padding: '5px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10 }}>
             Drag · Shift+drag select · Ctrl+C/V copy/paste · Ctrl+A select all · Ctrl+Z undo
@@ -575,9 +558,9 @@ function ThreatFlowInner({ modelId, modelTitle }: { modelId?: string | null; mod
       </div>
       </ErrorBoundary>
 
-      {aiPanelOpen && selectedNode && (
-        <ErrorBoundary label="AI Panel">
-          <AISuggestionsPanel node={selectedNode} onClose={handlePaneClick} onAccept={(t: ThreatSuggestion) => setAcceptedThreats((ts: ThreatSuggestion[]) => [...ts, t])} />
+      {aiPanelOpen && selectedNode && modelId && (
+        <ErrorBoundary label="STRIDE AI Panel">
+          <StrideAnalysisPanel modelId={modelId} onAnalysisComplete={handlePaneClick} />
         </ErrorBoundary>
       )}
       {threatPanelOpen && modelId && (

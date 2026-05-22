@@ -13,7 +13,7 @@ import homeController from '../controllers/homecontroller.js';
 import templateController from '../controllers/templateController.js';
 import threatmodelController from '../controllers/threatmodelcontroller.js';
 import * as usersController from '../controllers/users.js';
-import * as aiController from '../controllers/aiController.js';
+import * as strideController from '../controllers/strideController.js';
 import * as integrationsController from '../controllers/integrationsController.js';
 import * as threatmodelsPg from '../controllers/threatmodels.pg.js';
 import * as smtpController from '../controllers/smtp.js';
@@ -197,8 +197,8 @@ const routes = (router) => {
     router.post('/api/cloud-storage/:provider/export', requireRole('admin', 'analyst'), auditMiddleware('CLOUD_EXPORT'), cloudStorageController.exportModel);
     router.delete('/api/cloud-storage/:provider/disconnect', cloudStorageController.disconnect);
 
-    // AI Threat Bot — analyst+ required to prevent abuse
-    router.post('/api/ai/suggest', requireRole('admin', 'analyst'), auditMiddleware('AI_SUGGEST'), aiController.suggest);
+    // ── STRIDE GPT AI Analysis ────────────────────────────────────────────
+    router.post('/api/threatmodels/:id/ai-analyze', requireRole('admin', 'analyst'), auditMiddleware('AI_ANALYZE'), strideController.aiAnalyze);
 
     // ── OSV Vulnerability Scanner ─────────────────────────────────────────
     router.get('/api/scanner/scans', requireRole('admin', 'analyst', 'viewer'), osvScannerController.listScans);

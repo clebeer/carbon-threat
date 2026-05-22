@@ -34,7 +34,7 @@
 !cupcake/png/*.png
 !cupcake/png/*.gif
 # minimal.env intentionally excluded — contains real secrets, never commit
-!example.env
+!.env.example
 !package.json
 !package-lock.json
 
