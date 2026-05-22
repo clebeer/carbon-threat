@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listUsers, createUser, deactivateUser, type User, type UserRole } from '../api/users';
 import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';
 import { listBackups, createBackup, downloadBackup, deleteBackup, listSchedules, createSchedule, deleteSchedule, restoreBackup as restoreBackupApi, type BackupRecord, type BackupSchedule } from '../api/backup';
+import { listRoles as listRolesApi, createRole as createRoleApi, updateRole as updateRoleApi, deleteRole as deleteRoleApi, listPermissions as listPermissionsApi, type Role, type PermissionCatalog } from '../api/roles';
 import { useAuthStore } from '../store/authStore';
 
 // ── RBAC helpers ────────────────────────────────────────────────────────────
@@ -28,12 +29,13 @@ const ROLE_PERMS: Record<UserRole, string[]> = {
   api_key: ['Scoped by token claims'],
 };
 
-function roleBadgeColor(role: UserRole): string {
+function roleBadgeColor(role: string): string {
   switch (role) {
     case 'admin':   return 'var(--primary)';
     case 'analyst': return 'var(--secondary)';
     case 'viewer':  return 'var(--on-surface-muted)';
     case 'api_key': return '#f59e0b';
+    default:        return '#8b5cf6'; // custom roles get purple
   }
 }
 
@@ -52,11 +54,12 @@ const SEVERITY_COLOR: Record<string, string> = {
 
 export default function AdminView() {
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin     = currentUser?.role === 'admin';
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const isAdmin     = currentUser?.role === 'admin' || hasPermission('roles:manage');
   const qc          = useQueryClient();
 
   // ── Tabs ──
-  const [activeTab, setActiveTab] = useState<'users' | 'backup'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'backup'>('users');
 
   const [showInvite, setShowInvite]   = useState(false);
   const [form, setForm]               = useState<InviteFormState>({ email: '', display_name: '', password: '', role: 'analyst' });
@@ -76,6 +79,13 @@ export default function AdminView() {
   const { data: users = [], isLoading, error: usersError } = useQuery({
     queryKey: ['users'],
     queryFn:  listUsers,
+    enabled:  isAdmin,
+  });
+
+  // Also load roles for the user invite form <select>
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn:  listRolesApi,
     enabled:  isAdmin,
   });
 
@@ -246,10 +256,14 @@ export default function AdminView() {
 
       {/* ── Tab bar ── */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '4px' }}>
-        {([['users', 'Users & Threat Intel'], ['backup', 'Backup & Restore']] as const).map(([key, label]) => (
+        {([
+          ['users', 'Users & Threat Intel'],
+          ['roles', 'Roles & Permissions'],
+          ['backup', 'Backup & Restore'],
+        ] as const).map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setActiveTab(key)}
+            onClick={() => setActiveTab(key as 'users' | 'roles' | 'backup')}
             style={{
               flex: 1, padding: '10px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
               fontSize: '13px', fontWeight: 600, letterSpacing: '0.5px', transition: 'all 0.2s',
@@ -416,9 +430,16 @@ export default function AdminView() {
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm((f: InviteFormState) => ({ ...f, role: e.target.value as UserRole }))}
                   style={{ padding: '9px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: '#12161f', color: '#e2e8f0', fontSize: '13px', outline: 'none' }}
                 >
-                  <option value="admin">Administrator</option>
-                  <option value="analyst">Security Architect (analyst)</option>
-                  <option value="viewer">Auditor / Viewer</option>
+                  {(roles ?? []).map((r: Role) => (
+                    <option key={r.id} value={r.slug}>{r.name}{r.is_system ? ` (${r.slug})` : ''}</option>
+                  ))}
+                  {(!roles || roles.length === 0) && (
+                    <>
+                      <option value="admin">Administrator</option>
+                      <option value="analyst">Security Architect (analyst)</option>
+                      <option value="viewer">Auditor / Viewer</option>
+                    </>
+                  )}
                 </select>
                 {formError && <p style={{ margin: 0, fontSize: '12px', color: 'var(--error)' }}>{formError}</p>}
                 <button
@@ -487,6 +508,8 @@ export default function AdminView() {
         </div>
       </div>
       </>)}
+
+      {activeTab === 'roles' && <RolesTab />}
 
       {activeTab === 'backup' && (
         <div className="glass-panel" style={{ padding: '24px', borderTop: '2px solid rgba(0,242,255,0.2)' }}>
@@ -610,6 +633,159 @@ export default function AdminView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Roles & Permissions Tab ──────────────────────────────────────────────────
+
+function RolesTab() {
+  const qc = useQueryClient();
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newPerms, setNewPerms] = useState<Set<string>>(new Set());
+  const [editPerms, setEditPerms] = useState<Set<string>>(new Set());
+  const [roleError, setRoleError] = useState('');
+
+  const { data: roles = [], isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles'],
+    queryFn: listRolesApi,
+  });
+
+  const { data: catalog } = useQuery({
+    queryKey: ['permission-catalog'],
+    queryFn: listPermissionsApi,
+  });
+
+  const createMut = useMutation({
+    mutationFn: createRoleApi,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['roles'] }); setShowCreate(false); setNewName(''); setNewDesc(''); setNewPerms(new Set()); setRoleError(''); },
+    onError: (e: { response?: { data?: { error?: string } } }) => setRoleError(e?.response?.data?.error ?? 'Failed to create role'),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { name?: string; description?: string; permission_keys?: string[] } }) => updateRoleApi(id, payload),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['roles'] }); setEditingRole(null); },
+    onError: (e: { response?: { data?: { error?: string } } }) => setRoleError(e?.response?.data?.error ?? 'Failed to update role'),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: deleteRoleApi,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles'] }),
+    onError: (e: { response?: { data?: { error?: string } } }) => setRoleError(e?.response?.data?.error ?? 'Failed to delete role'),
+  });
+
+  const togglePerm = (key: string, target: 'new' | 'edit') => {
+    const setter = target === 'new' ? setNewPerms : setEditPerms;
+    const current = target === 'new' ? newPerms : editPerms;
+    const next = new Set(current);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setter(next);
+  };
+
+  const startEdit = (role: Role) => {
+    setEditingRole(role);
+    setEditPerms(new Set(role.permission_keys));
+    setRoleError('');
+  };
+
+  return (
+    <div className="glass-panel" style={{ padding: '24px', borderTop: '2px solid rgba(0,242,255,0.2)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h3 className="label-text glow-text-cyan" style={{ fontSize: '14px', margin: '0 0 4px', letterSpacing: '1px' }}>ROLES & PERMISSIONS</h3>
+          <p style={{ margin: 0, fontSize: '12px', color: 'var(--on-surface-muted)' }}>Manage custom roles and fine-grained permission grants.</p>
+        </div>
+        <button onClick={() => { setShowCreate(!showCreate); setRoleError(''); }} style={{ background: 'rgba(0,242,255,0.1)', border: '1px dashed var(--primary)', color: 'var(--primary)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+          {showCreate ? 'Cancel' : '+ Create Role'}
+        </button>
+      </div>
+
+      {roleError && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '12px', padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>{roleError}</div>}
+
+      {/* Create form */}
+      {showCreate && (
+        <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Role name" style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: '13px' }} />
+            <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)" style={{ flex: 2, padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: '13px' }} />
+          </div>
+          {catalog && <PermMatrix catalog={catalog} checked={newPerms} onToggle={(k) => togglePerm(k, 'new')} />}
+          <button onClick={() => createMut.mutate({ name: newName, description: newDesc, permission_keys: Array.from(newPerms) })} disabled={!newName.trim() || createMut.isPending} style={{ marginTop: '12px', padding: '8px 20px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
+            {createMut.isPending ? 'Creating…' : 'Create Role'}
+          </button>
+        </div>
+      )}
+
+      {/* Roles list */}
+      {rolesLoading && <p style={{ fontSize: '13px', color: 'var(--on-surface-muted)' }}>Loading roles…</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {roles.map((role: Role) => (
+          <div key={role.id} style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {editingRole?.id === role.id ? (
+              <>
+                <div style={{ fontWeight: 500, color: '#fff', fontSize: '14px', marginBottom: '8px' }}>{role.name} <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)' }}>({role.slug})</span></div>
+                {catalog && <PermMatrix catalog={catalog} checked={editPerms} onToggle={(k) => togglePerm(k, 'edit')} />}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button onClick={() => updateMut.mutate({ id: role.id, payload: { permission_keys: Array.from(editPerms) } })} disabled={updateMut.isPending} style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}>
+                    {updateMut.isPending ? 'Saving…' : 'Save Permissions'}
+                  </button>
+                  <button onClick={() => setEditingRole(null)} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--on-surface-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ color: '#fff', fontSize: '14px', fontWeight: 500 }}>
+                    {role.name}
+                    {role.is_system && <span style={{ marginLeft: '8px', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', background: 'rgba(0,242,255,0.1)', color: 'var(--primary)' }}>SYSTEM</span>}
+                  </div>
+                  <div style={{ color: 'var(--on-surface-muted)', fontSize: '12px', marginTop: '2px' }}>{role.description || '—'}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+                    {role.permission_keys.slice(0, 8).map((k) => (
+                      <span key={k} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: 'rgba(255,255,255,0.04)', color: 'var(--on-surface-muted)' }}>{k}</span>
+                    ))}
+                    {role.permission_keys.length > 8 && <span style={{ fontSize: '10px', color: 'var(--on-surface-muted)' }}>+{role.permission_keys.length - 8} more</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)' }}>{role.user_count ?? 0} users</span>
+                  {!role.is_system && (
+                    <>
+                      <button onClick={() => startEdit(role)} style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(0,242,255,0.2)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontSize: '11px' }}>Edit</button>
+                      <button onClick={() => { if (confirm(`Delete role "${role.name}"?`)) deleteMut.mutate(role.id); }} style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '11px' }}>Delete</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Permission Matrix ────────────────────────────────────────────────────────
+
+function PermMatrix({ catalog, checked, onToggle }: { catalog: PermissionCatalog; checked: Set<string>; onToggle: (key: string) => void }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+      {Object.entries(catalog).map(([domain, { label, permissions }]) => (
+        <div key={domain} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#fff', marginBottom: '8px', letterSpacing: '0.5px' }}>{label}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {permissions.map((p) => (
+              <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '11px', color: checked.has(p.key) ? '#e2e8f0' : 'var(--on-surface-muted)' }}>
+                <input type="checkbox" checked={checked.has(p.key)} onChange={() => onToggle(p.key)} style={{ accentColor: 'var(--primary)' }} />
+                <span>{p.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

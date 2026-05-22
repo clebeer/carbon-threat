@@ -8,6 +8,8 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
+  /** Effective permission keys resolved from the user's role at login time. */
+  permissions?: string[];
 }
 
 interface AuthState {
@@ -26,11 +28,17 @@ interface AuthState {
 
   /** Clears all auth state and wipes the in-memory token. */
   clearAuth: () => void;
+
+  /**
+   * Check whether the current user holds a specific permission key.
+   * Admin always returns true; other roles check the permissions array.
+   */
+  hasPermission: (key: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       refreshToken: null,
       isAuthenticated: false,
@@ -43,6 +51,14 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => {
         setInMemoryToken(null);
         set({ user: null, refreshToken: null, isAuthenticated: false });
+      },
+
+      hasPermission: (key: string) => {
+        const { user } = get();
+        if (!user) return false;
+        // Admin bypasses all permission checks
+        if (user.role === 'admin') return true;
+        return Array.isArray(user.permissions) && user.permissions.includes(key);
       },
     }),
     {

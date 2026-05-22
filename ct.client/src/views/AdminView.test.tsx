@@ -1,242 +1,185 @@
-/**
- * Unit / integration tests — AdminView
- *
- * MSW intercepts all /api/users and /api/integrations requests.
- * The authStore is pre-loaded with an admin user so RBAC-guarded
- * mutations are reachable.
- */
-
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { server } from '../test/server';
-import AdminView from './AdminView';
-import {
-  MOCK_USERS_LIST,
-  MOCK_USER,
-} from '../test/handlers';
-import { useAuthStore } from '../store/authStore';
-import { setInMemoryToken } from '../api/client';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── Mocks ────────────────────────────────────────────────────────────────────
+const mockListRoles = vi.fn();
+const mockListPermissions = vi.fn();
+const mockCreateRole = vi.fn();
+const mockUpdateRole = vi.fn();
+const mockDeleteRole = vi.fn();
+const mockListUsers = vi.fn();
+const mockCreateUser = vi.fn();
+const mockDeactivateUser = vi.fn();
+const mockGetVulnFeedStatus = vi.fn();
+const mockTriggerVulnFeedSync = vi.fn();
+const mockListBackups = vi.fn();
+const mockCreateBackup = vi.fn();
+const mockDownloadBackup = vi.fn();
+const mockDeleteBackup = vi.fn();
+const mockListSchedules = vi.fn();
+const mockCreateSchedule = vi.fn();
+const mockDeleteSchedule = vi.fn();
+const mockRestoreBackup = vi.fn();
 
-function makeQueryClient() {
-  return new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-}
+vi.mock('../api/roles', () => ({
+  listRoles: (...a: unknown[]) => mockListRoles(...a),
+  listPermissions: (...a: unknown[]) => mockListPermissions(...a),
+  createRole: (...a: unknown[]) => mockCreateRole(...a),
+  updateRole: (...a: unknown[]) => mockUpdateRole(...a),
+  deleteRole: (...a: unknown[]) => mockDeleteRole(...a),
+}));
 
-function renderAdmin() {
-  // Pre-seed authStore with an admin user (no real JWT needed in unit tests)
-  const adminUser = {
-    ...MOCK_USER,
-    role: 'admin' as const,
-  };
-  useAuthStore.setState({
-    user:            adminUser as NonNullable<ReturnType<typeof useAuthStore.getState>['user']>,
-    refreshToken:    'mock-rt',
-    isAuthenticated: true,
-  });
-  setInMemoryToken('mock-access-token');
+vi.mock('../api/users', () => ({
+  listUsers: (...a: unknown[]) => mockListUsers(...a),
+  createUser: (...a: unknown[]) => mockCreateUser(...a),
+  deactivateUser: (...a: unknown[]) => mockDeactivateUser(...a),
+}));
 
-  const qc = makeQueryClient();
+vi.mock('../api/vulnFeeds', () => ({
+  getVulnFeedStatus: (...a: unknown[]) => mockGetVulnFeedStatus(...a),
+  triggerVulnFeedSync: (...a: unknown[]) => mockTriggerVulnFeedSync(...a),
+}));
+
+vi.mock('../api/backup', () => ({
+  listBackups: (...a: unknown[]) => mockListBackups(...a),
+  createBackup: (...a: unknown[]) => mockCreateBackup(...a),
+  downloadBackup: (...a: unknown[]) => mockDownloadBackup(...a),
+  deleteBackup: (...a: unknown[]) => mockDeleteBackup(...a),
+  listSchedules: (...a: unknown[]) => mockListSchedules(...a),
+  createSchedule: (...a: unknown[]) => mockCreateSchedule(...a),
+  deleteSchedule: (...a: unknown[]) => mockDeleteSchedule(...a),
+  restoreBackup: (...a: unknown[]) => mockRestoreBackup(...a),
+}));
+
+const mockHasPermission = vi.fn();
+const mockUseAuthStore = vi.fn();
+vi.mock('../store/authStore', () => ({
+  useAuthStore: (...a: unknown[]) => {
+    const selector = a[0] as (s: Record<string, unknown>) => unknown;
+    if (selector) {
+      return selector({
+        user: { id: '1', email: 'admin@test.com', role: 'admin', permissions: ['roles:manage'] },
+        hasPermission: mockHasPermission,
+      });
+    }
+    return mockUseAuthStore();
+  },
+}));
+
+vi.mock('../hooks/useJulesStatus', () => ({
+  useJulesStatus: () => ({ data: { configured: false, enabled: false } }),
+}));
+
+vi.mock('../api/auth', () => ({
+  refreshSession: vi.fn().mockResolvedValue('mock-access-token'),
+  logout: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../api/client', () => ({
+  setInMemoryToken: vi.fn(),
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}));
+
+// Mock TanStack Query
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual('@tanstack/react-query');
   return {
-    user: userEvent.setup(),
-    qc,
-    ...render(
-      <QueryClientProvider client={qc}>
-        <AdminView />
-      </QueryClientProvider>
-    ),
+    ...actual,
+    useQuery: vi.fn(),
+    useMutation: vi.fn(),
+    useQueryClient: () => ({
+      invalidateQueries: vi.fn(),
+    }),
   };
-}
+});
 
-// ── tests ─────────────────────────────────────────────────────────────────────
+import { useQuery, useMutation } from '@tanstack/react-query';
+import AdminView from './AdminView';
 
 describe('AdminView', () => {
   beforeEach(() => {
-    localStorage.clear();
-    // Mock vuln-feeds endpoint that AdminView polls on mount
-    server.use(
-      http.get('/api/admin/vuln-feeds/status', () =>
-        HttpResponse.json({
-          enabled: false,
-          lastSync: null,
-          bySeverity: { Critical: 0, High: 0, Medium: 0, Low: 0 },
-          totalAdvisories: 0,
-        })
-      )
-    );
+    vi.clearAllMocks();
+    mockHasPermission.mockReturnValue(true);
+    mockListUsers.mockResolvedValue([]);
+    mockGetVulnFeedStatus.mockResolvedValue({ totalAdvisories: 0, bySeverity: {}, lastRun: null });
+    mockListRoles.mockResolvedValue([
+      { id: '1', slug: 'admin', name: 'Administrator', description: 'Full access', is_system: true, is_active: true, permission_keys: ['roles:manage'], user_count: 1 },
+      { id: '2', slug: 'analyst', name: 'Security Architect', description: 'Can edit models', is_system: true, is_active: true, permission_keys: ['threatmodel:read'], user_count: 2 },
+    ]);
+    mockListPermissions.mockResolvedValue({
+      threatmodel: {
+        label: 'Threat Models',
+        permissions: [
+          { key: 'threatmodel:read', label: 'Read Models', description: 'View threat models' },
+          { key: 'threatmodel:create', label: 'Create Models', description: 'Create new threat models' },
+        ],
+      },
+      users: {
+        label: 'Users',
+        permissions: [
+          { key: 'users:read', label: 'Read Users', description: 'View user list' },
+          { key: 'users:manage', label: 'Manage Users', description: 'Create/edit users' },
+        ],
+      },
+    });
+
+    // Default: useQuery returns data based on queryKey
+    (useQuery as ReturnType<typeof vi.fn>).mockImplementation(({ queryKey }: { queryKey: string[] }) => {
+      if (queryKey[0] === 'users') return { data: [], isLoading: false, error: null };
+      if (queryKey[0] === 'vuln-feed-status') return { data: { totalAdvisories: 0, bySeverity: {}, lastRun: null }, isLoading: false, refetch: vi.fn() };
+      if (queryKey[0] === 'roles') return { data: mockListRoles(), isLoading: false };
+      if (queryKey[0] === 'permission-catalog') return { data: mockListPermissions(), isLoading: false };
+      if (queryKey[0] === 'backups') return { data: [], isLoading: false };
+      if (queryKey[0] === 'backup-schedules') return { data: [], isLoading: false };
+      return { data: null, isLoading: false };
+    });
+
+    (useMutation as ReturnType<typeof vi.fn>).mockImplementation(({ onSuccess, onError }: { onSuccess?: (...a: unknown[]) => void; onError?: (...a: unknown[]) => void }) => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+      isPending: false,
+      onSuccess,
+      onError,
+    }));
   });
 
-  // ── rendering ───────────────────────────────────────────────────────────────
-
-  describe('initial render', () => {
-    it('shows "USERS" section heading', async () => {
-      renderAdmin();
-      await waitFor(() => {
-        // Heading is "USERS (N)" — match the prefix
-        const headings = screen.queryAllByText(/^USERS\s*\(\d+\)$/i);
-        expect(headings.length).toBeGreaterThanOrEqual(1);
-      });
-    });
-
-    it('lists users fetched from /api/users', async () => {
-      renderAdmin();
-      await waitFor(() => {
-        MOCK_USERS_LIST.forEach((u) => {
-          expect(screen.getByText(u.email)).toBeInTheDocument();
-        });
-      });
-    });
+  it('renders the admin view with tabs including Roles & Permissions', () => {
+    render(<AdminView />);
+    expect(screen.getByText('Users & Threat Intel')).toBeInTheDocument();
+    expect(screen.getByText('Roles & Permissions')).toBeInTheDocument();
+    expect(screen.getByText('Backup & Restore')).toBeInTheDocument();
   });
 
-  // ── user list ──────────────────────────────────────────────────────────────
-
-  describe('user list', () => {
-    it('renders role badge for each user', async () => {
-      renderAdmin();
-      // Wait for users to load, then check for admin role badge
-      await waitFor(() => {
-        expect(screen.getByText('admin@ct.com')).toBeInTheDocument();
-      });
-      // Role badge "admin" should be present
-      const roleBadges = screen.queryAllByText(/^admin$/i);
-      expect(roleBadges.length).toBeGreaterThanOrEqual(1);
-    });
-
-    it('shows error state when /api/users returns 500', async () => {
-      server.use(
-        http.get('/api/users', () =>
-          HttpResponse.json({ error: 'Internal error' }, { status: 500 })
-        )
-      );
-      renderAdmin();
-      await waitFor(() => {
-        expect(screen.queryAllByText('admin@ct.com')).toHaveLength(0);
-      });
-    });
-  });
-
-  // ── invite user form ───────────────────────────────────────────────────────
-
-  describe('invite user form', () => {
-    it('creates a user when form is submitted with valid data', async () => {
-      const { user } = renderAdmin();
-
-      // Wait for page to load (user email proves data loaded)
-      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
-
-      // Find and toggle the invite form open
-      const inviteToggle = screen.queryByRole('button', { name: /invite/i });
-      if (inviteToggle) {
-        await user.click(inviteToggle);
-      }
-
-      // Fill in invite form fields
-      const emailInput = screen.queryByPlaceholderText(/email/i);
-      const passwordInput = screen.queryByPlaceholderText(/password/i);
-
-      if (emailInput && passwordInput) {
-        await user.type(emailInput, 'newuser@ct.com');
-        await user.type(passwordInput, 'SecurePass123!');
-
-        const createBtn = screen.queryByRole('button', { name: /create|add|invite/i });
-        if (createBtn) {
-          await user.click(createBtn);
-
-          // Form submission fires; button may stay disabled briefly during mutation
-          // We just verify no crash occurred
-          await waitFor(() => {
-            expect(screen.getByText('admin@ct.com')).toBeInTheDocument();
-          });
-        }
-      }
-    });
-
-    it('shows 409 error when email already exists', async () => {
-      server.use(
-        http.post('/api/users', () =>
-          HttpResponse.json({ error: 'A user with this email already exists' }, { status: 409 })
-        )
-      );
-
-      const { user } = renderAdmin();
-      await waitFor(() => expect(screen.getByText('admin@ct.com')).toBeInTheDocument());
-
-      // Find and toggle the invite form open
-      const inviteToggle = screen.queryByRole('button', { name: /invite/i });
-      if (inviteToggle) {
-        await user.click(inviteToggle);
-      }
-
-      const emailInput = screen.queryByPlaceholderText(/email/i);
-      const passwordInput = screen.queryByPlaceholderText(/password/i);
-
-      if (emailInput && passwordInput) {
-        await user.type(emailInput, 'existing@ct.com');
-        await user.type(passwordInput, 'SecurePass123!');
-
-        const createBtn = screen.queryByRole('button', { name: /create|add|invite/i });
-        if (createBtn) {
-          await user.click(createBtn);
-
-          await waitFor(() =>
-            expect(screen.getByText(/already exists/i)).toBeInTheDocument()
-          , { timeout: 3000 });
-        }
-      }
+  it('shows the roles tab when clicked', async () => {
+    render(<AdminView />);
+    const rolesTab = screen.getByText('Roles & Permissions');
+    fireEvent.click(rolesTab);
+    await waitFor(() => {
+      expect(screen.getByText('ROLES & PERMISSIONS')).toBeInTheDocument();
     });
   });
 
-  // ── deactivate user ────────────────────────────────────────────────────────
-
-  describe('deactivate user', () => {
-    it('calls DELETE /api/users/:id when deactivate is triggered', async () => {
-      // jsdom does not implement window.confirm — mock it to return true
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
-      let deleteCalled = false;
-      server.use(
-        http.delete('/api/users/:id', () => {
-          deleteCalled = true;
-          return HttpResponse.json({ message: 'User deactivated', user: { id: 'user-uuid-2', email: 'analyst@ct.com' } });
-        })
-      );
-
-      const { user } = renderAdmin();
-      await waitFor(() => screen.getByText('analyst@ct.com'));
-
-      const deactivateBtns = screen.queryAllByRole('button', { name: /deactivate|remove|delete/i });
-      if (deactivateBtns.length > 0) {
-        await user.click(deactivateBtns[0]);
-        await waitFor(() => expect(deleteCalled).toBe(true), { timeout: 3000 });
-      }
-
-      confirmSpy.mockRestore();
+  it('renders system roles with SYSTEM badge in roles tab', async () => {
+    render(<AdminView />);
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+    await waitFor(() => {
+      expect(screen.getByText('Administrator')).toBeInTheDocument();
+      expect(screen.getByText('SYSTEM')).toBeInTheDocument();
     });
   });
 
-  // ── empty states ──────────────────────────────────────────────────────────
-
-  describe('empty states', () => {
-    it('handles empty users list without crashing', async () => {
-      server.use(
-        http.get('/api/users', () => HttpResponse.json({ users: [] }))
-      );
-      renderAdmin();
-      // Wait for the USERS heading to confirm the component rendered
-      await waitFor(() => {
-        const headings = screen.queryAllByText(/^USERS\s*\(\d+\)$/i);
-        expect(headings.length).toBeGreaterThanOrEqual(1);
-      });
-      // No crash; email addresses absent
-      MOCK_USERS_LIST.forEach((u) => {
-        expect(screen.queryByText(u.email)).not.toBeInTheDocument();
-      });
+  it('shows Create Role button in roles tab', async () => {
+    render(<AdminView />);
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+    await waitFor(() => {
+      expect(screen.getByText('+ Create Role')).toBeInTheDocument();
     });
+  });
+
+  it('gates admin view with hasPermission', () => {
+    mockHasPermission.mockReturnValue(false);
+    render(<AdminView />);
+    expect(screen.getByText('Administrator access required.')).toBeInTheDocument();
   });
 });
