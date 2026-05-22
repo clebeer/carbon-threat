@@ -3,6 +3,7 @@ import db from '../db/knex.js';
 import jwtHelper from '../helpers/jwt.helper.js';
 import loggerHelper from '../helpers/logger.helper.js';
 import tokenRepo from '../repositories/token.js';
+import { getEffectivePermissions } from '../auth/permissions.js';
 
 const logger = loggerHelper.get('controllers/auth.enterprise.js');
 
@@ -51,11 +52,14 @@ catch(
     // Register the refresh token so /api/token/refresh can validate it
     await tokenRepo.add(refreshToken);
 
+    // Resolve permissions for UI gating (non-blocking on failure)
+    const permissions = await getEffectivePermissions({ role: user.role }).catch(() => []);
+
     logger.info(`Successful login: ${user.email} (role=${user.role})`);
     return res.json({
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, role: user.role, permissions },
     });
   } catch (err) {
     logger.error('Error during local login', err);

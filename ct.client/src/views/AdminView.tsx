@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listUsers, createUser, deactivateUser, type User, type UserRole } from '../api/users';
 import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';
 import { listBackups, createBackup, downloadBackup, deleteBackup, listSchedules, createSchedule, deleteSchedule, restoreBackup as restoreBackupApi, type BackupRecord, type BackupSchedule } from '../api/backup';
+import { listRoles, createRole, updateRole, deleteRole, listPermissions, type Role, type PermissionGroup } from '../api/roles';
 import { useAuthStore } from '../store/authStore';
-import { Field, Select as UISelect, Button, Spinner, useToast } from '../components/ui';
+import { Field, Select as UISelect, Button, Spinner, Modal, useToast } from '../components/ui';
 
 // ── RBAC helpers ────────────────────────────────────────────────────────────
 
@@ -63,14 +64,32 @@ const SEVERITY_COLOR: Record<string, string> = {
   Low:      'var(--on-surface-muted)',
 };
 
+// ── Role editor state ─────────────────────────────────────────────────────────
+
+interface RoleFormState {
+  name: string;
+  description: string;
+  permission_keys: string[];
+}
+
+const EMPTY_ROLE_FORM: RoleFormState = { name: '', description: '', permission_keys: [] };
+
 export default function AdminView() {
-  const currentUser = useAuthStore((s) => s.user);
-  const isAdmin     = currentUser?.role === 'admin';
-  const qc          = useQueryClient();
-  const { notify }  = useToast();
+  const currentUser  = useAuthStore((s) => s.user);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const isAdmin      = hasPermission('users:manage');
+  const canManageRoles = hasPermission('roles:manage');
+  const qc           = useQueryClient();
+  const { notify }   = useToast();
 
   // ── Tabs ──
-  const [activeTab, setActiveTab] = useState<'users' | 'backup'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'backup' | 'roles'>('users');
+
+  // ── Role editor state ──
+  const [roleModalOpen, setRoleModalOpen]       = useState(false);
+  const [editingRole, setEditingRole]           = useState<Role | null>(null);
+  const [roleForm, setRoleForm]                 = useState<RoleFormState>(EMPTY_ROLE_FORM);
+  const [roleFormError, setRoleFormError]       = useState<string | null>(null);
 
   const [showInvite, setShowInvite]   = useState(false);
   const [form, setForm]               = useState<InviteFormState>({ email: '', display_name: '', password: '', role: 'analyst' });
@@ -199,6 +218,89 @@ export default function AdminView() {
     }
   }, [bkRefetch, notify]);
 
+  // ── Roles queries + mutations ──
+  const { data: roles = [], isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles'],
+    queryFn:  listRoles,
+    enabled:  canManageRoles && activeTab === 'roles',
+  });
+
+  const { data: permissionGroups = [] } = useQuery<PermissionGroup[]>({
+    queryKey: ['permissions-catalog'],
+    queryFn:  listPermissions,
+    enabled:  canManageRoles && roleModalOpen,
+  });
+
+  const createRoleMutation = useMutation({
+    mutationFn: (data: RoleFormState) => createRole(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      setRoleModalOpen(false);
+      setRoleForm(EMPTY_ROLE_FORM);
+      setRoleFormError(null);
+      notify('Role created.', 'success');
+    },
+    onError: (e: { response?: { data?: { error?: string } } }) =>
+      setRoleFormError(e?.response?.data?.error ?? 'Failed to create role'),
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RoleFormState }) => updateRole(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      setRoleModalOpen(false);
+      setEditingRole(null);
+      setRoleForm(EMPTY_ROLE_FORM);
+      setRoleFormError(null);
+      notify('Role updated.', 'success');
+    },
+    onError: (e: { response?: { data?: { error?: string } } }) =>
+      setRoleFormError(e?.response?.data?.error ?? 'Failed to update role'),
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: deleteRole,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      notify('Role deleted.', 'success');
+    },
+    onError: (e: { response?: { data?: { error?: string } } }) =>
+      notify(e?.response?.data?.error ?? 'Failed to delete role', 'error'),
+  });
+
+  function openCreateRole() {
+    setEditingRole(null);
+    setRoleForm(EMPTY_ROLE_FORM);
+    setRoleFormError(null);
+    setRoleModalOpen(true);
+  }
+
+  function openEditRole(role: Role) {
+    setEditingRole(role);
+    setRoleForm({ name: role.name, description: role.description, permission_keys: role.permission_keys });
+    setRoleFormError(null);
+    setRoleModalOpen(true);
+  }
+
+  function handleRoleFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setRoleFormError(null);
+    if (editingRole) {
+      updateRoleMutation.mutate({ id: editingRole.id, data: roleForm });
+    } else {
+      createRoleMutation.mutate(roleForm);
+    }
+  }
+
+  function togglePermKey(key: string) {
+    setRoleForm((f) => ({
+      ...f,
+      permission_keys: f.permission_keys.includes(key)
+        ? f.permission_keys.filter((k) => k !== key)
+        : [...f.permission_keys, key],
+    }));
+  }
+
   const handleCreateSchedule = useCallback(async () => {
     if (!scheduleName.trim()) return;
     try {
@@ -264,7 +366,11 @@ export default function AdminView() {
 
       {/* ── Tab bar ── */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '4px' }}>
-        {([['users', 'Users & Threat Intel'], ['backup', 'Backup & Restore']] as const).map(([key, label]) => (
+        {([
+          ['users',  'Users & Threat Intel'],
+          ['backup', 'Backup & Restore'],
+          ['roles',  'Role Profiles'],
+        ] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
@@ -493,6 +599,183 @@ export default function AdminView() {
         </div>
       </div>
       </>)}
+
+      {/* ── Roles Tab ── */}
+      {activeTab === 'roles' && (
+        <div>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+            <div>
+              <h3 className="label-text glow-text-cyan" style={{ fontSize: '14px', margin: '0 0 4px', letterSpacing: '1px' }}>ROLE PROFILES</h3>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--on-surface-muted)' }}>
+                System roles are read-only. Create custom roles with a configurable set of permissions.
+              </p>
+            </div>
+            <Button variant="primary" size="sm" onClick={openCreateRole}>+ New Role</Button>
+          </div>
+
+          {rolesLoading && <Spinner label="Loading roles" />}
+
+          {!rolesLoading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {roles.map((role: Role) => (
+                <div
+                  key={role.id}
+                  className="glass-panel"
+                  style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', opacity: role.is_active ? 1 : 0.5 }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 600 }}>{role.name}</span>
+                      {role.is_system && (
+                        <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(0,242,255,0.08)', color: 'var(--primary)', border: '1px solid rgba(0,242,255,0.2)' }}>
+                          SYSTEM
+                        </span>
+                      )}
+                      <span style={{ fontSize: '11px', color: 'var(--on-surface-muted)' }}>
+                        {role.permission_keys.length} permissions · {role.user_count} user{role.user_count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {role.description && (
+                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--on-surface-muted)' }}>{role.description}</p>
+                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {role.permission_keys.slice(0, 8).map((k) => (
+                        <span key={k} style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', color: 'var(--on-surface-muted)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                          {k}
+                        </span>
+                      ))}
+                      {role.permission_keys.length > 8 && (
+                        <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', color: 'var(--on-surface-muted)' }}>
+                          +{role.permission_keys.length - 8} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <Button variant="secondary" size="sm" onClick={() => openEditRole(role)}>
+                      {role.is_system ? 'View' : 'Edit'}
+                    </Button>
+                    {!role.is_system && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={deleteRoleMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Delete role "${role.name}"? This cannot be undone.`)) {
+                            deleteRoleMutation.mutate(role.id);
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {roles.length === 0 && !rolesLoading && (
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--on-surface-muted)', fontSize: '13px' }}>
+                  No roles found.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Role editor modal ── */}
+          <Modal
+            open={roleModalOpen}
+            onClose={() => { setRoleModalOpen(false); setEditingRole(null); setRoleForm(EMPTY_ROLE_FORM); }}
+            title={editingRole ? (editingRole.is_system ? `View: ${editingRole.name}` : `Edit: ${editingRole.name}`) : 'New Role'}
+            style={{ maxWidth: 680, maxHeight: '85vh', overflowY: 'auto' }}
+          >
+            <form onSubmit={handleRoleFormSubmit}>
+              <Field
+                label="Role Name"
+                required
+                value={roleForm.name}
+                onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))}
+                disabled={editingRole?.is_system}
+              />
+              <Field
+                label="Description"
+                value={roleForm.description}
+                onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))}
+                disabled={editingRole?.is_system}
+              />
+
+              {/* Permission matrix */}
+              <div style={{ marginTop: 'var(--space-4)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--on-surface-muted)', marginBottom: 'var(--space-3)' }}>
+                  Permissions — {roleForm.permission_keys.length} selected
+                </p>
+                {permissionGroups.map((group: PermissionGroup) => (
+                  <div key={group.domain} style={{ marginBottom: 'var(--space-4)' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.8px', margin: '0 0 var(--space-2)', textTransform: 'uppercase' }}>
+                      {group.domain}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {group.permissions.map((p) => {
+                        const checked = roleForm.permission_keys.includes(p.key);
+                        return (
+                          <label
+                            key={p.key}
+                            title={p.description}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              fontSize: '11px', padding: '4px 10px', borderRadius: '4px', cursor: editingRole?.is_system ? 'default' : 'pointer',
+                              background: checked ? 'rgba(0,242,255,0.12)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${checked ? 'rgba(0,242,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                              color: checked ? 'var(--primary)' : 'var(--on-surface-muted)',
+                              transition: 'all 0.15s',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => !editingRole?.is_system && togglePermKey(p.key)}
+                              disabled={editingRole?.is_system}
+                              style={{ width: 12, height: 12, accentColor: 'var(--primary)' }}
+                            />
+                            {p.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {roleFormError && (
+                <p role="alert" style={{ margin: '0 0 var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--error)' }}>
+                  {roleFormError}
+                </p>
+              )}
+
+              {!editingRole?.is_system && (
+                <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    style={{ flex: 1 }}
+                    onClick={() => { setRoleModalOpen(false); setEditingRole(null); setRoleForm(EMPTY_ROLE_FORM); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    style={{ flex: 1 }}
+                    loading={createRoleMutation.isPending || updateRoleMutation.isPending}
+                  >
+                    {editingRole ? 'Save Changes' : 'Create Role'}
+                  </Button>
+                </div>
+              )}
+            </form>
+          </Modal>
+        </div>
+      )}
 
       {activeTab === 'backup' && (
         <div className="glass-panel" style={{ padding: '24px', borderTop: '2px solid rgba(0,242,255,0.2)' }}>

@@ -29,7 +29,9 @@ import * as julesController from '../controllers/julesController.js';
 import * as assetLibraryController from '../controllers/assetLibraryController.js';
 import * as dashboardController from '../controllers/dashboardController.js';
 import * as backupController from '../controllers/backupController.js';
+import * as rolesController from '../controllers/rolesController.js';
 import { requireRole } from '../auth/rbac.js';
+import { requirePermission } from '../auth/permissions.js';
 import { auditMiddleware } from '../security/audit.js';
 
 
@@ -258,6 +260,14 @@ const routes = (router) => {
     router.get('/api/dashboard/layout', dashboardController.getLayout);
     router.put('/api/dashboard/layout', dashboardController.saveLayout);
     router.post('/api/dashboard/layout/reset', dashboardController.resetLayout);
+
+    // ── Custom Role Profiles ─────────────────────────────────────────────────
+    router.get('/api/permissions', requirePermission('roles:manage'), rolesController.listPermissionCatalogHandler);
+    router.get('/api/roles', requirePermission('roles:manage'), rolesController.listRolesHandler);
+    router.get('/api/roles/:id', requirePermission('roles:manage'), rolesController.getRoleHandler);
+    router.post('/api/roles', requirePermission('roles:manage'), auditMiddleware('ROLE_CREATE'), rolesController.createRoleHandler);
+    router.put('/api/roles/:id', requirePermission('roles:manage'), auditMiddleware('ROLE_UPDATE'), rolesController.updateRoleHandler);
+    router.delete('/api/roles/:id', requirePermission('roles:manage'), auditMiddleware('ROLE_DELETE'), rolesController.deleteRoleHandler);
 
     // ── Backup System ────────────────────────────────────────────────────────
     router.get('/api/backups', requireRole('admin'), backupController.listBackups);
