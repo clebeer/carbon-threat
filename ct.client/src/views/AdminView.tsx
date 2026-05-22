@@ -4,6 +4,7 @@ import { listUsers, createUser, deactivateUser, type User, type UserRole } from 
 import { getVulnFeedStatus, triggerVulnFeedSync } from '../api/vulnFeeds';
 import { listBackups, createBackup, downloadBackup, deleteBackup, listSchedules, createSchedule, deleteSchedule, restoreBackup as restoreBackupApi, type BackupRecord, type BackupSchedule } from '../api/backup';
 import { useAuthStore } from '../store/authStore';
+import { Field, Select as UISelect, Button } from '../components/ui';
 
 // ── RBAC helpers ────────────────────────────────────────────────────────────
 
@@ -27,6 +28,18 @@ const ROLE_PERMS: Record<UserRole, string[]> = {
   viewer:  ['Read models', 'Download reports'],
   api_key: ['Scoped by token claims'],
 };
+
+const ROLE_SELECT_OPTIONS = [
+  { value: 'admin',   label: ROLE_LABELS.admin },
+  { value: 'analyst', label: ROLE_LABELS.analyst },
+  { value: 'viewer',  label: ROLE_LABELS.viewer },
+];
+
+const SCHEDULE_FREQ_OPTIONS = [
+  { value: 'daily',   label: 'Daily' },
+  { value: 'weekly',  label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
 
 function roleBadgeColor(role: UserRole): string {
   switch (role) {
@@ -398,37 +411,44 @@ export default function AdminView() {
           </div>
 
           {showInvite && (
-            <form onSubmit={handleInviteSubmit} style={{ marginBottom: '20px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                {(['email', 'display_name', 'password'] as const).map((field) => (
-                  <input
-                    key={field}
-                    type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
-                    placeholder={field === 'display_name' ? 'Display name (optional)' : field.charAt(0).toUpperCase() + field.slice(1)}
-                    required={field !== 'display_name'}
-                    value={form[field]}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm((f: InviteFormState) => ({ ...f, [field]: e.target.value }))}
-                    style={{ padding: '9px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: '13px', outline: 'none' }}
-                  />
-                ))}
-                <select
-                  value={form.role}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm((f: InviteFormState) => ({ ...f, role: e.target.value as UserRole }))}
-                  style={{ padding: '9px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: '#12161f', color: '#e2e8f0', fontSize: '13px', outline: 'none' }}
-                >
-                  <option value="admin">Administrator</option>
-                  <option value="analyst">Security Architect (analyst)</option>
-                  <option value="viewer">Auditor / Viewer</option>
-                </select>
-                {formError && <p style={{ margin: 0, fontSize: '12px', color: 'var(--error)' }}>{formError}</p>}
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  style={{ padding: '9px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
-                >
-                  {createMutation.isPending ? 'Creating…' : 'Create User'}
-                </button>
-              </div>
+            <form
+              onSubmit={handleInviteSubmit}
+              style={{ marginBottom: 'var(--space-5)', padding: 'var(--space-4)', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <Field
+                label="Email"
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              <Field
+                label="Display Name"
+                value={form.display_name}
+                onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
+              />
+              <Field
+                label="Password"
+                type="password"
+                required
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+              />
+              <UISelect
+                label="Role"
+                required
+                options={ROLE_SELECT_OPTIONS}
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+              />
+              {formError && (
+                <p role="alert" style={{ margin: '0 0 var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--error)' }}>
+                  {formError}
+                </p>
+              )}
+              <Button type="submit" loading={createMutation.isPending} style={{ width: '100%' }}>
+                Create User
+              </Button>
             </form>
           )}
 
@@ -550,14 +570,24 @@ export default function AdminView() {
             </div>
 
             {showScheduleForm && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                <input value={scheduleName} onChange={e => setScheduleName(e.target.value)} placeholder="Schedule name" style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: '12px' }} />
-                <select value={scheduleFreq} onChange={e => setScheduleFreq(e.target.value)} style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: '12px' }}>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-                <button onClick={handleCreateSchedule} style={{ padding: '6px 16px', borderRadius: '4px', border: 'none', background: 'var(--primary)', color: '#000', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>Save</button>
+              <div style={{ marginBottom: 'var(--space-3)', padding: 'var(--space-3)', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                  <Field
+                    label="Name"
+                    required
+                    value={scheduleName}
+                    onChange={(e) => setScheduleName(e.target.value)}
+                  />
+                  <UISelect
+                    label="Frequency"
+                    options={SCHEDULE_FREQ_OPTIONS}
+                    value={scheduleFreq}
+                    onChange={(e) => setScheduleFreq(e.target.value)}
+                  />
+                </div>
+                <Button size="sm" onClick={handleCreateSchedule} disabled={!scheduleName.trim()}>
+                  Save Schedule
+                </Button>
               </div>
             )}
 
