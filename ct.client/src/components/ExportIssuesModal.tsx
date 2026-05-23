@@ -158,6 +158,7 @@ export default function ExportIssuesModal({
               style={{ flex: 2 }}
               loading={exportMutation.isPending}
               disabled={!canExport}
+              title={!canExport ? "Select a platform and fill in the title and description" : undefined}
               onClick={() => exportMutation.mutate()}
             >
               {exportMutation.isPending ? 'Exporting…' : `Export to ${platform ? PLATFORM_LABELS[platform] : '—'}`}
