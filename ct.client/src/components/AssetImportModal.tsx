@@ -135,6 +135,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
           variant="secondary"
           size="sm"
           disabled={!rawText.trim()}
+          title={!rawText.trim() ? "Enter or upload JSON/CSV data to preview" : undefined}
           onClick={handleParse}
           style={{ marginBottom: 'var(--space-4)' }}
         >
@@ -188,6 +189,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
             variant="primary"
             loading={importing}
             disabled={!preview || preview.assets.length === 0}
+            title={(!preview || preview.assets.length === 0) ? "Preview valid assets to import" : undefined}
             onClick={handleImport}
           >
             Import
