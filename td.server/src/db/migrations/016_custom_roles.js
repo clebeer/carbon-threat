@@ -72,12 +72,16 @@ const API_KEY_KEYS = ANALYST_KEYS;
 export async function up(knex) {
   // 1. roles table
   await knex.schema.createTable('roles', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.string('slug', 50).notNullable().unique();
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
+    t.string('slug', 50).notNullable().
+unique();
     t.string('name', 255).notNullable();
     t.text('description');
-    t.boolean('is_system').notNullable().defaultTo(false);
-    t.boolean('is_active').notNullable().defaultTo(true);
+    t.boolean('is_system').notNullable().
+defaultTo(false);
+    t.boolean('is_active').notNullable().
+defaultTo(true);
     t.timestamps(true, true);
   });
   await knex.schema.table('roles', (t) => {
@@ -87,12 +91,13 @@ export async function up(knex) {
 
   // 2. role_permissions table
   await knex.schema.createTable('role_permissions', (t) => {
-    t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('role_id')
-      .notNullable()
-      .references('id')
-      .inTable('roles')
-      .onDelete('CASCADE');
+    t.uuid('id').primary().
+defaultTo(knex.raw('gen_random_uuid()'));
+    t.uuid('role_id').
+      notNullable().
+      references('id').
+      inTable('roles').
+      onDelete('CASCADE');
     t.string('permission_key', 100).notNullable();
     t.unique(['role_id', 'permission_key']);
   });
@@ -105,22 +110,23 @@ export async function up(knex) {
 
   // 4. Seed system roles
   await knex('roles').insert([
-    { slug: 'admin',   name: 'Administrator',     description: 'Full system access — manages users, config, and integrations', is_system: true },
-    { slug: 'analyst', name: 'Security Architect', description: 'Can create and edit threat models and templates',              is_system: true },
-    { slug: 'viewer',  name: 'Auditor / Viewer',   description: 'Read-only access to models and reports',                      is_system: true },
-    { slug: 'api_key', name: 'API Key',            description: 'Machine-to-machine integrations via bearer token',            is_system: true },
+    { slug: 'admin', name: 'Administrator', description: 'Full system access — manages users, config, and integrations', is_system: true },
+    { slug: 'analyst', name: 'Security Architect', description: 'Can create and edit threat models and templates', is_system: true },
+    { slug: 'viewer', name: 'Auditor / Viewer', description: 'Read-only access to models and reports', is_system: true },
+    { slug: 'api_key', name: 'API Key', description: 'Machine-to-machine integrations via bearer token', is_system: true },
   ]);
 
   // 5. Seed permission grants
-  const roles = await knex('roles').whereIn('slug', ['admin', 'analyst', 'viewer', 'api_key']).select('id', 'slug');
+  const roles = await knex('roles').whereIn('slug', ['admin', 'analyst', 'viewer', 'api_key']).
+select('id', 'slug');
   const bySlug = Object.fromEntries(roles.map((r) => [r.slug, r.id]));
 
   const grantRows = (slug, keys) => keys.map((permission_key) => ({ role_id: bySlug[slug], permission_key }));
 
   await knex('role_permissions').insert([
-    ...grantRows('admin',   ALL_PERMISSION_KEYS),
+    ...grantRows('admin', ALL_PERMISSION_KEYS),
     ...grantRows('analyst', ANALYST_KEYS),
-    ...grantRows('viewer',  VIEWER_KEYS),
+    ...grantRows('viewer', VIEWER_KEYS),
     ...grantRows('api_key', API_KEY_KEYS),
   ]);
 }

@@ -74,7 +74,8 @@ export async function logAudit(action, userId, resourceId, details, ipAddress) {
       entity_id:  resourceId === 'N/A' ? null : resourceId,
       diff:       JSON.stringify(redactSensitive(details)),
       ip_address: ipAddress,
-    }).returning(['id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at']);
+    }).
+returning(['id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at']);
 
     // Non-blocking SIEM push — never throws
     if (inserted) {
