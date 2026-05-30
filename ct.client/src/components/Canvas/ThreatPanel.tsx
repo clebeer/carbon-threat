@@ -229,9 +229,9 @@ export default function ThreatPanel({ modelId, onClose }: ThreatPanelProps) {
         )}
 
         {/* Status filter */}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '8px', marginBottom: '8px', overflowX: 'auto' }}>
+        <div role="radiogroup" aria-label="Filter by status" style={{ display: 'flex', gap: '4px', marginTop: '8px', marginBottom: '8px', overflowX: 'auto' }}>
           {(['All', ...STATUS_OPTIONS] as const).map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)}
+            <button key={s} type="button" role="radio" aria-checked={filterStatus === s} onClick={() => setFilterStatus(s)}
               style={{ padding: '3px 8px', borderRadius: '12px', border: `1px solid ${filterStatus === s ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}`, background: filterStatus === s ? 'rgba(0,242,255,0.1)' : 'transparent', color: filterStatus === s ? 'var(--primary)' : 'var(--on-surface-muted)', fontSize: '10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {s}
             </button>
