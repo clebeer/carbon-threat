@@ -9,7 +9,7 @@
  *  - A role with active users cannot be deleted (require reassignment first)
  *  - Slug is auto-generated from name and must be unique
  */
-
+/* eslint-disable max-classes-per-file */
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
 import { invalidateCache, getEffectivePermissions } from '../auth/permissions.js';
@@ -18,7 +18,7 @@ import { allPermissionKeys } from '../auth/permissions.catalog.js';
 const logger = loggerHelper.get('services/roleService.js');
 
 // ── Typed errors ──────────────────────────────────────────────────────────────
-
+/* eslint-disable max-classes-per-file */
 export class RoleNotFoundError extends Error {
   constructor(id) {
     super(`Role not found: ${id}`);
@@ -46,6 +46,7 @@ export class SlugConflictError extends Error {
     this.code = 'SLUG_CONFLICT';
   }
 }
+/* eslint-enable max-classes-per-file */
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,12 +56,12 @@ export class SlugConflictError extends Error {
  * @returns {string}
  */
 function slugify(name) {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 50);
+  return name.
+    toLowerCase().
+    trim().
+    replace(/[^a-z0-9]+/g, '-').
+    replace(/^-+|-+$/g, '').
+    slice(0, 50);
 }
 
 /**
@@ -71,9 +72,15 @@ function slugify(name) {
 async function uniqueSlug(base) {
   let candidate = base;
   let suffix = 0;
-  while (true) {
-    const existing = await db('roles').where({ slug: candidate }).first();
-    if (!existing) return candidate;
+  let found = false;
+  while (!found) {
+    // eslint-disable-next-line no-await-in-loop
+    const existing = await db('roles').where({ slug: candidate }).
+first();
+    if (!existing) {
+      found = true;
+      return candidate;
+    }
     suffix += 1;
     candidate = `${base}-${suffix}`;
   }
@@ -86,28 +93,28 @@ async function uniqueSlug(base) {
  * @returns {Promise<Array>}
  */
 export async function listRoles() {
-  const roles = await db('roles')
-    .where({ is_active: true })
-    .orderBy([{ column: 'is_system', order: 'desc' }, { column: 'name', order: 'asc' }])
-    .select('*');
+  const roles = await db('roles').
+    where({ is_active: true }).
+    orderBy([{ column: 'is_system', order: 'desc' }, { column: 'name', order: 'asc' }]).
+    select('*');
 
-  const grants = await db('role_permissions')
-    .whereIn('role_id', roles.map((r) => r.id))
-    .select('role_id', 'permission_key');
+  const grants = await db('role_permissions').
+    whereIn('role_id', roles.map((r) => r.id)).
+    select('role_id', 'permission_key');
 
   // Group permission keys by role_id
   const keysByRole = {};
   for (const g of grants) {
-    if (!keysByRole[g.role_id]) keysByRole[g.role_id] = [];
+    if (!keysByRole[g.role_id]) {keysByRole[g.role_id] = [];}
     keysByRole[g.role_id].push(g.permission_key);
   }
 
   // User counts
-  const counts = await db('users')
-    .whereIn('role', roles.map((r) => r.slug))
-    .groupBy('role')
-    .count('id as user_count')
-    .select('role');
+  const counts = await db('users').
+    whereIn('role', roles.map((r) => r.slug)).
+    groupBy('role').
+    count('id as user_count').
+    select('role');
   const countBySlug = Object.fromEntries(counts.map((c) => [c.role, parseInt(c.user_count, 10)]));
 
   return roles.map((r) => ({
@@ -123,16 +130,17 @@ export async function listRoles() {
  * @returns {Promise<Object>}
  */
 export async function getRole(id) {
-  const role = await db('roles').where({ id }).first();
-  if (!role) throw new RoleNotFoundError(id);
+  const role = await db('roles').where({ id }).
+first();
+  if (!role) {throw new RoleNotFoundError(id);}
 
-  const grants = await db('role_permissions')
-    .where({ role_id: id })
-    .pluck('permission_key');
+  const grants = await db('role_permissions').
+    where({ role_id: id }).
+    pluck('permission_key');
 
-  const [countRow] = await db('users')
-    .where({ role: role.slug })
-    .count('id as user_count');
+  const [countRow] = await db('users').
+    where({ role: role.slug }).
+    count('id as user_count');
 
   return {
     ...role,
@@ -162,9 +170,9 @@ export async function createRole({ name, description = '', permission_keys = [] 
   const slug = await uniqueSlug(base);
 
   return db.transaction(async (trx) => {
-    const [role] = await trx('roles')
-      .insert({ slug, name: name.trim(), description, is_system: false })
-      .returning('*');
+    const [role] = await trx('roles').
+      insert({ slug, name: name.trim(), description, is_system: false }).
+      returning('*');
 
     if (permission_keys.length > 0) {
       await trx('role_permissions').insert(
@@ -185,9 +193,10 @@ export async function createRole({ name, description = '', permission_keys = [] 
  * @returns {Promise<Object>}
  */
 export async function updateRole(id, { name, description, permission_keys }) {
-  const role = await db('roles').where({ id }).first();
-  if (!role) throw new RoleNotFoundError(id);
-  if (role.is_system) throw new SystemRoleError('update');
+  const role = await db('roles').where({ id }).
+first();
+  if (!role) {throw new RoleNotFoundError(id);}
+  if (role.is_system) {throw new SystemRoleError('update');}
 
   // Validate keys
   if (permission_keys !== undefined) {
@@ -200,17 +209,20 @@ export async function updateRole(id, { name, description, permission_keys }) {
 
   return db.transaction(async (trx) => {
     const updates = {};
-    if (name !== undefined) updates.name = name.trim();
-    if (description !== undefined) updates.description = description;
-    if (Object.keys(updates).length > 0) updates.updated_at = db.fn.now();
+    if (name !== undefined) {updates.name = name.trim();}
+    if (description !== undefined) {updates.description = description;}
+    if (Object.keys(updates).length > 0) {updates.updated_at = db.fn.now();}
 
     let updated = role;
     if (Object.keys(updates).length > 0) {
-      [updated] = await trx('roles').where({ id }).update(updates).returning('*');
+      [updated] = await trx('roles').where({ id }).
+update(updates).
+returning('*');
     }
 
     if (permission_keys !== undefined) {
-      await trx('role_permissions').where({ role_id: id }).delete();
+      await trx('role_permissions').where({ role_id: id }).
+delete();
       if (permission_keys.length > 0) {
         await trx('role_permissions').insert(
           permission_keys.map((permission_key) => ({ role_id: id, permission_key }))
@@ -219,7 +231,8 @@ export async function updateRole(id, { name, description, permission_keys }) {
     }
 
     invalidateCache(role.slug);
-    const finalKeys = permission_keys ?? await trx('role_permissions').where({ role_id: id }).pluck('permission_key');
+    const finalKeys = permission_keys ?? await trx('role_permissions').where({ role_id: id }).
+pluck('permission_key');
     logger.info(`Role updated: ${role.slug} (${id})`);
     return { ...updated, permission_keys: finalKeys };
   });
@@ -231,16 +244,19 @@ export async function updateRole(id, { name, description, permission_keys }) {
  * @returns {Promise<void>}
  */
 export async function deleteRole(id) {
-  const role = await db('roles').where({ id }).first();
-  if (!role) throw new RoleNotFoundError(id);
-  if (role.is_system) throw new SystemRoleError('delete');
+  const role = await db('roles').where({ id }).
+first();
+  if (!role) {throw new RoleNotFoundError(id);}
+  if (role.is_system) {throw new SystemRoleError('delete');}
 
   // Check for users assigned to this role
-  const [{ user_count }] = await db('users').where({ role: role.slug }).count('id as user_count');
+  const [{ user_count }] = await db('users').where({ role: role.slug }).
+count('id as user_count');
   const count = parseInt(user_count, 10);
-  if (count > 0) throw new RoleInUseError(role.slug, count);
+  if (count > 0) {throw new RoleInUseError(role.slug, count);}
 
-  await db('roles').where({ id }).delete();
+  await db('roles').where({ id }).
+delete();
   invalidateCache(role.slug);
   logger.info(`Role deleted: ${role.slug} (${id})`);
 }
