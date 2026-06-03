@@ -24,3 +24,6 @@
 ## 2024-05-20 - [Tooltip Context on Disabled Buttons]
 **Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
 **Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
+## 2026-06-03 - [Tooltip Context on Disabled Buttons]
+**Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
+**Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.

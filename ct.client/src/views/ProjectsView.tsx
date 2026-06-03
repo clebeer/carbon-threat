@@ -351,7 +351,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
               style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-surface-muted)', borderRadius: '4px', cursor: 'pointer' }}>
               Cancel
             </button>
-            <button onClick={handleCreate} disabled={createMutation.isPending}
+            <button onClick={handleCreate} disabled={createMutation.isPending} title={createMutation.isPending ? "Creation in progress" : undefined}
               style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
               {createMutation.isPending ? 'Creating…' : 'Create'}
             </button>
@@ -408,7 +408,7 @@ export default function ProjectsView({ onOpenModel }: { onOpenModel?: (id: strin
               <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <input type="text" value={tplTitle} onChange={e => setTplTitle(e.target.value)} placeholder="Model name…"
                   style={{ flex: 1, padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '13px', outline: 'none' }} />
-                <button onClick={handleApplyTemplate} disabled={!tplTitle.trim()}
+                <button onClick={handleApplyTemplate} disabled={!tplTitle.trim()} title={!tplTitle.trim() ? "Enter a model name to continue" : undefined}
                   style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', background: tplTitle.trim() ? 'var(--secondary)' : 'rgba(255,255,255,0.1)', color: tplTitle.trim() ? '#000' : 'var(--on-surface-muted)', fontWeight: 700, fontSize: '13px', cursor: tplTitle.trim() ? 'pointer' : 'not-allowed' }}>
                   Create →
                 </button>
