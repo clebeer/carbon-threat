@@ -95,11 +95,13 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
         </div>
 
         {/* Format toggle */}
-        <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+        <div role="radiogroup" aria-label="Import format" style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
           {(['json', 'csv'] as const).map((fmt) => (
             <button
               key={fmt}
               type="button"
+              role="radio"
+              aria-checked={format === fmt}
               onClick={() => setFormat(fmt)}
               style={{
                 padding: '6px 16px', borderRadius: 'var(--radius-md)', border: '1px solid',
@@ -117,6 +119,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
 
         {/* Text area */}
         <textarea
+          aria-label="Asset data"
           value={rawText}
           onChange={(e) => { setRawText(e.target.value); setPreview(null); setError(''); }}
           placeholder={format === 'json'
@@ -135,7 +138,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
           variant="secondary"
           size="sm"
           disabled={!rawText.trim()}
-          title={!rawText.trim() ? "Provide asset data in JSON or CSV format to preview" : undefined}
+          title={!rawText.trim() ? "Enter asset data to preview" : undefined}
           onClick={handleParse}
           style={{ marginBottom: 'var(--space-4)' }}
         >
@@ -189,7 +192,7 @@ export default function AssetImportModal({ open, onClose, onImported }: AssetImp
             variant="primary"
             loading={importing}
             disabled={!preview || preview.assets.length === 0}
-            title={!preview || preview.assets.length === 0 ? "Preview valid assets before importing" : undefined}
+            title={(!preview || preview.assets.length === 0) ? "Preview valid assets before importing" : undefined}
             onClick={handleImport}
           >
             Import
