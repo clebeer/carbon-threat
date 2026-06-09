@@ -346,6 +346,8 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
                   if (admin.password !== admin.confirmPassword) { setError('Passwords do not match'); return; }
                   advance(4);
                 }}
+                disabled={!canAdvanceStep3()}
+                title={!canAdvanceStep3() ? 'Fill all required fields with valid values to continue' : undefined}
                 style={primaryBtnStyle(canAdvanceStep3())}
               >
                 Review Setup →
@@ -397,6 +399,8 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
                   if (!saml.cert)       { setError('IdP Certificate is required'); return; }
                   advance(4);
                 }}
+                disabled={!canAdvanceStep3()}
+                title={!canAdvanceStep3() ? 'Fill all required fields to continue' : undefined}
                 style={{ ...primaryBtnStyle(canAdvanceStep3()), background: canAdvanceStep3() ? 'var(--secondary)' : 'rgba(179,102,255,0.18)' }}
               >
                 Review Setup →
