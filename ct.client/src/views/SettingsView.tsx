@@ -157,7 +157,16 @@ function SmtpTab() {
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', color: 'var(--on-surface-muted)' }}>
           <div
+            role="switch"
+            aria-checked={cfg.secure}
+            tabIndex={0}
             onClick={() => setCfg(c => ({ ...c, secure: !c.secure }))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setCfg(c => ({ ...c, secure: !c.secure }));
+              }
+            }}
             style={{ width: '34px', height: '18px', borderRadius: '9px', background: cfg.secure ? 'var(--primary)' : 'rgba(255,255,255,0.15)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
           >
             <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#000', position: 'absolute', top: '2.5px', left: cfg.secure ? '19px' : '2px', transition: 'left 0.2s' }} />
@@ -171,6 +180,7 @@ function SmtpTab() {
           <button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
+            title={saveMutation.isPending ? 'Saving in progress' : undefined}
             style={{ flex: 2, padding: '10px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
           >
             {saveMutation.isPending ? 'Saving…' : saved ? '✓ Saved' : 'Save Configuration'}
@@ -178,6 +188,7 @@ function SmtpTab() {
           <button
             onClick={handleTest}
             disabled={testing || !cfg.host}
+            title={testing ? 'Test in progress' : (!cfg.host ? 'SMTP Host is required' : undefined)}
             style={{ flex: 1, padding: '10px', borderRadius: '6px', border: `1px solid ${testResult === 'ok' ? '#52c41a' : testResult === 'fail' ? 'var(--error)' : 'rgba(255,255,255,0.15)'}`, background: 'transparent', color: testResult === 'ok' ? '#52c41a' : testResult === 'fail' ? 'var(--error)' : 'var(--on-surface-muted)', fontSize: '13px', cursor: testing || !cfg.host ? 'not-allowed' : 'pointer' }}
           >
             {testing ? 'Testing…' : testResult === 'ok' ? '✓ OK' : testResult === 'fail' ? '✗ Failed' : 'Send Test'}
@@ -309,6 +320,7 @@ function UsersTab() {
           <button
             onClick={() => { setFormErr(null); createMutation.mutate(form); }}
             disabled={createMutation.isPending || !form.email || !form.password}
+            title={createMutation.isPending ? 'Creation in progress' : (!form.email || !form.password ? 'Email and initial password are required' : undefined)}
             style={{ padding: '9px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
           >
             {createMutation.isPending ? 'Creating…' : 'Create & Send Invite'}
@@ -496,11 +508,11 @@ function IntegrationCard({ platform, existing }: { platform: Platform; existing:
             {err && <p style={{ margin: 0, fontSize: '12px', color: 'var(--error)' }}>{err}</p>}
 
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} style={{ flex: 2, padding: '8px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>
+              <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} title={saveMutation.isPending ? 'Saving in progress' : undefined} style={{ flex: 2, padding: '8px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>
                 {saveMutation.isPending ? 'Saving…' : 'Save'}
               </button>
               {existing && (
-                <button onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,77,79,0.3)', background: 'transparent', color: 'var(--error)', fontSize: '12px', cursor: 'pointer' }}>
+                <button onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} title={deleteMutation.isPending ? 'Removal in progress' : undefined} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,77,79,0.3)', background: 'transparent', color: 'var(--error)', fontSize: '12px', cursor: 'pointer' }}>
                   {deleteMutation.isPending ? '…' : 'Remove'}
                 </button>
               )}
@@ -697,6 +709,7 @@ function AuditTab() {
             </select>
           </div>
           <button onClick={handleExport} disabled={exporting}
+            title={exporting ? 'Export in progress' : undefined}
             style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--on-surface)', fontSize: '12px', cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.6 : 1, alignSelf: 'flex-end' }}>
             {exporting ? 'Exporting…' : '↓ Export'}
           </button>
@@ -746,11 +759,13 @@ function AuditTab() {
           {pages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                title={page === 1 ? 'First page' : undefined}
                 style={{ padding: '6px 14px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--on-surface-muted)', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.4 : 1 }}>
                 ← Prev
               </button>
               <span style={{ lineHeight: '32px', fontSize: '12px', color: 'var(--on-surface-muted)' }}>{page} / {pages}</span>
               <button onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={page === pages}
+                title={page === pages ? 'Last page' : undefined}
                 style={{ padding: '6px 14px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--on-surface-muted)', cursor: page === pages ? 'not-allowed' : 'pointer', opacity: page === pages ? 0.4 : 1 }}>
                 Next →
               </button>
