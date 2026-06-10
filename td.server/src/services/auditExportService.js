@@ -17,16 +17,16 @@ export const MAX_EXPORT_ROWS = 50_000;
  * Fetch the filtered log rows from the DB (no pagination, capped at MAX_EXPORT_ROWS).
  */
 async function fetchLogs(filters, knex) {
-  let q = knex('audit_logs')
-    .select('id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at')
-    .orderBy('created_at', 'desc')
-    .limit(MAX_EXPORT_ROWS);
+  let q = knex('audit_logs').
+    select('id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at').
+    orderBy('created_at', 'desc').
+    limit(MAX_EXPORT_ROWS);
 
-  if (filters.action)      q = q.where('action', filters.action);
-  if (filters.entity_type) q = q.where('entity_type', filters.entity_type);
-  if (filters.user_id)     q = q.where('user_id', filters.user_id);
-  if (filters.from)        q = q.where('created_at', '>=', new Date(filters.from));
-  if (filters.to)          q = q.where('created_at', '<=', new Date(filters.to));
+  if (filters.action) {q = q.where('action', filters.action);}
+  if (filters.entity_type) {q = q.where('entity_type', filters.entity_type);}
+  if (filters.user_id) {q = q.where('user_id', filters.user_id);}
+  if (filters.from) {q = q.where('created_at', '>=', new Date(filters.from));}
+  if (filters.to) {q = q.where('created_at', '<=', new Date(filters.to));}
 
   return q;
 }
@@ -34,11 +34,12 @@ async function fetchLogs(filters, knex) {
 // ── Formatters ────────────────────────────────────────────────────────────
 
 function toDateStr() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toISOString().
+slice(0, 10);
 }
 
 function csvEscape(val) {
-  if (val == null) return '';
+  if (val == null) {return '';}
   const s = String(val);
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
     return `"${s.replace(/"/g, '""')}"`;
@@ -48,10 +49,9 @@ function csvEscape(val) {
 
 function toCsv(rows) {
   const header = 'id,action,entity_type,entity_id,user_id,ip_address,http_status,created_at';
-  const lines = rows.map(r =>
-    [r.id, r.action, r.entity_type, r.entity_id, r.user_id, r.ip_address, r.http_status, r.created_at]
-      .map(csvEscape)
-      .join(',')
+  const lines = rows.map((r) => [r.id, r.action, r.entity_type, r.entity_id, r.user_id, r.ip_address, r.http_status, r.created_at].
+      map(csvEscape).
+      join(',')
   );
   return [header, ...lines].join('\n');
 }
@@ -70,12 +70,12 @@ function toJson(rows) {
  * rt = receipt time (epoch ms), suser = source user, src = source IP
  */
 function toCef(rows) {
-  return rows.map(r => {
-    const rt      = r.created_at ? new Date(r.created_at).getTime() : '';
-    const suser   = r.user_id    ?? '';
-    const src     = r.ip_address ?? '';
-    const cs1     = r.entity_id  ?? '';
-    const cs2     = r.entity_type ?? '';
+  return rows.map((r) => {
+    const rt = r.created_at ? new Date(r.created_at).getTime() : '';
+    const suser = r.user_id ?? '';
+    const src = r.ip_address ?? '';
+    const cs1 = r.entity_id ?? '';
+    const cs2 = r.entity_type ?? '';
     const outcome = r.http_status ?? '';
     return `CEF:0|CarbonThreat|Enterprise|1.0|${r.action}|${cs2} ${r.action}|5|rt=${rt} suser=${suser} src=${src} cs1=${cs1} cs1Label=EntityId cs2=${cs2} cs2Label=EntityType outcome=${outcome}`;
   }).join('\n');
@@ -85,7 +85,7 @@ function toCef(rows) {
  * LEEF:2.0|Vendor|Product|Version|EventID|Attributes (tab-delimited)
  */
 function toLeef(rows) {
-  return rows.map(r => {
+  return rows.map((r) => {
     const devTime = r.created_at ? new Date(r.created_at).toISOString() : '';
     const parts = [
       `devTime=${devTime}`,
@@ -103,7 +103,7 @@ function toLeef(rows) {
  * Elastic Common Schema — one JSON object per line (NDJSON).
  */
 function toEcs(rows) {
-  return rows.map(r => JSON.stringify({
+  return rows.map((r) => JSON.stringify({
     '@timestamp':                     r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
     'event.dataset':                  'carbonthreat.audit',
     'event.action':                   r.action ?? '',
@@ -138,14 +138,16 @@ export async function exportAuditLogs(filters, format, knex) {
 
   switch (format) {
     case 'csv':
-      return { contentType: 'text/csv',              filename: `audit-${date}.csv`,   body: toCsv(rows)  };
+      return { contentType: 'text/csv', filename: `audit-${date}.csv`, body: toCsv(rows) };
     case 'json':
-      return { contentType: 'application/json',      filename: `audit-${date}.json`,  body: toJson(rows) };
+      return { contentType: 'application/json', filename: `audit-${date}.json`, body: toJson(rows) };
     case 'cef':
-      return { contentType: 'text/plain',            filename: `audit-${date}.cef`,   body: toCef(rows)  };
+      return { contentType: 'text/plain', filename: `audit-${date}.cef`, body: toCef(rows) };
     case 'leef':
-      return { contentType: 'text/plain',            filename: `audit-${date}.leef`,  body: toLeef(rows) };
+      return { contentType: 'text/plain', filename: `audit-${date}.leef`, body: toLeef(rows) };
     case 'ecs':
-      return { contentType: 'application/x-ndjson', filename: `audit-${date}.ndjson`, body: toEcs(rows)  };
+      return { contentType: 'application/x-ndjson', filename: `audit-${date}.ndjson`, body: toEcs(rows) };
+    default:
+      throw new Error(`Unsupported format: ${format}`);
   }
 }
