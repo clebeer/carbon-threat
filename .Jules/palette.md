@@ -24,6 +24,3 @@
 ## 2024-05-20 - [Tooltip Context on Disabled Buttons]
 **Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
 **Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
-## 2024-05-18 - Setup Wizard Disabled Buttons
-**Learning:** The application's Setup Wizard step 3 had "Review Setup" buttons that were visually styled as disabled when required fields were empty, but they lacked the semantic `disabled` HTML attribute and a tooltip (`title`) explaining why they were inactive.
-**Action:** Adding the `disabled` attribute makes the inactive state semantically correct for screen readers and keyboard navigation, while the `title` attribute provides necessary context for mouse users on what conditions must be met to proceed.

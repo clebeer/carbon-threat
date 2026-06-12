@@ -1,5 +1,4 @@
 import db from '../db/knex.js';
-import axios from 'axios';
 import { decryptModel, encryptModel } from '../security/encryption.js';
 import { createThirdPartyIssue } from '../integrations/third-party.js';
 import loggerHelper from '../helpers/logger.helper.js';
@@ -7,9 +6,11 @@ import { getOrgId } from '../helpers/scope.helper.js';
 
 const logger = loggerHelper.get('controllers/integrationsController.js');
 
-const VALID_PLATFORMS = ['github', 'jira', 'servicenow', 'openai', 'ollama',
+const VALID_PLATFORMS = [
+'github', 'jira', 'servicenow', 'openai', 'ollama',
   'splunk', 'sentinel', 'elastic', 'webhook',
-  'slack', 'teams', 'pagerduty'];
+  'slack', 'teams', 'pagerduty'
+];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
