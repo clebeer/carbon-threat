@@ -19,7 +19,6 @@ import { allPermissionKeys } from '../auth/permissions.catalog.js';
 const logger = loggerHelper.get('services/roleService.js');
 
 // ── Typed errors ──────────────────────────────────────────────────────────────
-
 /* eslint-disable max-classes-per-file */
 
 export class RoleNotFoundError extends Error {
@@ -49,6 +48,7 @@ export class SlugConflictError extends Error {
     this.code = 'SLUG_CONFLICT';
   }
 }
+/* eslint-enable max-classes-per-file */
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

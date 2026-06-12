@@ -16,7 +16,7 @@ export const MAX_EXPORT_ROWS = 50_000;
 /**
  * Fetch the filtered log rows from the DB (no pagination, capped at MAX_EXPORT_ROWS).
  */
-async function fetchLogs(filters, knex) {
+function fetchLogs(filters, knex) {
   let q = knex('audit_logs').
     select('id', 'action', 'entity_type', 'entity_id', 'user_id', 'ip_address', 'http_status', 'created_at').
     orderBy('created_at', 'desc').
