@@ -500,7 +500,7 @@ function IntegrationCard({ platform, existing }: { platform: Platform; existing:
                 {saveMutation.isPending ? 'Saving…' : 'Save'}
               </button>
               {existing && (
-                <button onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,77,79,0.3)', background: 'transparent', color: 'var(--error)', fontSize: '12px', cursor: 'pointer' }}>
+                <button onClick={() => { if (confirm('Remove this integration?')) deleteMutation.mutate(); }} disabled={deleteMutation.isPending} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,77,79,0.3)', background: 'transparent', color: 'var(--error)', fontSize: '12px', cursor: 'pointer' }}>
                   {deleteMutation.isPending ? '…' : 'Remove'}
                 </button>
               )}
