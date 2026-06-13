@@ -4,7 +4,7 @@
  * Uses an in-memory knex (sqlite3) so no real Postgres is needed.
  */
 
-import { describe, it, before, beforeEach } from 'mocha';
+import { describe, it, before, after } from 'mocha';
 import { strict as assert } from 'assert';
 import knex from 'knex';
 import { exportAuditLogs, MAX_EXPORT_ROWS } from '../../src/services/auditExportService.js';
@@ -18,24 +18,47 @@ const SAMPLE_ROWS = [
   { id: 2, action: 'ROLE_DELETE', entity_type: 'ROLE', entity_id: 'r-1', user_id: 'admin-uuid', ip_address: '127.0.0.1', http_status: 200, created_at: new Date('2025-01-16T11:00:00Z') },
 ];
 
-before(async () => {
-  db = knex({ client: 'better-sqlite3', connection: ':memory:', useNullAsDefault: true });
-  await db.schema.createTable('audit_logs', t => {
-    t.increments('id');
-    t.string('action', 100).notNullable();
-    t.string('entity_type', 100);
-    t.string('entity_id', 255);
-    t.string('user_id', 255);
-    t.string('ip_address', 45);
-    t.integer('http_status');
-    t.datetime('created_at').defaultTo(db.fn.now());
-  });
-  await db('audit_logs').insert(SAMPLE_ROWS);
-});
+// Try the available in-memory SQLite drivers. Neither better-sqlite3 nor sqlite3
+// is a declared dependency, so on a default install knex() throws synchronously.
+// Returning null lets the suite skip instead of crashing the whole mocha run.
+function makeSqliteKnex() {
+  for (const client of ['better-sqlite3', 'sqlite3']) {
+    try {
+      return knex({ client, connection: ':memory:', useNullAsDefault: true });
+    } catch {
+      // driver not installed — try the next one
+    }
+  }
+  return null;
+}
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
-describe('auditExportService', () => {
+describe('auditExportService', function () {
+  before(async function () {
+    db = makeSqliteKnex();
+    if (!db) {
+      // No in-memory SQLite driver installed — skip rather than poison the run.
+      this.skip();
+      return;
+    }
+    await db.schema.createTable('audit_logs', (t) => {
+      t.increments('id');
+      t.string('action', 100).notNullable();
+      t.string('entity_type', 100);
+      t.string('entity_id', 255);
+      t.string('user_id', 255);
+      t.string('ip_address', 45);
+      t.integer('http_status');
+      t.datetime('created_at').defaultTo(db.fn.now());
+    });
+    await db('audit_logs').insert(SAMPLE_ROWS);
+  });
+
+  after(async () => {
+    if (db) { await db.destroy(); }
+  });
+
   it('exportAuditLogs — csv has correct header and row count', async () => {
     const { contentType, filename, body } = await exportAuditLogs({}, 'csv', db);
     assert.equal(contentType, 'text/csv');
