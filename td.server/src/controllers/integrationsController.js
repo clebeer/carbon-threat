@@ -29,11 +29,37 @@ function decryptConfig(storedStr) {
  * Replaces credential values with '***' so the frontend can confirm
  * a config exists without exposing the actual tokens.
  */
+// Any key whose (normalised) name contains one of these fragments is treated as
+// a secret. Pattern matching — rather than an exact allowlist of names — means
+// new credential fields (signingSecret, privateKey, refresh_token, …) are
+// redacted by default instead of leaking until someone remembers to list them.
+// Fragments are pre-normalised (lowercase, alphanumerics only) so 'api_key',
+// 'privateKey', etc. all match after the key is normalised the same way.
+const SECRET_KEY_FRAGMENTS = [
+  'token', 'password', 'passwd', 'secret', 'apikey',
+  'credential', 'privatekey', 'auth', 'signingkey', 'pat',
+];
+
+const URL_CREDS_RE = (/^(https?:\/\/)[^/@\s]+:[^/@\s]+@/i);
+
+function isSecretKey(key) {
+  const k = String(key).
+    toLowerCase().
+    replace(/[^a-z0-9]/g, '');
+  return SECRET_KEY_FRAGMENTS.some((frag) => k.includes(frag));
+}
+
 function redactSecrets(configObj) {
-  const SECRET_KEYS = ['token', 'password', 'apiKey', 'api_key', 'clientSecret', 'client_secret'];
-  const out = { ...configObj };
-  for (const key of SECRET_KEYS) {
-    if (out[key]) {out[key] = '***';}
+  const out = {};
+  for (const [key, value] of Object.entries(configObj ?? {})) {
+    if (value && isSecretKey(key)) {
+      out[key] = '***';
+    } else if (typeof value === 'string' && URL_CREDS_RE.test(value)) {
+      // Redact credentials embedded in a URL (e.g. https://user:pass@host/…)
+      out[key] = value.replace(URL_CREDS_RE, '$1***:***@');
+    } else {
+      out[key] = value;
+    }
   }
   return out;
 }

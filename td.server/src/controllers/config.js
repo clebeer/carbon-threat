@@ -229,16 +229,18 @@ first();
  */
 export async function config(_req, res) {
   try {
-    const rows = await db('app_config').
-      whereIn('key', ['auth_type', 'db_config']).
-      select('key', 'value');
+    // Only auth_type is needed by the unauthenticated frontend to decide which
+    // login UI to show. db_config (DB host/port/user) is deliberately NOT
+    // returned here — it is internal metadata that aids targeted attacks and
+    // must not be exposed on an unauthenticated endpoint.
+    const row = await db('app_config').
+      where({ key: 'auth_type' }).
+      first('key', 'value');
 
-    const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    // Only consider the system configured when auth_type has been saved by the wizard
-    if (!cfg.auth_type) {
+    if (!row?.value) {
       return res.json({ status: 'unconfigured' });
     }
-    return res.json({ status: 'configured', ...cfg });
+    return res.json({ status: 'configured', auth_type: row.value });
   } catch {
     // Table may not exist yet on fresh installs.
     return res.json({ status: 'unconfigured' });

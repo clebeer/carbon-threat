@@ -31,8 +31,10 @@ import {
 
 const logger = loggerHelper.get('controllers/osvScannerController.js');
 
-// Maximum content size accepted for lockfile / SBOM upload (50 MB in characters)
-const MAX_CONTENT_LENGTH = 50 * 1024 * 1024;
+// Maximum content size accepted for a lockfile / SBOM upload. Kept in sync with
+// the global express.json body limit (parsers.config.js = 5 MB); a larger value
+// here is unreachable because the body parser rejects the request first.
+const MAX_CONTENT_LENGTH = 5 * 1024 * 1024;
 
 // ── List scans ────────────────────────────────────────────────────────────────
 
@@ -149,6 +151,12 @@ export async function createScan(req, res) {
       asyncScanType = 'git';
 
     } else if (scan_type === 'container') {
+      // Container scans drive the Docker daemon (pull/create/export an arbitrary
+      // image). That is a resource-abuse and host-surface risk, so restrict it
+      // to admins even though analysts may run lockfile/git scans.
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Container scans require an admin role' });
+      }
       if (!image_name?.trim()) {
         return res.status(400).json({ error: 'image_name is required for container scan' });
       }

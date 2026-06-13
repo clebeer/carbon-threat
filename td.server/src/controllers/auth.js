@@ -5,6 +5,7 @@ import loggerHelper from '../helpers/logger.helper.js';
 import providers from '../providers/index.js';
 import responseWrapper from './responseWrapper.js';
 import tokenRepo from '../repositories/token.js';
+import userStatus from '../helpers/userStatus.helper.js';
 
 const logger = loggerHelper.get('controllers/auth.js');
 
@@ -102,14 +103,37 @@ const refresh = async (req, res) => {
     if (!tokenBody) {
         return errors.unauthorized(res, logger);
     }
+
+    const { provider, user } = tokenBody;
+
+    // Re-validate enterprise principals against the DB before minting a new
+    // token pair. Without this, a deactivated user — or one whose role was
+    // changed — would keep refreshing indefinitely with stale claims copied
+    // from the old token. git-provider OAuth identities are not tracked in
+    // `users` (getAuthState returns null) and keep their token-carried claims.
+    let effectiveUser = user;
+    if (user && user.id) {
+        let authState;
+        try {
+            authState = await userStatus.getAuthState(user.id);
+        } catch {
+            return errors.unauthorized(res, logger);
+        }
+        if (authState) {
+            if (!authState.is_active) {
+                logger.audit(`Refresh denied for deactivated user ${user.id}`);
+                await tokenRepo.remove(oldRefreshToken);
+                return errors.unauthorized(res, logger);
+            }
+            effectiveUser = { ...user, role: authState.role };
+        }
+    }
+
     return responseWrapper.sendResponseAsync(async () => {
-        const { provider, user } = tokenBody;
-
-
         // Remove the old refresh token and issue a new one on every refresh.
         // This limits the window of exploitation if a token is intercepted.
         await tokenRepo.remove(oldRefreshToken);
-        const { accessToken, refreshToken } = await jwtHelper.createAsync(provider.name, provider, user);
+        const { accessToken, refreshToken } = await jwtHelper.createAsync(provider.name, provider, effectiveUser);
         await tokenRepo.add(refreshToken);
 
         return { accessToken, refreshToken };
