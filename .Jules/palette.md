@@ -24,3 +24,10 @@
 ## 2024-05-20 - [Tooltip Context on Disabled Buttons]
 **Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
 **Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
+## 2024-05-20 - [Tooltip Context on Disabled Buttons]
+**Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
+**Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
+
+## 2024-05-20 - [Missing Keyboard Support on Custom Switch]
+**Learning:** Custom switch elements built with `div`s and `onClick` handlers are inaccessible to keyboard users without explicitly defining standard ARIA patterns and event handlers.
+**Action:** Use `role="switch"`, `aria-checked`, `tabIndex={0}`, and an `onKeyDown` listener that checks for Enter and Space keys to maintain full accessibility on custom switch elements.
