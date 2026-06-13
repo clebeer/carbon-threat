@@ -28,6 +28,7 @@ import path from 'path';
 import os from 'os';
 import db from '../db/knex.js';
 import loggerHelper from '../helpers/logger.helper.js';
+import { assertPublicUrl } from '../helpers/ssrfGuard.helper.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -580,14 +581,11 @@ async function walkDirForPackages(dir, maxDepth = 12) {
  * @returns {Promise<{name,version,ecosystem}[]>}
  */
 async function extractPackagesFromGitRepo(repoUrl) {
-  // Validate URL
-  let parsedUrl;
-  try { parsedUrl = new URL(repoUrl); }
-  catch { throw new Error('Invalid repository URL'); }
-
-  if (!['https:', 'http:'].includes(parsedUrl.protocol)) {
-    throw new Error('Repository URL must use HTTPS or HTTP');
-  }
+  // Validate URL + protocol AND reject internal / loopback / metadata targets.
+  // Without this, an analyst could make the server clone http(s)://169.254.169.254
+  // or internal hosts — a blind SSRF / internal port-probing primitive.
+  // (The http/https requirement also blocks git's ext::/file:: arg-injection.)
+  await assertPublicUrl(repoUrl, 'Repository URL');
 
   const gitBin = await resolveBin('git');
   const tmpDir = await fsP.mkdtemp(path.join(os.tmpdir(), 'ct-git-'));

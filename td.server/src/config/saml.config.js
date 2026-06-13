@@ -35,6 +35,17 @@ export function getSamlConfig() {
         cert:               required('SAML_CERT').replace(/\\n/g, '\n'),
         callbackUrl:        required('SAML_CALLBACK_URL'),
         wantAssertionsSigned: process.env.SAML_WANT_ASSERTIONS_SIGNED !== 'false',
+        // Require the top-level SAML Response to be signed as well, not just the
+        // assertion — defends against assertion-wrapping attacks. Override only
+        // if your IdP genuinely cannot sign the response.
+        wantAuthnResponseSigned: process.env.SAML_WANT_RESPONSE_SIGNED !== 'false',
+        // Track InResponseTo so a captured SAML Response cannot be replayed.
+        validateInResponseTo: 'always',
+        // Restrict which SP the assertion is valid for (audience restriction).
+        // Defaults to the SP entityId (issuer) unless explicitly overridden.
+        audience:           process.env.SAML_AUDIENCE ?? required('SAML_ISSUER'),
+        // Bound clock skew tolerance for NotBefore / NotOnOrAfter checks.
+        acceptedClockSkewMs: parseInt(process.env.SAML_CLOCK_SKEW_MS ?? '5000', 10),
         signatureAlgorithm: process.env.SAML_SIGNATURE_ALGORITHM ?? 'sha256',
         // Disable XML encryption — encryption is handled at the transport layer (TLS).
         // Enable if your IdP requires assertion-level encryption.

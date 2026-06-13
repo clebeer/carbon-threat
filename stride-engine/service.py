@@ -2,6 +2,7 @@
 STRIDE Engine — FastAPI microservice for AI-powered threat modeling.
 Runs as an internal service, called by the carbon-threat Node.js backend.
 """
+import hmac
 import os
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -31,7 +32,8 @@ async def verify_internal_token(request: Request, call_next):
     token = request.headers.get("x-internal-token", "")
     if not STRIDE_ENGINE_TOKEN:
         return JSONResponse(status_code=500, content={"detail": "STRIDE_ENGINE_TOKEN not configured"})
-    if token != STRIDE_ENGINE_TOKEN:
+    # Constant-time comparison to avoid leaking the token via timing.
+    if not hmac.compare_digest(token, STRIDE_ENGINE_TOKEN):
         return JSONResponse(status_code=403, content={"detail": "Invalid internal token"})
     return await call_next(request)
 
