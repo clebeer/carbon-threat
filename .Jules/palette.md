@@ -24,3 +24,7 @@
 ## 2024-05-20 - [Tooltip Context on Disabled Buttons]
 **Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
 **Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
+
+## 2026-06-13 - Native Confirmation Dialogs
+**Learning:** Found destructive actions (like removing an integration) that executed immediately without confirmation, potentially causing accidental data loss.
+**Action:** Always use browser-native `window.confirm()` dialogs before executing destructive actions to prevent accidental clicks from causing irreversible changes.
