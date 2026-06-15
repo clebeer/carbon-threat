@@ -36,10 +36,10 @@ async function resolvePermissions(slug) {
     return cached.set;
   }
 
-  const rows = await db('role_permissions')
-    .join('roles', 'roles.id', 'role_permissions.role_id')
-    .where('roles.slug', slug)
-    .select('role_permissions.permission_key');
+  const rows = await db('role_permissions').
+    join('roles', 'roles.id', 'role_permissions.role_id').
+    where('roles.slug', slug).
+    select('role_permissions.permission_key');
 
   const set = new Set(rows.map((r) => r.permission_key));
   cache.set(slug, { set, expires: now + CACHE_TTL_MS });

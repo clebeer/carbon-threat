@@ -28,11 +28,11 @@ function decryptConfig(storedStr) {
 
 async function getEnabledSiemConfigs(knex) {
   try {
-    const rows = await knex('integration_configs')
-      .whereIn('platform', SIEM_PLATFORMS)
-      .where('is_enabled', true);
+    const rows = await knex('integration_configs').
+      whereIn('platform', SIEM_PLATFORMS).
+      where('is_enabled', true);
 
-    return rows.map(row => {
+    return rows.map((row) => {
       try {
         return { platform: row.platform, config: decryptConfig(row.config_encrypted) };
       } catch {
@@ -89,16 +89,16 @@ async function sendToSplunk(config, entry) {
 // ── Microsoft Sentinel (Log Analytics Workspace API) ──────────────────────
 
 async function sendToSentinel(config, entry) {
-  const date     = new Date().toUTCString();
-  const bodyStr  = JSON.stringify([entry]);
-  const bodyLen  = Buffer.byteLength(bodyStr);
-  const logType  = config.logType || 'CarbonThreatAudit';
+  const date = new Date().toUTCString();
+  const bodyStr = JSON.stringify([entry]);
+  const bodyLen = Buffer.byteLength(bodyStr);
+  const logType = config.logType || 'CarbonThreatAudit';
 
   const stringToSign = `POST\n${bodyLen}\napplication/json\nx-ms-date:${date}\n/api/logs`;
-  const sig = crypto
-    .createHmac('sha256', Buffer.from(config.sharedKey, 'base64'))
-    .update(stringToSign, 'utf8')
-    .digest('base64');
+  const sig = crypto.
+    createHmac('sha256', Buffer.from(config.sharedKey, 'base64')).
+    update(stringToSign, 'utf8').
+    digest('base64');
 
   const url = `https://${config.workspaceId}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01`;
   const res = await fetch(url, {
@@ -123,8 +123,8 @@ async function sendToSentinel(config, entry) {
 
 async function sendToElastic(config, entry) {
   const indexName = config.indexName || 'carbonthreat-audit';
-  const url       = `${config.serverUrl.replace(/\/$/, '')}/${indexName}/_doc`;
-  const body      = JSON.stringify(toEcsEvent(entry));
+  const url = `${config.serverUrl.replace(/\/$/, '')}/${indexName}/_doc`;
+  const body = JSON.stringify(toEcsEvent(entry));
 
   const res = await fetch(url, {
     method:  'POST',
@@ -145,7 +145,8 @@ async function sendToWebhook(config, entry) {
   const headers = { 'Content-Type': 'application/json' };
 
   if (config.secret) {
-    const sig = crypto.createHmac('sha256', config.secret).update(bodyStr).digest('hex');
+    const sig = crypto.createHmac('sha256', config.secret).update(bodyStr).
+digest('hex');
     headers['X-CarbonThreat-Signature'] = `sha256=${sig}`;
   }
 
@@ -169,10 +170,10 @@ async function sendToWebhook(config, entry) {
 
 async function sendToSiem(platform, config, entry) {
   switch (platform) {
-    case 'splunk':   return sendToSplunk(config, entry);
+    case 'splunk': return sendToSplunk(config, entry);
     case 'sentinel': return sendToSentinel(config, entry);
-    case 'elastic':  return sendToElastic(config, entry);
-    case 'webhook':  return sendToWebhook(config, entry);
+    case 'elastic': return sendToElastic(config, entry);
+    case 'webhook': return sendToWebhook(config, entry);
     default:
       throw new Error(`Unknown SIEM platform: ${platform}`);
   }
@@ -189,11 +190,11 @@ async function sendToSiem(platform, config, entry) {
  */
 export async function deliverToSiems(auditEntry, knex) {
   const configs = await getEnabledSiemConfigs(knex);
-  if (configs.length === 0) return;
+  if (configs.length === 0) {return;}
 
   for (const { platform, config } of configs) {
     setImmediate(() => {
-      sendToSiem(platform, config, auditEntry).catch(err => {
+      sendToSiem(platform, config, auditEntry).catch((err) => {
         logger.warn(`SIEM push failed [${platform}]: ${err.message}`);
       });
     });

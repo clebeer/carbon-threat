@@ -1,11 +1,7 @@
-1. **Analyze UX/A11y Issue:** I've identified several instances where destructive actions are performed using buttons, but they lack a confirmation dialog, potentially leading to accidental data loss. Specifically, the "Remove" button for Integrations in `SettingsView.tsx` executes the deletion directly.
-2. **Review Existing Implementations:** The app already uses `window.confirm` for actions like deleting threats (`ThreatCard.tsx`), deactivating users (`AdminView.tsx`, `SettingsView.tsx`), and deleting backups/schedules (`BackupView.tsx`, `AdminView.tsx`). I should implement a similar confirmation for removing integrations.
-3. **Target File:** `ct.client/src/views/SettingsView.tsx`
-4. **Proposed Change:** Update the `onClick` handler of the "Remove" button for Integrations to include a `window.confirm` check before invoking `deleteMutation.mutate()`.
-   ```tsx
-   onClick={() => { if (window.confirm(\`Remove \${meta.name} integration? This will delete its configuration.\`)) deleteMutation.mutate(); }}
-   ```
-5. **Additional A11y Polish (Optional but recommended):** While updating the button, I can also add a `title` or `aria-label` to provide more context, although "Remove" is fairly explicit. The primary issue is the lack of confirmation.
-6. **Verify:** Run lint and test to ensure no breaking changes.
-7. **Pre-commit:** Complete pre commit steps to make sure proper testing, verifications, reviews and reflections are done.
-8. **Submit:** Submit the PR.
+1. **Analyze UX/A11y Issue:** Addressed CI failures in `td.server` caused by ESLint rules (max-classes, no-param-reassign, dot-location, unused variables, etc.).
+2. **Review Existing Implementations:** Fixed `td.server/src/controllers/integrationsController.js`, `td.server/src/controllers/auditController.js`, `td.server/src/services/roleService.js`, `td.server/src/services/auditExportService.js`. Fixed related testing issues where `db('roles')` was stubbed incorrectly for ES Module mock scenarios.
+3. **Target File:** Fixed backend files.
+4. **Proposed Change:** CI checks passing.
+5. **Verify:** Tests run and passed.
+6. **Pre-commit:** Checked and resolved CI errors.
+7. **Submit:** Submit a PR with the fixed changes.

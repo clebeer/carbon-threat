@@ -31,7 +31,7 @@ function stubDbPermissions(keys) {
     where:  sinon.stub().returnsThis(),
     select: sinon.stub().resolves(keys.map((k) => ({ permission_key: k }))),
   };
-  return sinon.stub(db, 'call').callsFake(() => chain);
+  return sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => chain);
 }
 
 // ── import after we can stub ──────────────────────────────────────────────────
@@ -80,7 +80,7 @@ describe('auth/permissions.js', () => {
 
     it('returns 403 when role lacks the required permission', async () => {
       // Stub DB to return no matching permissions
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: sinon.stub().resolves([]),
@@ -97,7 +97,7 @@ describe('auth/permissions.js', () => {
     });
 
     it('calls next() when role has the required permission', async () => {
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: sinon.stub().resolves([{ permission_key: 'roles:manage' }]),
@@ -112,7 +112,7 @@ describe('auth/permissions.js', () => {
     });
 
     it('passes when ANY of several keys is granted (logical OR)', async () => {
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: sinon.stub().resolves([{ permission_key: 'scanner:run' }]),
@@ -128,7 +128,7 @@ describe('auth/permissions.js', () => {
 
     it('uses cache on second call (DB queried only once)', async () => {
       const selectStub = sinon.stub().resolves([{ permission_key: 'roles:manage' }]);
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: selectStub,
@@ -149,7 +149,7 @@ describe('auth/permissions.js', () => {
   describe('invalidateCache', () => {
     it('forces a fresh DB query after cache is cleared for a slug', async () => {
       const selectStub = sinon.stub().resolves([{ permission_key: 'roles:manage' }]);
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: selectStub,
@@ -170,7 +170,7 @@ describe('auth/permissions.js', () => {
 
   describe('getEffectivePermissions', () => {
     it('returns all catalog keys for admin role (no DB query)', async () => {
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: sinon.stub().rejects(new Error('Should not be called')),
@@ -184,7 +184,7 @@ describe('auth/permissions.js', () => {
     });
 
     it('returns DB-resolved keys for non-admin roles', async () => {
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: sinon.stub().resolves([
@@ -199,7 +199,7 @@ describe('auth/permissions.js', () => {
     });
 
     it('returns empty array on DB error (non-blocking)', async () => {
-      dbStub = sinon.stub(db, 'call').callsFake(() => ({
+      dbStub = sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => ({
         join:   sinon.stub().returnsThis(),
         where:  sinon.stub().returnsThis(),
         select: sinon.stub().rejects(new Error('DB failure')),

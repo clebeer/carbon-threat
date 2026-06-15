@@ -1,3 +1,6 @@
+import chaiAsPromised from "chai-as-promised";
+import { use } from "chai";
+use(chaiAsPromised);
 /**
  * Unit tests — services/roleService.js
  *
@@ -80,7 +83,7 @@ describe('services/roleService.js', () => {
       };
 
       let callIndex = 0;
-      sinon.stub(db, 'call').callsFake(() => {
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => {
         return [rolesChain, grantsChain, countsChain][callIndex++];
       });
 
@@ -101,7 +104,7 @@ describe('services/roleService.js', () => {
       const countChain  = { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '1' }]) };
 
       let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [roleChain, grantsChain, countChain][i++]);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => [roleChain, grantsChain, countChain][i++]);
 
       const role = await getRole('role-uuid-custom');
 
@@ -112,7 +115,7 @@ describe('services/roleService.js', () => {
 
     it('throws RoleNotFoundError when role does not exist', async () => {
       const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => roleChain);
 
       await expect(getRole('nonexistent')).to.be.rejectedWith(RoleNotFoundError);
     });
@@ -135,7 +138,7 @@ describe('services/roleService.js', () => {
       };
 
       let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [slugCheckChain][i++] ?? slugCheckChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => [slugCheckChain][i++] ?? slugCheckChain);
 
       // Stub db.transaction to call the callback synchronously
       const trx = {
@@ -168,7 +171,7 @@ describe('services/roleService.js', () => {
   describe('updateRole()', () => {
     it('throws SystemRoleError when updating a system role', async () => {
       const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_SYSTEM_ROLE) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => roleChain);
 
       await expect(updateRole('role-uuid-admin', { name: 'New Name' }))
         .to.be.rejectedWith(SystemRoleError);
@@ -176,7 +179,7 @@ describe('services/roleService.js', () => {
 
     it('throws RoleNotFoundError for unknown id', async () => {
       const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => roleChain);
 
       await expect(updateRole('missing', { name: 'X' })).to.be.rejectedWith(RoleNotFoundError);
     });
@@ -194,7 +197,7 @@ describe('services/roleService.js', () => {
       };
       const trx = { call: () => trxChain };
 
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => roleChain);
       sinon.stub(db, 'transaction').callsFake(async (fn) => fn(trx));
 
       await updateRole('role-uuid-custom', { name: 'Updated' });
@@ -208,14 +211,14 @@ describe('services/roleService.js', () => {
   describe('deleteRole()', () => {
     it('throws RoleNotFoundError for unknown id', async () => {
       const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => roleChain);
 
       await expect(deleteRole('missing')).to.be.rejectedWith(RoleNotFoundError);
     });
 
     it('throws SystemRoleError when deleting a system role', async () => {
       const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_SYSTEM_ROLE) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => roleChain);
 
       await expect(deleteRole('role-uuid-admin')).to.be.rejectedWith(SystemRoleError);
     });
@@ -225,7 +228,7 @@ describe('services/roleService.js', () => {
       const countChain = { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '2' }]) };
 
       let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [roleChain, countChain][i++]);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => [roleChain, countChain][i++]);
 
       await expect(deleteRole('role-uuid-custom')).to.be.rejectedWith(RoleInUseError);
     });
@@ -236,7 +239,7 @@ describe('services/roleService.js', () => {
       const deleteChain = { where: sinon.stub().returnsThis(), delete: sinon.stub().resolves(1) };
 
       let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [roleChain, countChain, deleteChain][i++]);
+      sinon.stub(db, 'call' in db ? 'call' : 'bind').callsFake(() => [roleChain, countChain, deleteChain][i++]);
 
       await deleteRole('role-uuid-custom');
 
