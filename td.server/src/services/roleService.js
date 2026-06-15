@@ -60,8 +60,9 @@ function slugify(name) {
     toLowerCase().
     trim().
     replace(/[^a-z0-9]+/g, '-').
-    replace(/^-+/, '').
-replace(/-+$/, '').
+    split('-').
+    filter(Boolean).
+    join('-').
     slice(0, 50);
 }
 
