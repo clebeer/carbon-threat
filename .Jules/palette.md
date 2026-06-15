@@ -24,3 +24,6 @@
 ## 2024-05-20 - [Tooltip Context on Disabled Buttons]
 **Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
 **Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
+## 2024-11-20 - Add confirmation for removing integrations
+**Learning:** Found that a destructive action (removing an integration) in `SettingsView.tsx` lacked a confirmation prompt, while other similar actions in the app used `window.confirm`.
+**Action:** When auditing views for UX consistency, verify that all buttons with destructive consequences (like "Delete" or "Remove") are protected by a confirmation dialog (e.g., `window.confirm`) to prevent accidental data loss.
