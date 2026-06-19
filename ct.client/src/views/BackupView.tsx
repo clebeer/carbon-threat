@@ -202,7 +202,7 @@ export default function BackupView() {
                   <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(0,242,255,0.1)', color: 'var(--primary)' }}>{s.frequency}</span>
                   <span style={{ fontSize: '11px', color: s.is_active ? '#10b981' : 'var(--on-surface-muted)' }}>{s.is_active ? 'Active' : 'Paused'}</span>
                 </div>
-                <button onClick={() => handleDeleteSchedule(s.id)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '11px' }}>Delete</button>
+                <button aria-label={`Delete schedule ${s.id}`} onClick={() => handleDeleteSchedule(s.id)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '11px' }}>Delete</button>
               </div>
             ))}
           </div>
@@ -227,9 +227,9 @@ export default function BackupView() {
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {b.status === 'complete' && (
-                    <button onClick={() => handleDownload(b.id)} style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(0,242,255,0.2)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontSize: '11px' }}>Download</button>
+                    <button aria-label={`Download backup ${b.id}`} onClick={() => handleDownload(b.id)} style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(0,242,255,0.2)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontSize: '11px' }}>Download</button>
                   )}
-                  <button onClick={() => handleDelete(b.id)} style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '11px' }}>Delete</button>
+                  <button aria-label={`Delete backup ${b.id}`} onClick={() => handleDelete(b.id)} style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '11px' }}>Delete</button>
                 </div>
               </div>
             ))}
