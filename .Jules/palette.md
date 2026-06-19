@@ -24,3 +24,7 @@
 ## 2024-05-20 - [Tooltip Context on Disabled Buttons]
 **Learning:** Buttons disabled because they lack prerequisites often cause confusion if not explained.
 **Action:** Always add a descriptive `title` attribute to disabled buttons indicating what actions are needed to enable them.
+
+## 2024-05-24 - Accessibility for repetitive action buttons
+**Learning:** Buttons in lists or tables with generic repetitive text (like "Delete" or "Download" next to multiple items) create confusion for screen reader users when navigating via lists of buttons, as they all sound the same and lack context.
+**Action:** Always append dynamic contextual identifiers (like the item name or ID) to `aria-label` attributes on repetitive action buttons (e.g., `aria-label={"Delete schedule ${s.id}"}`) to ensure they are distinct when read by assistive technologies.
