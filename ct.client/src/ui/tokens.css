@@ -1,0 +1,119 @@
+/* ============================================================================
+   Carbon Dojo — Design Tokens (V2)
+   Source of truth: specs/carbon-dojo-interface-redesign/project/Carbon Dojo.dc.html
+   Light is the default theme; dark applies via [data-theme="dark"] on <html>.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ── Surfaces & text (LIGHT — default) ─────────────────────────────────── */
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface-2: #f7f8fb;
+  --hover: #f0f1f6;
+  --text: #14161f;
+  --text-2: #565b6b;
+  --text-3: #888fa0;
+  --border: #e7e9ef;
+  --border-strong: #d7dae3;
+
+  /* ── Accent ────────────────────────────────────────────────────────────── */
+  --accent: #5b50e6;
+  --accent-hover: #4a40d4;
+  --accent-soft: #ecebfb;
+  --accent-text: #4a40d4;
+
+  /* ── Status ────────────────────────────────────────────────────────────── */
+  --success: #16a34a;
+  --warning: #b45309;
+  --danger: #dc2626;
+
+  /* ── Severity ramp ─────────────────────────────────────────────────────── */
+  --sev-critical: #d92d20;
+  --sev-high: #e8590c;
+  --sev-medium: #cf9700;
+  --sev-low: #2563eb;
+  --sev-info: #98a2b3;
+
+  /* Chip/badge translucency differs by theme for AA legibility. */
+  --chip-alpha: 12%;
+  --sla-alpha: 13%;
+
+  /* ── Scale tokens (theme-independent) ──────────────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-13: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 24px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(8, 10, 16, 0.06);
+  --shadow-md: 0 8px 24px rgba(8, 10, 16, 0.12);
+  --shadow-toast: 0 8px 24px rgba(8, 10, 16, 0.18);
+
+  --dur-fast: 0.15s;
+  --dur: 0.2s;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --sidebar-w: 240px;
+  --drawer-w: 264px;
+  --topbar-h: 60px;
+  --content-max: 1280px;
+
+  --z-sidebar: 30;
+  --z-topbar: 20;
+  --z-drawer: 50;
+  --z-toast: 60;
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+[data-theme='dark'] {
+  --bg: #0b0d14;
+  --surface: #12151f;
+  --surface-2: #171b27;
+  --hover: #1c2130;
+  --text: #eceef4;
+  --text-2: #a4abbd;
+  --text-3: #6f7689;
+  --border: #222838;
+  --border-strong: #313748;
+
+  --accent: #8079f6;
+  --accent-hover: #948dff;
+  --accent-soft: #201f3d;
+  --accent-text: #a9a3ff;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  --sev-critical: #f04438;
+  --sev-high: #f97316;
+  --sev-medium: #eab308;
+  --sev-low: #3b82f6;
+  --sev-info: #8a93a6;
+
+  --chip-alpha: 18%;
+  --sla-alpha: 18%;
+}

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ct-client",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "ct.client", "run", "dev", "--", "--port", "4321", "--strictPort"],
+      "port": 4321,
+      "autoPort": false
+    }
+  ]
+}

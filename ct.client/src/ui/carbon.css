@@ -1,0 +1,247 @@
+/* ============================================================================
+   Carbon Dojo — component & layout classes (V2)
+   Depends on tokens.css. No hard-coded colors — everything via CSS variables.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+::placeholder { color: var(--text-3); }
+a { color: var(--accent-text); text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.cd-mono { font-family: var(--font-mono); }
+.cd-muted { color: var(--text-2); }
+.cd-hint { color: var(--text-3); }
+
+.cd-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.cd-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong); border-radius: 8px; border: 2px solid var(--surface);
+}
+
+@keyframes cdspin { to { transform: rotate(360deg); } }
+@keyframes cdtoast { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cdfade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ── App shell ────────────────────────────────────────────────────────────── */
+.cd-app { display: flex; min-height: 100vh; }
+
+.cd-sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: var(--z-sidebar);
+}
+.cd-brand { padding: 18px 18px 14px; display: flex; align-items: center; gap: 10px; }
+.cd-brand-badge {
+  width: 30px; height: 30px; border-radius: 8px; background: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff;
+}
+.cd-brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+
+.cd-nav { padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
+.cd-navitem {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 9px 12px; border-radius: 8px; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 500;
+  background: transparent; color: var(--text-2); transition: background var(--dur) var(--ease);
+}
+.cd-navitem:hover { background: var(--hover); }
+.cd-navitem[aria-current='page'] { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+
+.cd-sidebar-foot { padding: 12px; border-top: 1px solid var(--border); }
+.cd-userrow { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
+
+.cd-main { flex: 1; margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+
+.cd-topbar {
+  position: sticky; top: 0; z-index: var(--z-topbar); height: var(--topbar-h);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px; padding: 0 24px;
+}
+.cd-crumb { font-size: 11px; color: var(--text-3); font-weight: 500; }
+.cd-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.cd-searchwrap { position: relative; display: flex; align-items: center; }
+.cd-searchwrap svg { position: absolute; left: 10px; pointer-events: none; }
+.cd-search {
+  width: 200px; background: var(--surface-2); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 8px 10px 8px 32px; color: var(--text); font-size: 13px; font-family: inherit;
+}
+.cd-iconbtn {
+  width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 8px;
+  color: var(--text); cursor: pointer;
+}
+.cd-hamburger { display: none; }
+
+.cd-content { flex: 1; padding: 28px; width: 100%; max-width: var(--content-max); }
+
+.cd-overlay { position: absolute; inset: 0; background: rgba(8,10,16,0.55); animation: cdfade var(--dur-fast) ease; }
+.cd-drawer-wrap { position: fixed; inset: 0; z-index: var(--z-drawer); }
+.cd-drawer {
+  position: absolute; top: 0; left: 0; bottom: 0; width: var(--drawer-w);
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; animation: cdfade var(--dur-fast) ease;
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+.cd-page-h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.cd-page-sub { color: var(--text-2); margin: 4px 0 0; font-size: 13px; }
+.cd-h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.cd-eyebrow { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 10px; }
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.cd-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.cd-card-pad { padding: 20px; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.cd-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+  font-family: inherit; cursor: pointer; border: 1px solid transparent;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  white-space: nowrap;
+}
+.cd-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.cd-btn--primary { background: var(--accent); color: #fff; }
+.cd-btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+.cd-btn--secondary { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+.cd-btn--secondary:hover:not(:disabled) { background: var(--hover); }
+.cd-btn--danger { background: transparent; color: var(--danger); border-color: var(--border-strong); }
+.cd-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.cd-btn--ghost { background: transparent; color: var(--text-2); }
+.cd-btn--ghost:hover:not(:disabled) { background: var(--hover); }
+.cd-btn--sm { padding: 6px 12px; font-size: 12px; }
+.cd-btn--block { width: 100%; }
+
+/* ── Form controls ────────────────────────────────────────────────────────── */
+.cd-label { font-size: 11px; font-weight: 500; color: var(--text-2); display: block; margin-bottom: 5px; }
+.cd-input, .cd-select, .cd-textarea {
+  width: 100%; background: var(--surface-2); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 9px 10px; color: var(--text); font-size: 13px; font-family: inherit;
+}
+.cd-textarea { min-height: 80px; resize: vertical; }
+.cd-field { display: flex; flex-direction: column; }
+.cd-inputwrap { position: relative; }
+.cd-inputwrap .cd-reveal {
+  position: absolute; right: 6px; top: 6px; bottom: 6px; padding: 0 10px;
+  background: transparent; border: none; color: var(--text-3); cursor: pointer; font-size: 12px; font-weight: 500;
+}
+
+/* ── Table / list ─────────────────────────────────────────────────────────── */
+.cd-table { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.cd-thead {
+  display: flex; align-items: center; gap: 12px; padding: 12px 18px;
+  border-bottom: 1px solid var(--border); background: var(--surface-2);
+  font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cd-row {
+  display: flex; align-items: center; gap: 12px; padding: 13px 18px;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.cd-row--link { cursor: pointer; }
+.cd-row--link:hover { background: var(--hover); }
+.cd-row:last-child { border-bottom: none; }
+.cd-tablefoot { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; font-size: 13px; color: var(--text-2); }
+
+/* ── Chips / badges / pills ───────────────────────────────────────────────── */
+.cd-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; color: var(--_c, var(--text-2));
+  background: color-mix(in srgb, var(--_c, var(--text-3)) var(--chip-alpha), transparent);
+}
+.cd-chip .cd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--_c, var(--text-3)); }
+.cd-sla { --chip-alpha: var(--sla-alpha); }
+.cd-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px;
+  font-size: 11px; font-weight: 500; background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text-2); text-transform: capitalize;
+}
+.cd-badge-accent { padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; background: var(--accent-soft); color: var(--accent-text); }
+
+/* severity color helpers set --_c */
+.sev-critical { --_c: var(--sev-critical); }
+.sev-high { --_c: var(--sev-high); }
+.sev-medium { --_c: var(--sev-medium); }
+.sev-low { --_c: var(--sev-low); }
+.sev-info { --_c: var(--sev-info); }
+.sla-on_track { --_c: var(--success); }
+.sla-at_risk { --_c: var(--warning); }
+.sla-breached { --_c: var(--danger); }
+
+/* ── KPI / stat card ──────────────────────────────────────────────────────── */
+.cd-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.cd-kpi-label { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12px; font-weight: 500; margin-bottom: 10px; }
+.cd-kpi-icon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+.cd-kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.cd-kpi-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.cd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; overflow-x: auto; }
+.cd-tab {
+  padding: 10px 14px; background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: var(--text-2); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
+  margin-bottom: -1px; white-space: nowrap;
+}
+.cd-tab[aria-selected='true'] { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+
+/* ── Misc patterns ────────────────────────────────────────────────────────── */
+.cd-avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text);
+  display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex-shrink: 0;
+}
+.cd-grid { display: grid; gap: 14px; }
+.cd-filterbar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+}
+.cd-dropzone {
+  border: 1.5px dashed var(--border-strong); border-radius: 10px; padding: 28px; text-align: center;
+  cursor: pointer; background: var(--surface-2); transition: border-color var(--dur) var(--ease);
+}
+.cd-dropzone:hover { border-color: var(--accent); }
+.cd-empty { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px; text-align: center; }
+.cd-spinner { width: 20px; height: 20px; border: 2.5px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: cdspin 0.8s linear infinite; }
+
+/* ── Toasts ───────────────────────────────────────────────────────────────── */
+.cd-toaststack { position: fixed; bottom: 20px; right: 20px; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 10px; }
+.cd-toast {
+  display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--_c, var(--success)); border-radius: 10px; padding: 12px 16px;
+  box-shadow: var(--shadow-toast); animation: cdtoast var(--dur) ease; min-width: 240px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .cd-sidebar { display: none; }
+  .cd-hamburger { display: inline-flex; }
+  .cd-main { margin-left: 0; }
+  .cd-search { width: 150px; }
+}
+@media (max-width: 899px) {
+  /* Login collapses to a single column (brand panel hidden). */
+  .cd-login-brand { display: none !important; }
+}
+@media (max-width: 767px) {
+  .cd-content { padding: 16px; }
+  .cd-search { display: none; }
+  /* DataTable → card mode: stack each row, hide the header row */
+  .cd-table--stack .cd-thead { display: none; }
+  .cd-table--stack .cd-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  .cd-table--stack .cd-row > * { width: auto !important; }
+}
