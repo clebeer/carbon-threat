@@ -98,6 +98,26 @@ const unauthRoutes = (router) => {
     // alongside a still-valid refresh token). /api/logout is moved to the authenticated
     // section so an attacker cannot anonymously invalidate a victim's refresh token.
     router.post('/api/token/refresh', refreshLimiter, auth.refresh);
+
+    // ── SPA fallback (React Router deep links) ──────────────────────────────────
+    // Serve index.html for client-side routes so browser refresh and deep links
+    // (e.g. /findings, /engagements/:id) work. Kept LAST in the UNAUTH block (before
+    // the bearer middleware) so a deep link never 401s, and guarded so it never
+    // shadows /api/* or returns HTML for a missing static asset. RegExp form is used
+    // because Express 5 no longer accepts the '*' string wildcard.
+    router.get(/.*/, (req, res, next) => {
+        const p = req.path;
+        if (
+            p.startsWith('/api') ||
+            p.startsWith('/api-docs') ||
+            p.startsWith('/docs') ||
+            p.startsWith('/public') ||
+            p.includes('.')
+        ) {
+            return next();
+        }
+        return homeController.index(req, res);
+    });
 };
 
 /**

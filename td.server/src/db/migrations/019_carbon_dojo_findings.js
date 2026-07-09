@@ -55,7 +55,7 @@ onDelete('SET NULL');
 
     t.index('org_id', 'idx_findings_org_id');
     t.index('product_id', 'idx_findings_product_id');
-    t.index('severity', 'idx_findings_severity');
+    t.index('severity', 'idx_cd_findings_severity');
     t.index('status', 'idx_findings_status');
     t.index('sla', 'idx_findings_sla');
     t.index(['product_id', 'fingerprint'], 'idx_findings_dedup');
