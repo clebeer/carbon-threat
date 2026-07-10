@@ -1,28 +1,23 @@
 /**
  * Unit tests — services/roleService.js
  *
- * Stubs: db (knex), permissions.js cache
- * Tests: listRoles, getRole, createRole, updateRole, deleteRole, system-role protection
+ * The knex default export is a CALLABLE (`db('roles')`), so it cannot be intercepted
+ * by stubbing a method on the imported binding (an earlier approach stubbed `db.call`,
+ * which never intercepts direct invocation and let queries hit a real database). We
+ * inject a mock `db` via proxyquire instead: `db('table')` returns a controlled
+ * query-builder mock and no real connection is attempted.
+ *
+ * Stubs: db (knex, injected), permissions.js cache.
  */
 
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
+import proxyquire from 'proxyquire';
 
-import db from '../../src/db/knex.js';
-import * as permissionsModule from '../../src/auth/permissions.js';
+chai.use(chaiAsPromised);
 
-import {
-  listRoles,
-  getRole,
-  createRole,
-  updateRole,
-  deleteRole,
-  RoleNotFoundError,
-  SystemRoleError,
-  RoleInUseError,
-} from '../../src/services/roleService.js';
-
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── mock fixtures ───────────────────────────────────────────────────────────────
 
 const MOCK_CUSTOM_ROLE = {
   id: 'role-uuid-custom',
@@ -44,45 +39,54 @@ const MOCK_SYSTEM_ROLE = {
   is_active: true,
 };
 
-// ── tests ─────────────────────────────────────────────────────────────────────
+// ── injected mock db + permissions module ───────────────────────────────────────
+
+// A callable knex mock: each invocation returns the next queued query-builder mock.
+const dbStub = sinon.stub();
+dbStub.transaction = sinon.stub();
+dbStub.fn = { now: () => 'CURRENT_TIMESTAMP' };
+const invalidateCacheStub = sinon.stub();
+
+const {
+  listRoles,
+  getRole,
+  createRole,
+  updateRole,
+  deleteRole,
+  RoleNotFoundError,
+  SystemRoleError,
+  RoleInUseError,
+} = proxyquire('../../src/services/roleService.js', {
+  '../db/knex.js': { __esModule: true, default: dbStub, '@noCallThru': true },
+  '../auth/permissions.js': {
+    __esModule: true,
+    invalidateCache: invalidateCacheStub,
+    getEffectivePermissions: sinon.stub(),
+    '@noCallThru': true,
+  },
+});
+
+/** Queue query-builder mocks in the order roleService calls `db(...)`. */
+function queue(...chains) {
+  chains.forEach((chain, i) => dbStub.onCall(i).returns(chain));
+}
 
 describe('services/roleService.js', () => {
-  let invalidateCacheStub;
-
   beforeEach(() => {
-    invalidateCacheStub = sinon.stub(permissionsModule, 'invalidateCache');
-  });
-
-  afterEach(() => {
-    sinon.restore();
+    dbStub.reset();
+    dbStub.transaction.reset();
+    invalidateCacheStub.reset();
   });
 
   // ── listRoles ───────────────────────────────────────────────────────────────
 
   describe('listRoles()', () => {
     it('returns roles with permission_keys and user_count', async () => {
-      const rolesChain = {
-        where:   sinon.stub().returnsThis(),
-        orderBy: sinon.stub().returnsThis(),
-        select:  sinon.stub().resolves([MOCK_CUSTOM_ROLE]),
-      };
-      const grantsChain = {
-        whereIn: sinon.stub().returnsThis(),
-        select:  sinon.stub().resolves([
-          { role_id: 'role-uuid-custom', permission_key: 'scanner:read' },
-        ]),
-      };
-      const countsChain = {
-        whereIn: sinon.stub().returnsThis(),
-        groupBy: sinon.stub().returnsThis(),
-        count:   sinon.stub().returnsThis(),
-        select:  sinon.stub().resolves([{ role: 'custom-analyst', user_count: '3' }]),
-      };
-
-      let callIndex = 0;
-      sinon.stub(db, 'call').callsFake(() => {
-        return [rolesChain, grantsChain, countsChain][callIndex++];
-      });
+      queue(
+        { where: sinon.stub().returnsThis(), orderBy: sinon.stub().returnsThis(), select: sinon.stub().resolves([MOCK_CUSTOM_ROLE]) },
+        { whereIn: sinon.stub().returnsThis(), select: sinon.stub().resolves([{ role_id: 'role-uuid-custom', permission_key: 'scanner:read' }]) },
+        { whereIn: sinon.stub().returnsThis(), groupBy: sinon.stub().returnsThis(), count: sinon.stub().returnsThis(), select: sinon.stub().resolves([{ role: 'custom-analyst', user_count: '3' }]) },
+      );
 
       const roles = await listRoles();
 
@@ -96,12 +100,11 @@ describe('services/roleService.js', () => {
 
   describe('getRole()', () => {
     it('returns the role with permission_keys and user_count', async () => {
-      const roleChain  = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) };
-      const grantsChain = { where: sinon.stub().returnsThis(), pluck: sinon.stub().resolves(['scanner:read']) };
-      const countChain  = { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '1' }]) };
-
-      let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [roleChain, grantsChain, countChain][i++]);
+      queue(
+        { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) },
+        { where: sinon.stub().returnsThis(), pluck: sinon.stub().resolves(['scanner:read']) },
+        { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '1' }]) },
+      );
 
       const role = await getRole('role-uuid-custom');
 
@@ -111,8 +114,7 @@ describe('services/roleService.js', () => {
     });
 
     it('throws RoleNotFoundError when role does not exist', async () => {
-      const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) });
 
       await expect(getRole('nonexistent')).to.be.rejectedWith(RoleNotFoundError);
     });
@@ -122,30 +124,15 @@ describe('services/roleService.js', () => {
 
   describe('createRole()', () => {
     it('creates a role and invalidates cache', async () => {
-      // Stub: uniqueSlug check (no existing role with that slug)
-      const slugCheckChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
+      // uniqueSlug check: no existing role with that slug.
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) });
 
-      // Stub: transaction
-      const insertChain = {
-        insert:    sinon.stub().returnsThis(),
-        returning: sinon.stub().resolves([{ ...MOCK_CUSTOM_ROLE }]),
-      };
-      const grantsInsert = {
-        insert: sinon.stub().resolves(),
-      };
-
-      let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [slugCheckChain][i++] ?? slugCheckChain);
-
-      // Stub db.transaction to call the callback synchronously
-      const trx = {
-        call:       (...args) => {
-          const table = args[0];
-          if (table === 'roles') return insertChain;
-          return grantsInsert;
-        },
-      };
-      sinon.stub(db, 'transaction').callsFake(async (fn) => fn(trx));
+      const insertChain = { insert: sinon.stub().returnsThis(), returning: sinon.stub().resolves([{ ...MOCK_CUSTOM_ROLE }]) };
+      const grantsInsert = { insert: sinon.stub().resolves() };
+      const trx = sinon.stub();
+      trx.withArgs('roles').returns(insertChain);
+      trx.withArgs('role_permissions').returns(grantsInsert);
+      dbStub.transaction.callsFake(async (fn) => fn(trx));
 
       const role = await createRole({ name: 'Custom Analyst', permission_keys: ['scanner:read'] });
 
@@ -167,35 +154,31 @@ describe('services/roleService.js', () => {
 
   describe('updateRole()', () => {
     it('throws SystemRoleError when updating a system role', async () => {
-      const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_SYSTEM_ROLE) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_SYSTEM_ROLE) });
 
       await expect(updateRole('role-uuid-admin', { name: 'New Name' }))
         .to.be.rejectedWith(SystemRoleError);
     });
 
     it('throws RoleNotFoundError for unknown id', async () => {
-      const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) });
 
       await expect(updateRole('missing', { name: 'X' })).to.be.rejectedWith(RoleNotFoundError);
     });
 
     it('invalidates cache after successful update', async () => {
-      const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) };
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) });
 
       const trxChain = {
-        where:    sinon.stub().returnsThis(),
-        update:   sinon.stub().returnsThis(),
-        delete:   sinon.stub().resolves(),
-        insert:   sinon.stub().resolves(),
-        pluck:    sinon.stub().resolves(['scanner:read']),
+        where:     sinon.stub().returnsThis(),
+        update:    sinon.stub().returnsThis(),
+        delete:    sinon.stub().resolves(),
+        insert:    sinon.stub().resolves(),
+        pluck:     sinon.stub().resolves(['scanner:read']),
         returning: sinon.stub().resolves([MOCK_CUSTOM_ROLE]),
       };
-      const trx = { call: () => trxChain };
-
-      sinon.stub(db, 'call').callsFake(() => roleChain);
-      sinon.stub(db, 'transaction').callsFake(async (fn) => fn(trx));
+      const trx = sinon.stub().returns(trxChain);
+      dbStub.transaction.callsFake(async (fn) => fn(trx));
 
       await updateRole('role-uuid-custom', { name: 'Updated' });
 
@@ -207,36 +190,33 @@ describe('services/roleService.js', () => {
 
   describe('deleteRole()', () => {
     it('throws RoleNotFoundError for unknown id', async () => {
-      const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(null) });
 
       await expect(deleteRole('missing')).to.be.rejectedWith(RoleNotFoundError);
     });
 
     it('throws SystemRoleError when deleting a system role', async () => {
-      const roleChain = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_SYSTEM_ROLE) };
-      sinon.stub(db, 'call').callsFake(() => roleChain);
+      queue({ where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_SYSTEM_ROLE) });
 
       await expect(deleteRole('role-uuid-admin')).to.be.rejectedWith(SystemRoleError);
     });
 
     it('throws RoleInUseError when users are assigned to the role', async () => {
-      const roleChain  = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) };
-      const countChain = { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '2' }]) };
-
-      let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [roleChain, countChain][i++]);
+      queue(
+        { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) },
+        { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '2' }]) },
+      );
 
       await expect(deleteRole('role-uuid-custom')).to.be.rejectedWith(RoleInUseError);
     });
 
     it('deletes the role and invalidates cache when safe', async () => {
-      const roleChain   = { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) };
-      const countChain  = { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '0' }]) };
       const deleteChain = { where: sinon.stub().returnsThis(), delete: sinon.stub().resolves(1) };
-
-      let i = 0;
-      sinon.stub(db, 'call').callsFake(() => [roleChain, countChain, deleteChain][i++]);
+      queue(
+        { where: sinon.stub().returnsThis(), first: sinon.stub().resolves(MOCK_CUSTOM_ROLE) },
+        { where: sinon.stub().returnsThis(), count: sinon.stub().resolves([{ user_count: '0' }]) },
+        deleteChain,
+      );
 
       await deleteRole('role-uuid-custom');
 
