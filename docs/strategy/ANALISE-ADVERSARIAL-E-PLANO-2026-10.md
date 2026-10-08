@@ -258,7 +258,7 @@ As estimativas são para 1 mantenedor em tempo parcial com apoio de IA. Cada fas
 
 ### Fase 1: MVP do CLI, v0.1 (6–8 semanas)
 
-**Status (2026-10-07):** em andamento; o núcleo está pronto. Ainda falta remover o código da v1 da árvore, o que depende de aprovação do mantenedor.
+**Status (2026-10-08):** em andamento. O núcleo está pronto e o código da v1 foi removido da `main` (preservado na tag `legacy/v1-final`). As referências `arquivo:linha` da seção 2 se referem a essa tag.
 
 - [x] Schema `ctm/v1` (JSON Schema 2020-12) e loader/validador com erros por linha e checagem de referências.
 - [ ] Extractors: **docker-compose** ✅; **Terraform (AWS primeiro)** e **Kubernetes** pendentes.
