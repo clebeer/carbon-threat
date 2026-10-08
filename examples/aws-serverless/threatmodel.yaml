@@ -1,0 +1,118 @@
+# A serverless mobile backend on AWS. Handwritten example for ctm/v1.
+apiVersion: ctm/v1
+kind: ThreatModel
+metadata:
+  name: mobile-backend
+  description: API Gateway, Lambda, DynamoDB and S3, with transactional email through a third party.
+
+trustZones:
+  - id: internet
+    name: Internet
+    trust: 0
+  - id: email-provider
+    name: Email provider
+    trust: 10
+  - id: aws-edge
+    name: AWS edge
+    trust: 30
+  - id: aws-private
+    name: AWS account
+    trust: 75
+
+data:
+  - id: profile
+    name: User profile
+    classification: confidential
+  - id: uploads
+    name: User uploads
+    classification: confidential
+  - id: email-address
+    name: Email address
+    classification: confidential
+  - id: marketing-assets
+    name: Marketing assets
+    classification: public
+
+components:
+  - id: mobile-user
+    name: Mobile app user
+    type: external_entity
+    trustZone: internet
+  - id: api-gateway
+    name: API Gateway
+    type: process
+    technology: aws-api-gateway
+    trustZone: aws-edge
+    properties:
+      authentication: oidc
+      rateLimiting: true
+      logging: true
+  - id: upload-fn
+    name: Upload function
+    type: process
+    technology: aws-lambda
+    trustZone: aws-private
+    properties:
+      logging: true
+  - id: profile-table
+    name: Profiles table
+    type: datastore
+    technology: dynamodb
+    trustZone: aws-private
+    stores: [profile, email-address]
+    properties:
+      encryptionAtRest: true
+  - id: uploads-bucket
+    name: Uploads bucket
+    type: datastore
+    technology: s3
+    trustZone: aws-private
+    stores: [uploads]
+    properties:
+      publicAccess: true
+  - id: assets-bucket
+    name: Marketing assets bucket
+    type: datastore
+    technology: s3
+    trustZone: aws-edge
+    stores: [marketing-assets]
+    properties:
+      publicAccess: true
+  - id: email-api
+    name: Email delivery API
+    type: external_entity
+    trustZone: email-provider
+
+dataFlows:
+  - id: app-calls
+    from: mobile-user
+    to: api-gateway
+    protocol: https
+    authenticated: true
+    data: [profile, uploads]
+  - id: invoke-upload
+    from: api-gateway
+    to: upload-fn
+    protocol: https
+    authenticated: true
+    data: [profile, uploads]
+  - id: write-profile
+    from: upload-fn
+    to: profile-table
+    protocol: https
+    data: [profile]
+  - id: store-upload
+    from: upload-fn
+    to: uploads-bucket
+    protocol: https
+    data: [uploads]
+  - id: send-receipt
+    from: upload-fn
+    to: email-api
+    protocol: https
+    data: [email-address]
+  - id: fetch-assets
+    from: mobile-user
+    to: assets-bucket
+    protocol: https
+    data: [marketing-assets]

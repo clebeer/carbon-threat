@@ -1,0 +1,50 @@
+id: CTM-COMP-008
+title: Internet-exposed process handling non-public data without authentication
+description: >
+  A process reachable from an untrusted zone declares no authentication but
+  handles data that is not public.
+severity: high
+stride: [spoofing, information_disclosure]
+cwe: [306]
+attack: [T1190]
+target: component
+when: >
+  component.type == 'process' && component.exposed && component.sensitivity >= 1 &&
+  has(component.properties.authentication) && component.properties.authentication == 'none'
+message: >
+  {{.component.name}} is reachable from an untrusted zone, handles non-public data,
+  and requires no authentication.
+mitigation: >
+  Require authentication (OIDC/OAuth 2.0 for users, signed tokens or mTLS for
+  machines) on every endpoint that returns or changes non-public data.
+tests:
+  - name: open admin api
+    expect: [admin]
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      data: [{id: users, classification: confidential}]
+      components:
+        - {id: anyone, type: external_entity, trustZone: internet}
+        - {id: admin, type: process, trustZone: dmz, properties: {authentication: none}}
+      dataFlows:
+        - {id: req, from: anyone, to: admin, protocol: https, data: [users]}
+  - name: public website without login
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      data: [{id: pages, classification: public}]
+      components:
+        - {id: anyone, type: external_entity, trustZone: internet}
+        - {id: site, type: process, trustZone: dmz, properties: {authentication: none}}
+      dataFlows:
+        - {id: req, from: anyone, to: site, protocol: https, data: [pages]}
+  - name: exposed api with oidc
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      data: [{id: users, classification: confidential}]
+      components:
+        - {id: anyone, type: external_entity, trustZone: internet}
+        - {id: admin, type: process, trustZone: dmz, properties: {authentication: oidc}}
+      dataFlows:
+        - {id: req, from: anyone, to: admin, protocol: https, data: [users]}

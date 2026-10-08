@@ -1,0 +1,30 @@
+version: "2"
+linters:
+  enable:
+    - errorlint
+    - gosec
+    - misspell
+    - revive
+    - unconvert
+  settings:
+    errcheck:
+      # Report writers go through errWriter (pkg/report) or cobra's output,
+      # which surface write errors once; per-call checks would be noise.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+    gosec:
+      excludes:
+        - G204 # git is invoked with a fixed argv; the revision is validated
+        - G304 # reading user-supplied model/compose paths is the purpose of the CLI
+        - G306 # threatmodel.yaml is meant to be world-readable (0644)
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec]
+formatters:
+  enable:
+    - gofmt
