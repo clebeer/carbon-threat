@@ -1,3 +1,7 @@
+> **⚠️ Legacy v1 documentation — unsupported and insecure.** This describes the frozen v1 web
+> platform (`legacy/v1-final`), which has known unfixed vulnerabilities. Do not deploy it.
+> See [SECURITY.md](../../../SECURITY.md) and [ADR 0002](../../adr/0002-threat-modeling-as-code.md).
+
 # Development Guide
 
 ## Local setup
@@ -31,8 +35,8 @@ ENCRYPTION_JWT_SIGNING_KEY=<32+ chars>
 ENCRYPTION_JWT_REFRESH_SIGNING_KEY=<32+ chars>
 ENCRYPTION_KEY=<64 hex chars>
 ENCRYPTION_KEYS=[{"isPrimary":true,"id":0,"value":"<32 chars>"}]
-DEFAULT_ADMIN_EMAIL=admin@ct.ai
-DEFAULT_ADMIN_PASSWORD=CT_Admin@2026
+DEFAULT_ADMIN_EMAIL=<your admin email>
+DEFAULT_ADMIN_PASSWORD=<generate: openssl rand -base64 24>
 ```
 
 ### Run locally (with hot reload)

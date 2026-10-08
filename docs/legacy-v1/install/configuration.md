@@ -1,3 +1,7 @@
+> **⚠️ Legacy v1 documentation — unsupported and insecure.** This describes the frozen v1 web
+> platform (`legacy/v1-final`), which has known unfixed vulnerabilities. Do not deploy it.
+> See [SECURITY.md](../../../SECURITY.md) and [ADR 0002](../../adr/0002-threat-modeling-as-code.md).
+
 # Environment Configuration
 
 All configuration is done via environment variables in the `.env` file at the project root.
@@ -60,8 +64,8 @@ Copy `.env.example` to `.env` and fill in your values before starting.
 The default admin is created **only when the users table is empty**. Set these in `.env`:
 
 ```
-DEFAULT_ADMIN_EMAIL=admin@ct.ai
-DEFAULT_ADMIN_PASSWORD=CT_Admin@2026
+DEFAULT_ADMIN_EMAIL=<your admin email>
+DEFAULT_ADMIN_PASSWORD=<generate: openssl rand -base64 24>
 ```
 
 ## Secrets (required)

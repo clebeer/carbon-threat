@@ -21,21 +21,16 @@
     "test": "cross-env NODE_OPTIONS=--no-experimental-detect-module NODE_ENV=test nyc mocha --require ./test/setupEnv.js --require @babel/register --all true --timeout=900 test/*.spec.js test/**/*.spec.js",
     "test:unit": "cross-env NODE_OPTIONS=--no-experimental-detect-module NODE_ENV=test nyc --reporter=lcov --reporter=text-summary mocha --require ./test/setupEnv.js --require @babel/register --all true --timeout=900 test/*.spec.js test/**/*.spec.js"
   },
-  "description": "CarbonThreat Enterprise Server",
-  "author": {
-    "name": "CarbonThreat Enterprise",
-    "email": "enterprise@carbonthreat.com",
-    "url": "https://carbonthreat.com/"
-  },
+  "description": "Carbon Threat legacy v1 server (frozen, unsupported)",
+  "author": "Carbon Threat contributors",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/OWASP/www-project-threat-dragon/",
+  "homepage": "https://github.com/clebeer/carbon-threat#readme",
   "repository": {
     "type": "git",
-    "url": "git://github.com/OWASP/threat-dragon.git"
+    "url": "git+https://github.com/clebeer/carbon-threat.git"
   },
   "bugs": {
-    "email": "jon.gadsden@owasp.org",
-    "url": "https://github.com/OWASP/threat-dragon/issues"
+    "url": "https://github.com/clebeer/carbon-threat/issues"
   },
   "resolutions": {},
   "dependencies": {

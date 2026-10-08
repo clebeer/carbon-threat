@@ -1,8 +1,8 @@
 # ADR 0001 — Carbon Dojo re-platform: backend foundation
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0002](0002-threat-modeling-as-code.md) (2026-10-07)
 - **Date:** 2026-07-09
-- **Context:** SDD `specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md`, Phase 1.
+- **Context:** SDD [`specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md`](../../specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md), Phase 1.
 
 ## Decision 1 — Reuse `td.server` (Node/Express/Knex/PostgreSQL)
 

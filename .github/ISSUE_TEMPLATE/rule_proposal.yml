@@ -1,0 +1,37 @@
+name: Threat rule proposal
+description: Propose a rule that detects a threat in an architecture model.
+labels: ["rules", "triage"]
+body:
+  - type: textarea
+    id: pattern
+    attributes:
+      label: Architectural pattern
+      description: Which components, data flows, or trust boundaries should trigger the rule?
+      placeholder: "An internet-facing component sends data classified as sensitive to a datastore over a flow without TLS."
+    validations:
+      required: true
+  - type: textarea
+    id: threat
+    attributes:
+      label: Threat
+      description: What can go wrong? Include the STRIDE category and, if known, CWE / CAPEC / ATT&CK references.
+    validations:
+      required: true
+  - type: textarea
+    id: positive
+    attributes:
+      label: Example that SHOULD trigger
+      description: A small IaC snippet or model fragment.
+    validations:
+      required: true
+  - type: textarea
+    id: negative
+    attributes:
+      label: Example that should NOT trigger
+      description: A close variant that is safe. This keeps false positives down.
+    validations:
+      required: true
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Suggested mitigation

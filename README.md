@@ -1,87 +1,62 @@
-# CarbonThreat
+# Carbon Threat
 
-Enterprise threat modeling platform — built on [OWASP Threat Dragon](https://owasp.org/www-project-threat-dragon/).
+**Threat modeling as code.** Carbon Threat builds a threat model from your infrastructure
+and code, evaluates it with open, declarative rules, and tells you which threats a pull
+request introduces. It runs in CI and needs no server.
 
-## Features
+> **Status: restructuring, no release yet.** The project is being rebuilt from scratch as a
+> single-binary CLI. The direction is recorded in
+> [ADR 0002](docs/adr/0002-threat-modeling-as-code.md), and the roadmap (in pt-BR) is in
+> [docs/strategy](docs/strategy/ANALISE-ADVERSARIAL-E-PLANO-2026-10.md).
 
-- Threat model creation with STRIDE/LINDDUN/CIA diagramming
-- PostgreSQL-backed storage with encryption at rest (AES-256-GCM)
-- Role-based access control (admin / analyst / viewer)
-- AI-assisted threat suggestions (OpenAI or local Ollama)
-- Vulnerability intelligence feed from [OSV](https://osv.dev) with STRIDE mapping
-- **OSV Vulnerability Scanner** — scan lockfiles, SBOMs, git repos, and container images against the OSV database
-- **MITRE ATT&CK Framework** — coverage analysis, technique browser, threat-to-technique mapping, and markdown/JSON reports
-- Archive / restore / remote export of threat models
-- Audit logging for all mutating operations
-- SAML/SSO, OAuth (GitHub, GitLab, Bitbucket, Google), and local auth
-- PDF and SARIF report export
-- Issue tracker export (Jira, GitHub Issues, GitLab Issues)
-- OpenAPI docs at `/api-docs`
-
-## Screenshots
-
-### Security Dashboard
-![Security Dashboard](docs/images/dashboard.png)
-
-### Threat Catalog
-![Threat Catalog](docs/images/threats.png)
-
-### Threat Models
-![Threat Models](docs/images/projects.png)
-
-### OSV Vulnerability Scanner
-![OSV Vulnerability Scanner](docs/images/scanner.png)
-
-### MITRE ATT&CK — Coverage Analysis
-![MITRE ATT&CK Analysis](docs/images/attck.png)
-
-### MITRE ATT&CK — Techniques Browser
-![MITRE ATT&CK Techniques](docs/images/attack_techniques.png)
-
-### Reports
-![Reports](docs/images/reports.png)
-
-## Quick start (Docker)
+## What it will do
 
 ```bash
-git clone <repo-url> carbon-threat && cd carbon-threat
-cp minimal.env .env                      # setup local environment
-bash scripts/gen-local-certs.sh          # generate self-signed TLS cert
-docker compose up --build -d
+ctm init                         # detect the stack and generate threatmodel.yaml from the repo
+ctm analyze                      # apply rules → threats mapped to STRIDE, CWE, CAPEC, ATT&CK
+ctm diff origin/main..HEAD       # threats introduced or removed by this change
+ctm report --format sarif        # upload to GitHub code scanning, or md / html / json / otm
+ctm view                         # local diagram + threat viewer, served by the binary
 ```
 
-Open **https://localhost:3001** — the setup wizard runs on first visit.
+- **Generated, not drawn.** Models are extracted from Terraform, Kubernetes,
+  docker-compose, CloudFormation, and OpenAPI, then from application code.
+- **Deterministic first.** Rules are reviewable YAML. LLM suggestions are optional,
+  local-first (e.g. Ollama), and always labelled as suggestions.
+- **Open format.** The model is a versioned YAML schema that is diffable in PRs, with
+  [Open Threat Model (OTM)](https://github.com/iriusrisk/OpenThreatModel) import/export.
+- **CI-native.** It ships as a GitHub Action, a GitLab CI template, and a pre-commit hook,
+  and produces SARIF.
 
-**Default admin credentials (first run only):**
+## Roadmap
 
-| Field | Value |
-|---|---|
-| Email | `admin@ct.ai` |
-| Password | `CT_Admin@2026` |
+| Phase | Goal | Status |
+|---|---|---|
+| 0 · Cleanup | Governance, licensing, security policy, freeze v1 | ✅ Done (2026-10) |
+| 1 · CLI v0.1 | Terraform/compose/k8s extractors, 40 rules, `diff`, SARIF, GitHub Action | Next |
+| 2 · Ecosystem v0.5 | Community rules repo, OTM / Threat Dragon / Threagile import, embedded viewer, LLM assist | Planned |
+| 3 · v1.0 | Correlate scanner findings (SARIF, DefectDojo) with the architecture; optional Hub server | Planned |
 
-> Change the password after first login: **Admin → Users → Edit**.
+## Legacy v1 web platform
 
-## Documentation
+> **⚠️ Unsupported and insecure — do not deploy.**
 
-| Doc | Description |
-|---|---|
-| [docs/install/quickstart.md](docs/install/quickstart.md) | Docker production stack |
-| [docs/install/configuration.md](docs/install/configuration.md) | Environment variables reference |
-| [docs/install/wizard.md](docs/install/wizard.md) | Setup wizard and default admin |
-| [docs/development/architecture.md](docs/development/architecture.md) | Backend architecture |
-| [docs/development/api.md](docs/development/api.md) | API endpoints reference |
-| [docs/development/schema.md](docs/development/schema.md) | Database schema |
-| [docs/development/development.md](docs/development/development.md) | Local dev setup |
+The previous web platform (a fork of OWASP Threat Dragon plus a partial vulnerability
+management rewrite) is frozen at the `legacy/v1-final` tag. It has **known, unfixed
+security vulnerabilities**. Its code (`td.server/`, `ct.client/`, `stride-engine/`) is
+still in this branch for reference and will be removed when Phase 1 starts. Its docs
+live in [docs/legacy-v1](docs/legacy-v1/).
 
-## Tech stack
+## Contributing
 
-| Layer | Technology |
-|---|---|
-| Backend | Node.js 20, Express, Native TLS, Knex, Babel |
-| Frontend | React 18, Vite, TypeScript, React Query |
-| Database | PostgreSQL 15 |
-| Auth | JWT, Passport.js, SAML |
+Feedback on the direction, threat-rule ideas, and redistributable reference
+architectures are the most useful contributions right now. See
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+Report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-[Apache 2.0](license.txt)
+[Apache 2.0](license.txt). Carbon Threat includes work derived from OWASP Threat Dragon
+and STRIDE GPT; see [NOTICE](NOTICE). It is an independent project, not affiliated with
+the OWASP Foundation.

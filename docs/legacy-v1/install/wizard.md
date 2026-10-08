@@ -1,3 +1,7 @@
+> **⚠️ Legacy v1 documentation — unsupported and insecure.** This describes the frozen v1 web
+> platform (`legacy/v1-final`), which has known unfixed vulnerabilities. Do not deploy it.
+> See [SECURITY.md](../../../SECURITY.md) and [ADR 0002](../../adr/0002-threat-modeling-as-code.md).
+
 # First-Run Setup Wizard
 
 ## Automatic admin bootstrap
@@ -6,18 +10,18 @@ When CarbonThreat starts for the first time (no users in the database), it autom
 creates a default admin account using the environment variables:
 
 ```
-DEFAULT_ADMIN_EMAIL=admin@ct.ai
-DEFAULT_ADMIN_PASSWORD=CT_Admin@2026
+DEFAULT_ADMIN_EMAIL=<your admin email>
+DEFAULT_ADMIN_PASSWORD=<generate: openssl rand -base64 24>
 ```
 
-These values are pre-configured in the provided `.env` file.
+There are no default values: you must set both. Never reuse a password published in documentation.
 
 **Default credentials:**
 
 | Field | Value |
 |---|---|
-| Email | `admin@ct.ai` |
-| Password | `CT_Admin@2026` |
+| Email | value of `DEFAULT_ADMIN_EMAIL` |
+| Password | value of `DEFAULT_ADMIN_PASSWORD` |
 
 > **Security note:** Change this password immediately after the first login
 > through **Admin → Users → Edit**.
@@ -63,7 +67,7 @@ You can also bootstrap the admin account directly without the wizard:
 ```bash
 curl -X POST https://localhost/api/auth/local/bootstrap \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@ct.ai","password":"CT_Admin@2026"}'
+  -d '{"email":"<admin email>","password":"<strong password>"}'
 ```
 
 This endpoint returns `403` if any user already exists.
