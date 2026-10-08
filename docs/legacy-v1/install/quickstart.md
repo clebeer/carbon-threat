@@ -1,3 +1,7 @@
+> **⚠️ Legacy v1 documentation — unsupported and insecure.** This describes the frozen v1 web
+> platform (`legacy/v1-final`), which has known unfixed vulnerabilities. Do not deploy it.
+> See [SECURITY.md](../../../SECURITY.md) and [ADR 0002](../../adr/0002-threat-modeling-as-code.md).
+
 # Quick Start — Docker (Production)
 
 CarbonThreat ships with a production-ready Docker Compose stack (Node app + PostgreSQL + Nginx with TLS).

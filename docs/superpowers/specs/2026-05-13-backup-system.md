@@ -86,7 +86,7 @@ Added to admin section of sidebar in `App.tsx` with upload icon.
 
 ## Environment Variables
 
-See `docs/install/configuration.md` — `BACKUP_DIR`, `SFTP_*`, `GDRIVE_*` variables.
+See `docs/legacy-v1/install/configuration.md` — `BACKUP_DIR`, `SFTP_*`, `GDRIVE_*` variables.
 
 ## Dependencies (server)
 

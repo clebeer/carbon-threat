@@ -1,7 +1,6 @@
 {
   "name": "carbon-threat",
   "version": "1.0.0-enterprise",
-  "appBundleId": "org.owasp.carbonthreat",
   "private": true,
   "scripts": {
     "audit": "npm-run-all -c audit:server audit:client",
@@ -24,23 +23,21 @@
     "test:client": "cd ct.client && npm run test"
   },
   "keywords": [
-    "carbon threat",
-    "enterprise threat modeling"
+    "threat-modeling",
+    "threat-modeling-as-code",
+    "security",
+    "stride"
   ],
-  "description": "CarbonThreat Enterprise - based on OWASP Threat Dragon",
-  "author": {
-    "name": "CarbonThreat Enterprise",
-    "email": "enterprise@carbonthreat.com"
-  },
+  "description": "Carbon Threat — threat modeling as code (repository root; v1 web platform is frozen)",
+  "author": "Carbon Threat contributors",
   "license": "Apache-2.0",
-  "homepage": "https://owasp.org/www-project-threat-dragon/",
+  "homepage": "https://github.com/clebeer/carbon-threat#readme",
   "repository": {
     "type": "git",
-    "url": "git://github.com/OWASP/threat-dragon.git"
+    "url": "git+https://github.com/clebeer/carbon-threat.git"
   },
   "bugs": {
-    "email": "jon.gadsden@owasp.org",
-    "url": "https://github.com/OWASP/threat-dragon/issues"
+    "url": "https://github.com/clebeer/carbon-threat/issues"
   },
   "devDependencies": {
     "@wdio/cli": "^9.24.0",

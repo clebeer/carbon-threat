@@ -3,6 +3,7 @@
 
 !*.md
 !license.txt
+!NOTICE
 
 # allow github, workflows and templates
 !.github/
@@ -71,6 +72,13 @@
 !docs/superpowers/
 !docs/superpowers/specs/
 !docs/superpowers/specs/*.md
+!docs/adr/
+!docs/adr/*.md
+!docs/legacy-v1/
+!docs/legacy-v1/**
+!docs/strategy/
+!docs/strategy/*.md
+# docs/strategy/private/ stays ignored: local-only notes (e.g. unfixed v1 vulnerability details)
 
 # Express server
 !td.server

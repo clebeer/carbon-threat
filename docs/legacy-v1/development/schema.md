@@ -1,3 +1,7 @@
+> **⚠️ Legacy v1 documentation — unsupported and insecure.** This describes the frozen v1 web
+> platform (`legacy/v1-final`), which has known unfixed vulnerabilities. Do not deploy it.
+> See [SECURITY.md](../../../SECURITY.md) and [ADR 0002](../../adr/0002-threat-modeling-as-code.md).
+
 # Database Schema
 
 PostgreSQL. Migrations are in `td.server/src/db/migrations/` and run automatically at startup. There are 15 migrations (001–015).

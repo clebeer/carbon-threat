@@ -1,3 +1,7 @@
+> **⚠️ SUPERSEDED (2026-10-07).** Este SDD foi abandonado. O pivô "Carbon Dojo" para gestão
+> de vulnerabilidades foi revertido pelo [ADR 0002](../../docs/adr/0002-threat-modeling-as-code.md),
+> que reposiciona o projeto como *threat modeling as code*. Mantido apenas como registro histórico.
+
 # CarbonThreat → **Carbon Dojo** 2.0 — SDD (Spec-Driven Development)
 ## Re-plataforma completa para console de gestão de vulnerabilidades & pentest
 
