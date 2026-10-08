@@ -1,0 +1,131 @@
+# An e-commerce backend on Kubernetes. Handwritten example for ctm/v1.
+apiVersion: ctm/v1
+kind: ThreatModel
+metadata:
+  name: shop-on-k8s
+  description: Ingress, frontend, orders and payments services, Kafka, Redis and PostgreSQL.
+
+trustZones:
+  - id: internet
+    name: Internet
+    trust: 0
+  - id: ingress
+    name: Ingress
+    trust: 30
+  - id: cluster
+    name: Application namespace
+    trust: 70
+  - id: data
+    name: Data namespace
+    trust: 85
+
+data:
+  - id: catalog
+    name: Product catalog
+    classification: public
+  - id: session-tokens
+    name: Session tokens
+    classification: restricted
+  - id: orders
+    name: Orders
+    classification: confidential
+  - id: order-events
+    name: Order events
+    classification: internal
+
+components:
+  - id: shopper
+    name: Shopper
+    type: external_entity
+    trustZone: internet
+  - id: ingress
+    name: Ingress controller
+    type: process
+    technology: ingress-nginx
+    trustZone: ingress
+    properties:
+      rateLimiting: true
+      image: registry.k8s.io/ingress-nginx/controller:v1.11.2
+  - id: frontend
+    name: Frontend
+    type: process
+    trustZone: cluster
+    properties:
+      authentication: oidc
+      image: ghcr.io/acme/frontend:latest
+  - id: orders-svc
+    name: Orders service
+    type: process
+    trustZone: cluster
+    properties:
+      logging: true
+      image: ghcr.io/acme/orders:2.4.1
+  - id: payments-svc
+    name: Payments service
+    type: process
+    trustZone: cluster
+    properties:
+      privileged: true
+      hardcodedSecrets: true
+      image: ghcr.io/acme/payments:1.9.0
+  - id: kafka
+    name: Kafka
+    type: datastore
+    technology: kafka
+    trustZone: data
+    stores: [order-events]
+  - id: redis
+    name: Session cache
+    type: datastore
+    technology: redis
+    trustZone: data
+    stores: [session-tokens]
+    properties:
+      encryptionAtRest: false
+  - id: postgres
+    name: Orders database
+    type: datastore
+    technology: postgres
+    trustZone: data
+    stores: [orders]
+    properties:
+      encryptionAtRest: true
+
+dataFlows:
+  - id: shop
+    from: shopper
+    to: ingress
+    protocol: https
+    data: [catalog, orders]
+  - id: ingress-to-frontend
+    from: ingress
+    to: frontend
+    protocol: http
+    data: [catalog]
+  - id: frontend-to-orders
+    from: frontend
+    to: orders-svc
+    protocol: grpc
+    authenticated: true
+    data: [orders]
+  - id: frontend-to-redis
+    from: frontend
+    to: redis
+    protocol: redis
+    data: [session-tokens]
+  - id: orders-to-postgres
+    from: orders-svc
+    to: postgres
+    protocol: postgres
+    encrypted: true
+    data: [orders]
+  - id: orders-to-kafka
+    from: orders-svc
+    to: kafka
+    protocol: kafka
+    data: [order-events]
+  - id: kafka-to-payments
+    from: kafka
+    to: payments-svc
+    protocol: kafka
+    data: [order-events]

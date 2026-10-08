@@ -1,0 +1,31 @@
+id: CTM-COMP-003
+title: Hardcoded secrets in configuration
+description: >
+  Credentials are embedded in the component's configuration or code. They
+  leak through source control, images and logs, and are hard to rotate.
+severity: high
+stride: [information_disclosure, elevation_of_privilege]
+cwe: [798]
+attack: [T1552.001]
+target: component
+when: >
+  has(component.properties.hardcodedSecrets) && component.properties.hardcodedSecrets
+message: >
+  {{.component.name}} has credentials embedded in its configuration.
+mitigation: >
+  Load secrets at runtime from a secret manager or orchestrator secrets
+  (e.g. Docker/Kubernetes secrets, *_FILE variables), rotate the exposed
+  credentials, and add secret scanning to CI.
+tests:
+  - name: password literal in environment
+    expect: [api]
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: api, type: process, trustZone: internal, properties: {hardcodedSecrets: true}}
+  - name: secrets injected at runtime
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: api, type: process, trustZone: internal, properties: {hardcodedSecrets: false}}

@@ -1,7 +1,15 @@
 # Carbon Threat — Documentation
 
-Carbon Threat is being rebuilt as a **threat-modeling-as-code** CLI (`ctm`). There is no
-release yet; see the [project README](../README.md) for the current status.
+Carbon Threat is a **threat-modeling-as-code** CLI (`ctm`). See the
+[project README](../README.md) for installation and the current status.
+
+## Using ctm
+
+| Document | Description |
+|---|---|
+| [model-format.md](model-format.md) | The ctm/v1 model format, field by field |
+| [writing-rules.md](writing-rules.md) | How to write and test threat rules |
+| [../examples/](../examples/) | Example models with their expected threats |
 
 ## Direction and decisions
 

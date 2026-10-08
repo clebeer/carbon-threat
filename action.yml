@@ -1,0 +1,72 @@
+name: Carbon Threat (ctm)
+description: Threat modeling as code - report the threats a pull request introduces.
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  model:
+    description: Path to the threat model.
+    default: threatmodel.yaml
+  base-ref:
+    description: >
+      Git revision to compare against. Defaults to the pull request base branch;
+      on other events the whole model is analyzed instead of diffed.
+    default: ""
+  fail-on:
+    description: Fail when a (new) threat at or above this severity is found (none, critical, high, medium, low, info).
+    default: high
+  sarif-file:
+    description: Where to write the SARIF report (upload it with github/codeql-action/upload-sarif).
+    default: ctm.sarif
+  rules:
+    description: Optional directory with additional rules.
+    default: ""
+
+outputs:
+  sarif-file:
+    description: Path of the SARIF report.
+    value: ${{ inputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache: false
+
+    - name: Build ctm
+      shell: bash
+      run: go -C "$GITHUB_ACTION_PATH" build -o "$RUNNER_TEMP/ctm" ./cmd/ctm
+
+    - name: Run ctm
+      shell: bash
+      env:
+        CTM_MODEL: ${{ inputs.model }}
+        CTM_BASE_REF: ${{ inputs.base-ref }}
+        CTM_PR_BASE: ${{ github.base_ref }}
+        CTM_FAIL_ON: ${{ inputs.fail-on }}
+        CTM_SARIF: ${{ inputs.sarif-file }}
+        CTM_RULES: ${{ inputs.rules }}
+      run: |
+        set -euo pipefail
+        ctm="$RUNNER_TEMP/ctm"
+        extra=()
+        if [[ -n "$CTM_RULES" ]]; then extra+=(--rules "$CTM_RULES"); fi
+
+        base="$CTM_BASE_REF"
+        if [[ -z "$base" && -n "$CTM_PR_BASE" ]]; then
+          base="origin/$CTM_PR_BASE"
+          git fetch --no-tags --depth=1 origin "$CTM_PR_BASE" || true
+        fi
+
+        if [[ -n "$base" ]]; then
+          "$ctm" diff --base-ref "$base" "$CTM_MODEL" ${extra[@]+"${extra[@]}"} --format markdown >> "$GITHUB_STEP_SUMMARY"
+          "$ctm" diff --base-ref "$base" "$CTM_MODEL" ${extra[@]+"${extra[@]}"} --format sarif --output "$CTM_SARIF"
+          "$ctm" diff --base-ref "$base" "$CTM_MODEL" ${extra[@]+"${extra[@]}"} --fail-on "$CTM_FAIL_ON"
+        else
+          "$ctm" analyze "$CTM_MODEL" ${extra[@]+"${extra[@]}"} --format markdown >> "$GITHUB_STEP_SUMMARY"
+          "$ctm" analyze "$CTM_MODEL" ${extra[@]+"${extra[@]}"} --format sarif --output "$CTM_SARIF"
+          "$ctm" analyze "$CTM_MODEL" ${extra[@]+"${extra[@]}"} --fail-on "$CTM_FAIL_ON"
+        fi

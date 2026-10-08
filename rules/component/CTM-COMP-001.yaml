@@ -1,0 +1,42 @@
+id: CTM-COMP-001
+title: Sensitive datastore not encrypted at rest
+description: >
+  A datastore holds confidential or restricted data without encryption at
+  rest. Stolen disks, snapshots or backups expose the data directly.
+severity: high
+stride: [information_disclosure]
+cwe: [311]
+attack: [T1005]
+target: component
+when: >
+  component.type == 'datastore' && component.sensitivity >= 2 &&
+  has(component.properties.encryptionAtRest) && !component.properties.encryptionAtRest
+message: >
+  {{.component.name}} stores {{range $i, $d := .component.stores}}{{if $i}}, {{end}}{{$d.name}} ({{$d.classification}}){{end}}
+  without encryption at rest.
+mitigation: >
+  Enable storage-level encryption (e.g. KMS-backed volume or database
+  encryption) and encrypt backups and snapshots with keys managed outside
+  the datastore.
+tests:
+  - name: unencrypted database with restricted data
+    expect: [db]
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: card, classification: restricted}]
+      components:
+        - {id: db, type: datastore, trustZone: internal, stores: [card], properties: {encryptionAtRest: false}}
+  - name: encrypted database
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: card, classification: restricted}]
+      components:
+        - {id: db, type: datastore, trustZone: internal, stores: [card], properties: {encryptionAtRest: true}}
+  - name: unencrypted cache with public data
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: pages, classification: public}]
+      components:
+        - {id: cache, type: datastore, trustZone: internal, stores: [pages], properties: {encryptionAtRest: false}}

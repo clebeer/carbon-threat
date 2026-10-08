@@ -5,6 +5,27 @@
 !license.txt
 !NOTICE
 
+# ctm (Phase 1) Go code base
+!go.mod
+!go.sum
+!Makefile
+!.golangci.yml
+!.goreleaser.yaml
+!action.yml
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!pkg/
+!pkg/**
+!rules/
+!rules/**
+!schema/
+!schema/**
+!examples/
+!examples/**
+!.github/workflows/*.yml
+
 # allow github, workflows and templates
 !.github/
 !.github/*.yaml

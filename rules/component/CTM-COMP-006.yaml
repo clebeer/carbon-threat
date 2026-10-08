@@ -1,0 +1,46 @@
+id: CTM-COMP-006
+title: No audit logging on a component handling sensitive data
+description: >
+  A process that handles confidential or restricted data does not keep an
+  audit log, so misuse cannot be detected, investigated or attributed.
+severity: medium
+stride: [repudiation]
+cwe: [778]
+target: component
+when: >
+  component.type == 'process' && component.sensitivity >= 2 &&
+  has(component.properties.logging) && !component.properties.logging
+message: >
+  {{.component.name}} handles sensitive data but has no audit logging.
+mitigation: >
+  Log security-relevant events (authentication, authorization decisions,
+  access to sensitive records, admin actions) with who/what/when, ship them
+  to tamper-resistant storage, and alert on anomalies. Never log the
+  sensitive values themselves.
+tests:
+  - name: payments service without logs
+    expect: [payments]
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: card, classification: restricted}]
+      components:
+        - {id: payments, type: process, trustZone: internal, properties: {logging: false}}
+        - {id: vault, type: datastore, trustZone: internal, stores: [card]}
+      dataFlows:
+        - {id: store, from: payments, to: vault, protocol: https, data: [card]}
+  - name: logging enabled
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: card, classification: restricted}]
+      components:
+        - {id: payments, type: process, trustZone: internal, properties: {logging: true}}
+        - {id: vault, type: datastore, trustZone: internal, stores: [card]}
+      dataFlows:
+        - {id: store, from: payments, to: vault, protocol: https, data: [card]}
+  - name: no logging but no sensitive data
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: health, type: process, trustZone: internal, properties: {logging: false}}

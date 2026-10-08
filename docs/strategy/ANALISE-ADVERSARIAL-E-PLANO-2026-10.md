@@ -258,12 +258,14 @@ As estimativas são para 1 mantenedor em tempo parcial com apoio de IA. Cada fas
 
 ### Fase 1: MVP do CLI, v0.1 (6–8 semanas)
 
-- [ ] Schema `ctm/v1` e loader/validador.
-- [ ] Extractors de **Terraform (AWS primeiro)**, **docker-compose** e **Kubernetes**.
-- [ ] Motor de regras CEL com **40 regras** de alta precisão (internet → dados sensíveis sem auth, segredo em env, banco público, fluxo sem TLS, etc.).
-- [ ] `ctm diff` com fingerprint estável por ameaça.
-- [ ] Saídas SARIF e Markdown. GitHub Action com comentário no PR.
-- [ ] Corpus de teste com 10 repos de referência e golden files. CI com `go test`, `golangci-lint`, CodeQL, gitleaks e Trivy na imagem.
+**Status (2026-10-07):** em andamento; o núcleo está pronto. Ainda falta remover o código da v1 da árvore, o que depende de aprovação do mantenedor.
+
+- [x] Schema `ctm/v1` (JSON Schema 2020-12) e loader/validador com erros por linha e checagem de referências.
+- [ ] Extractors: **docker-compose** ✅; **Terraform (AWS primeiro)** e **Kubernetes** pendentes.
+- [ ] Motor de regras CEL ✅, com testes positivos e negativos obrigatórios por regra. **13 de 40 regras** escritas (5 de fluxo e 8 de componente, incluindo as 7 regras da v1 portadas).
+- [x] `ctm diff` com fingerprint estável por ameaça (arquivo ou revisão git).
+- [x] Saídas SARIF, Markdown, JSON e tabela. GitHub Action composta com resumo no job e SARIF. Comentário no PR pendente.
+- [ ] Corpus: 3 modelos de exemplo com golden files ✅ (meta: 10 repos de referência). CI ✅ com `go test -race` (Linux/macOS/Windows), `golangci-lint` e CodeQL; gitleaks e Trivy pendentes.
 - [ ] Release com GoReleaser: binários multi-OS, Homebrew tap, imagem OCI, **cosign + SLSA provenance + SBOM**.
 
 **Saída:** `brew install` → `ctm init && ctm analyze` num repo Terraform real gera um modelo e ≥5 ameaças corretas em menos de 60 s. Precisão ≥ 90% no corpus, medida e publicada.

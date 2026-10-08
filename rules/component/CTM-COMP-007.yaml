@@ -1,0 +1,37 @@
+id: CTM-COMP-007
+title: Internet-exposed process without rate limiting
+description: >
+  A process that receives traffic from an untrusted zone has no rate
+  limiting, so it can be overwhelmed or brute-forced cheaply.
+severity: medium
+stride: [denial_of_service]
+cwe: [770]
+attack: [T1499, T1110]
+target: component
+when: >
+  component.type == 'process' && component.exposed &&
+  has(component.properties.rateLimiting) && !component.properties.rateLimiting
+message: >
+  {{.component.name}} is reachable from an untrusted zone and has no rate limiting.
+mitigation: >
+  Apply per-client and global rate limits (at the gateway or in the service),
+  stricter limits on authentication endpoints, and request size/time limits.
+tests:
+  - name: exposed api without limits
+    expect: [api]
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      components:
+        - {id: user, type: external_entity, trustZone: internet}
+        - {id: api, type: process, trustZone: dmz, properties: {rateLimiting: false}}
+      dataFlows:
+        - {id: req, from: user, to: api, protocol: https}
+  - name: internal service without limits
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: worker, type: process, trustZone: internal, properties: {rateLimiting: false}}
+        - {id: api, type: process, trustZone: internal}
+      dataFlows:
+        - {id: job, from: api, to: worker, protocol: grpc}

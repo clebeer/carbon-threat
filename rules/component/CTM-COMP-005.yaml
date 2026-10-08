@@ -1,0 +1,47 @@
+id: CTM-COMP-005
+title: Container image without a pinned version
+description: >
+  The image is referenced as ":latest" or without any tag, so every deploy
+  may pull different, unreviewed code - including a compromised upstream
+  image.
+severity: low
+stride: [tampering]
+cwe: [494]
+attack: [T1195.002]
+target: component
+when: >
+  has(component.properties.image) &&
+  !component.properties.image.contains('@sha256:') &&
+  (component.properties.image.endsWith(':latest') ||
+   !component.properties.image.matches(':[A-Za-z0-9_][A-Za-z0-9_.-]*$'))
+message: >
+  {{.component.name}} uses the unpinned image "{{.component.properties.image}}".
+mitigation: >
+  Pin images to an immutable digest (image@sha256:...) or at least a
+  specific version tag, and update them through a reviewed process
+  (e.g. Renovate/Dependabot).
+tests:
+  - name: latest tag
+    expect: [web]
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: web, type: process, trustZone: internal, properties: {image: "nginx:latest"}}
+  - name: no tag on a registry with a port
+    expect: [app]
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: app, type: process, trustZone: internal, properties: {image: "registry.local:5000/team/app"}}
+  - name: version tag
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: web, type: process, trustZone: internal, properties: {image: "nginx:1.27.2-alpine"}}
+  - name: digest
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: web, type: process, trustZone: internal, properties: {image: "nginx@sha256:0f04e4f646a3f14bf31d8bc8d885b6c951fdcf42589d06845f64d18aec6a3c4d"}}

@@ -1,0 +1,42 @@
+id: CTM-FLOW-004
+title: Sensitive data shared with an external party
+description: >
+  Confidential or restricted data leaves the system for an external entity.
+  The external party's security, retention and legal basis now determine
+  the exposure of that data.
+severity: medium
+stride: [information_disclosure]
+cwe: [359]
+target: flow
+when: >
+  destination.type == 'external_entity' && flow.sensitivity >= 2
+message: >
+  "{{.flow.name}}" sends {{range $i, $d := .flow.data}}{{if $i}}, {{end}}{{$d.name}} ({{$d.classification}}){{end}}
+  to the external party {{.destination.name}}.
+mitigation: >
+  Send only the fields the third party needs (data minimization), tokenize or
+  pseudonymize where possible, and make sure a data processing agreement and
+  vendor security review cover this flow.
+references:
+  - https://cwe.mitre.org/data/definitions/359.html
+tests:
+  - name: card data sent to a payment provider
+    expect: [charge]
+    model:
+      trustZones: [{id: internal, trust: 80}, {id: third-party, trust: 10}]
+      data: [{id: card, classification: restricted}]
+      components:
+        - {id: billing, type: process, trustZone: internal}
+        - {id: psp, type: external_entity, trustZone: third-party}
+      dataFlows:
+        - {id: charge, from: billing, to: psp, protocol: https, data: [card]}
+  - name: only public data sent out
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}, {id: third-party, trust: 10}]
+      data: [{id: catalog, classification: public}]
+      components:
+        - {id: shop, type: process, trustZone: internal}
+        - {id: cdn, type: external_entity, trustZone: third-party}
+      dataFlows:
+        - {id: publish, from: shop, to: cdn, protocol: https, data: [catalog]}
