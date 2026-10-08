@@ -21,12 +21,6 @@ Carbon Threat is a **threat-modeling-as-code** CLI (`ctm`). See the
 
 ## Legacy v1 (unsupported, insecure — do not deploy)
 
-| Document | Description |
-|---|---|
-| [legacy-v1/install/quickstart.md](legacy-v1/install/quickstart.md) | Docker stack of the v1 web platform |
-| [legacy-v1/install/configuration.md](legacy-v1/install/configuration.md) | v1 environment variables |
-| [legacy-v1/install/wizard.md](legacy-v1/install/wizard.md) | v1 first-run setup |
-| [legacy-v1/development/architecture.md](legacy-v1/development/architecture.md) | v1 backend architecture |
-| [legacy-v1/development/api.md](legacy-v1/development/api.md) | v1 API reference |
-| [legacy-v1/development/schema.md](legacy-v1/development/schema.md) | v1 database schema |
-| [legacy-v1/development/development.md](legacy-v1/development/development.md) | v1 local development |
+The v1 web platform was removed from `main`. Its code is at the `legacy/v1-final`
+tag, and its (sanitized) documentation is archived
+[here](https://github.com/clebeer/carbon-threat/tree/5bf0b708cf5f99e786a3560e5b4e477dce370f7d/docs/legacy-v1).

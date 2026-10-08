@@ -12,11 +12,11 @@ OWASP Threat Dragon
   Copyright 2017 Mike Goodwin and the OWASP Threat Dragon contributors
   Licensed under the Apache License, Version 2.0.
 
-  The v1 web platform in this repository (td.server/, and the original
-  client code) was derived from OWASP Threat Dragon and has been substantially
-  modified. "OWASP" and "Threat Dragon" are names of the OWASP Foundation;
-  Carbon Threat is an independent project and is not affiliated with or
-  endorsed by the OWASP Foundation.
+  The v1 web platform that this repository contained up to the
+  legacy/v1-final tag (td.server/ and the original client code) was derived
+  from OWASP Threat Dragon and substantially modified. "OWASP" and "Threat
+  Dragon" are names of the OWASP Foundation; Carbon Threat is an independent
+  project and is not affiliated with or endorsed by the OWASP Foundation.
 
 STRIDE GPT
   https://github.com/mrwadams/stride-gpt
@@ -41,5 +41,6 @@ STRIDE GPT
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
-  The prompt templates in stride-engine/ (threat_model.py, dread.py,
-  mitigations.py, test_cases.py) were adapted from STRIDE GPT.
+  The v1 prompt templates (stride-engine/ up to the legacy/v1-final tag) were
+  adapted from STRIDE GPT, and the planned optional LLM module will build on
+  them.

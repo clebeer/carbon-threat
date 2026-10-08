@@ -88,9 +88,9 @@ resolves.
 
 The previous web platform (a fork of OWASP Threat Dragon plus a partial vulnerability
 management rewrite) is frozen at the `legacy/v1-final` tag. It has **known, unfixed
-security vulnerabilities**. Its code (`td.server/`, `ct.client/`, `stride-engine/`) is
-still in this branch for reference and is being removed as part of Phase 1. Its docs
-live in [docs/legacy-v1](docs/legacy-v1/).
+security vulnerabilities**. Its code (`td.server/`, `ct.client/`, `stride-engine/`)
+has been removed from `main` and is only available from that tag. Its docs are
+archived [here](https://github.com/clebeer/carbon-threat/tree/5bf0b708cf5f99e786a3560e5b4e477dce370f7d/docs/legacy-v1).
 
 ## Contributing
 

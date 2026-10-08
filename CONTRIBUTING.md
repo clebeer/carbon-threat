@@ -18,8 +18,8 @@ Phase 1 (CLI MVP) is in progress. Contributions that help most right now:
 - **Feedback** on the [model format](docs/model-format.md).
 
 The v1 web platform (`td.server/`, `ct.client/`, `stride-engine/`) is
-**frozen** at the `legacy/v1-final` tag. We do not accept changes to it, and it
-is being removed from `main`.
+**frozen** at the `legacy/v1-final` tag and has been removed from `main`. We do
+not accept changes to it.
 
 ## Development
 
