@@ -7,9 +7,14 @@ import (
 	"github.com/clebeer/carbon-threat/internal/cli"
 )
 
-// version is set at build time with -ldflags "-X main.version=...".
-var version = "dev"
+// Set at build time with -ldflags "-X main.version=... -X main.commit=... -X main.date=...".
+var (
+	version = "dev"
+	commit  = ""
+	date    = ""
+)
 
 func main() {
+	cli.Commit, cli.Date = commit, date
 	os.Exit(cli.Execute(version, os.Args[1:], os.Stdout, os.Stderr))
 }

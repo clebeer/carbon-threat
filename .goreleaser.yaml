@@ -1,0 +1,149 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# Release pipeline for ctm. Run by .github/workflows/release.yml on v* tags.
+# Local dry run: goreleaser release --snapshot --clean --skip=sign,sbom,docker
+version: 2
+
+project_name: ctm
+
+git:
+  # Only v* tags are releases; ignore e.g. legacy/v1-final.
+  ignore_tags:
+    - "legacy/*"
+  tag_sort: -version:refname
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: ctm
+    main: ./cmd/ctm
+    binary: ctm
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }} -X main.commit={{ .ShortCommit }} -X main.date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}" # reproducible builds
+
+archives:
+  - id: ctm
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - license.txt
+      - NOTICE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# SBOM (SPDX) for every archive, generated with syft.
+sboms:
+  - artifacts: archive
+
+# Keyless signature of the checksum file (covers every archive), using the
+# workflow's GitHub OIDC identity. Verify with:
+#   cosign verify-blob --bundle checksums.txt.sigstore.json \
+#     --certificate-identity-regexp '^https://github.com/clebeer/carbon-threat/.github/workflows/release.yml@refs/tags/v' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--bundle=${signature}", "${artifact}", "--yes"]
+    artifacts: checksum
+
+dockers_v2:
+  - id: ctm
+    ids: [ctm]
+    dockerfile: Dockerfile
+    images:
+      - ghcr.io/clebeer/ctm
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: ctm
+      org.opencontainers.image.description: "Carbon Threat: threat modeling as code"
+      org.opencontainers.image.source: https://github.com/clebeer/carbon-threat
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.licenses: Apache-2.0
+
+docker_signs:
+  - cmd: cosign
+    artifacts: manifests
+    args: ["sign", "${artifact}@${digest}", "--yes"]
+
+# Homebrew cask in clebeer/homebrew-tap. Skipped until the
+# HOMEBREW_TAP_GITHUB_TOKEN secret exists (see RELEASING.md).
+homebrew_casks:
+  - name: ctm
+    ids: [ctm]
+    binaries: [ctm]
+    homepage: https://github.com/clebeer/carbon-threat
+    description: "Threat modeling as code: report the threats a change introduces"
+    license: Apache-2.0
+    repository:
+      owner: clebeer
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    skip_upload: '{{ if isEnvSet "HOMEBREW_TAP_GITHUB_TOKEN" }}auto{{ else }}true{{ end }}'
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ctm"]
+          end
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore\\(deps\\):"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Rules
+      regexp: '^.*?rules(\(.+\))??!?:.+$'
+      order: 2
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: clebeer
+    name: carbon-threat
+  prerelease: auto
+  footer: |
+    ## Verify
+
+    ```bash
+    gh attestation verify ctm_{{ .Version }}_linux_amd64.tar.gz --repo clebeer/carbon-threat
+    cosign verify-blob --bundle checksums.txt.sigstore.json \
+      --certificate-identity-regexp '^https://github.com/clebeer/carbon-threat/.github/workflows/release.yml@refs/tags/v' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
+    sha256sum --ignore-missing -c checksums.txt
+    ```

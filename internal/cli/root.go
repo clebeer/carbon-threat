@@ -24,6 +24,14 @@ const (
 	ExitFailure  = 2 // usage, I/O or validation errors
 )
 
+// Build metadata, set by main from linker flags. Empty in development builds.
+var (
+	// Commit is the short git commit the binary was built from.
+	Commit string
+	// Date is the commit date of the build.
+	Date string
+)
+
 // DefaultModelFile is used when no model path is given.
 const DefaultModelFile = "threatmodel.yaml"
 
@@ -91,7 +99,11 @@ func newVersionCmd(version string) *cobra.Command {
 		Short: "Print the ctm version",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, _ []string) {
-			fmt.Fprintln(cmd.OutOrStdout(), "ctm", version)
+			fmt.Fprint(cmd.OutOrStdout(), "ctm ", version)
+			if Commit != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), " (commit %s, built %s)", Commit, Date)
+			}
+			fmt.Fprintln(cmd.OutOrStdout())
 		},
 	}
 }

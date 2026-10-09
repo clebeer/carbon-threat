@@ -31,12 +31,48 @@ outputs:
 runs:
   using: composite
   steps:
+    # Referenced by a release tag (e.g. clebeer/carbon-threat@v0.1.0) on
+    # Linux/macOS: download that release and verify its checksum. Otherwise
+    # (a branch or SHA, or Windows) build from the action's source.
+    - name: Select install method
+      id: method
+      shell: bash
+      env:
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [[ "$ACTION_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ && "$RUNNER_OS" != "Windows" ]]; then
+          echo "release=${ACTION_REF#v}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Download ctm release
+      if: steps.method.outputs.release != ''
+      shell: bash
+      env:
+        VERSION: ${{ steps.method.outputs.release }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS" in Linux) os=linux ;; macOS) os=darwin ;; *) echo "unsupported OS $RUNNER_OS"; exit 1 ;; esac
+        case "$RUNNER_ARCH" in X64) arch=amd64 ;; ARM64) arch=arm64 ;; *) echo "unsupported arch $RUNNER_ARCH"; exit 1 ;; esac
+        archive="ctm_${VERSION}_${os}_${arch}.tar.gz"
+        base="https://github.com/clebeer/carbon-threat/releases/download/v${VERSION}"
+        cd "$RUNNER_TEMP"
+        curl -fsSLO "$base/$archive"
+        curl -fsSLO "$base/checksums.txt"
+        expected=$(grep " ${archive}\$" checksums.txt | cut -d' ' -f1)
+        if command -v sha256sum >/dev/null; then actual=$(sha256sum "$archive" | cut -d' ' -f1); else actual=$(shasum -a 256 "$archive" | cut -d' ' -f1); fi
+        if [[ -z "$expected" || "$expected" != "$actual" ]]; then
+          echo "::error::checksum mismatch for $archive"; exit 1
+        fi
+        tar -xzf "$archive" ctm
+
     - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      if: steps.method.outputs.release == ''
       with:
         go-version-file: ${{ github.action_path }}/go.mod
         cache: false
 
     - name: Build ctm
+      if: steps.method.outputs.release == ''
       shell: bash
       run: go -C "$GITHUB_ACTION_PATH" build -o "$RUNNER_TEMP/ctm" ./cmd/ctm
 

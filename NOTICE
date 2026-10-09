@@ -7,6 +7,11 @@ This product is licensed under the Apache License, Version 2.0 (see license.txt)
 Third-party work included in this repository
 ------------------------------------------------------------------------------
 
+Release binaries statically link Go modules under their own licenses; the
+SBOM published with each release lists them. Among them,
+github.com/hashicorp/hcl/v2 is licensed under the Mozilla Public License 2.0;
+its source code is available at https://github.com/hashicorp/hcl.
+
 OWASP Threat Dragon
   https://github.com/OWASP/threat-dragon
   Copyright 2017 Mike Goodwin and the OWASP Threat Dragon contributors
