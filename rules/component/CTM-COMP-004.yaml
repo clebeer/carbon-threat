@@ -1,0 +1,31 @@
+id: CTM-COMP-004
+title: Privileged container
+description: >
+  The component runs as a privileged container (or with equivalent host
+  privileges). Any code execution in it is close to full control of the host.
+severity: high
+stride: [elevation_of_privilege]
+cwe: [250]
+attack: [T1611]
+target: component
+when: >
+  has(component.properties.privileged) && component.properties.privileged
+message: >
+  {{.component.name}} runs with privileged/host-level access.
+mitigation: >
+  Drop privileged mode; grant only the specific capabilities required, run
+  as a non-root user with a read-only root filesystem, and apply seccomp/
+  AppArmor profiles.
+tests:
+  - name: privileged container
+    expect: [agent]
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: agent, type: process, trustZone: internal, properties: {privileged: true}}
+  - name: unprivileged container
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      components:
+        - {id: agent, type: process, trustZone: internal, properties: {privileged: false}}

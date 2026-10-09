@@ -1,0 +1,54 @@
+id: CTM-FLOW-003
+title: Datastore reachable directly from an untrusted zone
+description: >
+  A component in an untrusted zone (internet, third party) talks directly to
+  a datastore, with no application layer in between to enforce authorization
+  and input validation. Datastores known to hold only public data are
+  excluded.
+severity: critical
+stride: [information_disclosure, tampering, elevation_of_privilege]
+cwe: [668]
+attack: [T1190]
+target: flow
+when: >
+  destination.type == 'datastore' && source.zone.untrusted && destination.sensitivity != 0
+message: >
+  {{.destination.name}} is reached directly from {{.source.name}} in the untrusted zone
+  "{{.source.zone.name}}" ("{{.flow.name}}").
+mitigation: >
+  Put the datastore on a private network, block it at the firewall/security
+  group, and expose data only through an application layer that
+  authenticates, authorizes and validates requests.
+references:
+  - https://cwe.mitre.org/data/definitions/668.html
+tests:
+  - name: database published to the internet
+    expect: [direct]
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: internal, trust: 80}]
+      components:
+        - {id: anyone, type: external_entity, trustZone: internet}
+        - {id: db, type: datastore, trustZone: internal}
+      dataFlows:
+        - {id: direct, from: anyone, to: db, protocol: postgres}
+  - name: database behind an api
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}, {id: internal, trust: 80}]
+      components:
+        - {id: anyone, type: external_entity, trustZone: internet}
+        - {id: api, type: process, trustZone: dmz}
+        - {id: db, type: datastore, trustZone: internal}
+      dataFlows:
+        - {id: req, from: anyone, to: api, protocol: https}
+        - {id: q, from: api, to: db, protocol: postgres}
+  - name: public assets bucket read from the internet
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: cloud, trust: 60}]
+      data: [{id: assets, classification: public}]
+      components:
+        - {id: browser, type: external_entity, trustZone: internet}
+        - {id: assets-bucket, type: datastore, trustZone: cloud, stores: [assets]}
+      dataFlows:
+        - {id: get, from: browser, to: assets-bucket, protocol: https, data: [assets]}

@@ -2,7 +2,7 @@
 
 - **Status:** Superseded by [ADR 0002](0002-threat-modeling-as-code.md) (2026-10-07)
 - **Date:** 2026-07-09
-- **Context:** SDD [`specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md`](../../specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md), Phase 1.
+- **Context:** SDD [`specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md`](https://github.com/clebeer/carbon-threat/blob/5bf0b708cf5f99e786a3560e5b4e477dce370f7d/specs/carbon-dojo-interface-redesign/SDD-carbon-dojo-v2.md) (archived), Phase 1.
 
 ## Decision 1 — Reuse `td.server` (Node/Express/Knex/PostgreSQL)
 

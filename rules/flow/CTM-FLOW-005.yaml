@@ -1,0 +1,41 @@
+id: CTM-FLOW-005
+title: Internal component directly exposed to an untrusted zone
+description: >
+  A process in a highly trusted zone receives traffic straight from an
+  untrusted zone, bypassing any intermediate (DMZ) layer. A compromise of
+  this component lands the attacker inside the trusted network.
+severity: high
+stride: [elevation_of_privilege, tampering]
+cwe: [668]
+attack: [T1190]
+target: flow
+when: >
+  destination.type == 'process' && source.zone.untrusted && destination.zone.trust >= 70
+message: >
+  {{.destination.name}} sits in "{{.destination.zone.name}}" (trust {{.destination.zone.trust}}) but is
+  reached directly from {{.source.name}} in "{{.source.zone.name}}".
+mitigation: >
+  Route untrusted traffic through an edge layer (API gateway, reverse proxy,
+  WAF) in a separate zone, and only allow that layer to reach internal
+  services.
+tests:
+  - name: internal service called from the internet
+    expect: [hook]
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: internal, trust: 80}]
+      components:
+        - {id: partner, type: external_entity, trustZone: internet}
+        - {id: ledger, type: process, trustZone: internal}
+      dataFlows:
+        - {id: hook, from: partner, to: ledger, protocol: https}
+  - name: internet traffic goes through the dmz
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}, {id: internal, trust: 80}]
+      components:
+        - {id: partner, type: external_entity, trustZone: internet}
+        - {id: gateway, type: process, trustZone: dmz}
+        - {id: ledger, type: process, trustZone: internal}
+      dataFlows:
+        - {id: hook, from: partner, to: gateway, protocol: https}
+        - {id: fwd, from: gateway, to: ledger, protocol: https}

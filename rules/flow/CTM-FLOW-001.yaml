@@ -1,0 +1,63 @@
+id: CTM-FLOW-001
+title: Sensitive data sent over an unencrypted channel
+description: >
+  A data flow carries confidential or restricted data without transport
+  encryption. Anyone on the network path can read or alter it.
+severity: high
+stride: [information_disclosure, tampering]
+cwe: [319]
+capec: [157]
+attack: [T1040, T1557]
+target: flow
+when: >
+  flow.sensitivity >= 2 && has(flow.encrypted) && !flow.encrypted
+message: >
+  "{{.flow.name}}" sends {{range $i, $d := .flow.data}}{{if $i}}, {{end}}{{$d.name}} ({{$d.classification}}){{end}}
+  from {{.source.name}} to {{.destination.name}} without encryption.
+mitigation: >
+  Use TLS (or mTLS between services) for this flow, reject plaintext
+  connections at the server, and prefer protocol variants that enforce
+  encryption (e.g. sslmode=verify-full for PostgreSQL).
+references:
+  - https://cwe.mitre.org/data/definitions/319.html
+tests:
+  - name: plaintext http carrying PII
+    expect: [login]
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      data: [{id: pii, classification: confidential}]
+      components:
+        - {id: user, type: external_entity, trustZone: internet}
+        - {id: web, type: process, trustZone: dmz}
+      dataFlows:
+        - {id: login, from: user, to: web, protocol: http, data: [pii]}
+  - name: https carrying PII
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      data: [{id: pii, classification: confidential}]
+      components:
+        - {id: user, type: external_entity, trustZone: internet}
+        - {id: web, type: process, trustZone: dmz}
+      dataFlows:
+        - {id: login, from: user, to: web, protocol: https, data: [pii]}
+  - name: plaintext with only internal data
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: metrics, classification: internal}]
+      components:
+        - {id: app, type: process, trustZone: internal}
+        - {id: stats, type: process, trustZone: internal}
+      dataFlows:
+        - {id: push, from: app, to: stats, encrypted: false, data: [metrics]}
+  - name: unknown encryption is not flagged
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}]
+      data: [{id: card, classification: restricted}]
+      components:
+        - {id: app, type: process, trustZone: internal}
+        - {id: db, type: datastore, trustZone: internal}
+      dataFlows:
+        - {id: q, from: app, to: db, protocol: postgres, data: [card]}

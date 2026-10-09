@@ -1,0 +1,5 @@
+CTM-COMP-001 redis
+CTM-COMP-003 payments-svc
+CTM-COMP-004 payments-svc
+CTM-COMP-005 frontend
+CTM-FLOW-001 frontend-to-redis

@@ -1,0 +1,49 @@
+id: CTM-COMP-002
+title: Publicly readable datastore
+description: >
+  The datastore allows anonymous read access (for example a public object
+  storage bucket) and is not known to hold only public data.
+severity: high
+stride: [information_disclosure]
+cwe: [284]
+attack: [T1530]
+target: component
+when: >
+  component.type == 'datastore' &&
+  has(component.properties.publicAccess) && component.properties.publicAccess &&
+  component.sensitivity != 0
+message: >
+  {{.component.name}} is publicly readable{{if .component.stores}} and stores
+  {{range $i, $d := .component.stores}}{{if $i}}, {{end}}{{$d.name}} ({{$d.classification}}){{end}}{{end}}.
+mitigation: >
+  Block public access at the account and resource level, serve public assets
+  through a CDN with origin access control, and grant reads to named
+  identities only.
+tests:
+  - name: public bucket with uploads
+    expect: [bucket]
+    model:
+      trustZones: [{id: cloud, trust: 60}]
+      data: [{id: uploads, classification: confidential}]
+      components:
+        - {id: bucket, type: datastore, trustZone: cloud, stores: [uploads], properties: {publicAccess: true}}
+  - name: public bucket with unclassified content
+    expect: [bucket]
+    model:
+      trustZones: [{id: cloud, trust: 60}]
+      components:
+        - {id: bucket, type: datastore, trustZone: cloud, properties: {publicAccess: true}}
+  - name: public bucket that only holds public assets
+    expect: []
+    model:
+      trustZones: [{id: cloud, trust: 60}]
+      data: [{id: assets, classification: public}]
+      components:
+        - {id: bucket, type: datastore, trustZone: cloud, stores: [assets], properties: {publicAccess: true}}
+  - name: private bucket
+    expect: []
+    model:
+      trustZones: [{id: cloud, trust: 60}]
+      data: [{id: uploads, classification: confidential}]
+      components:
+        - {id: bucket, type: datastore, trustZone: cloud, stores: [uploads], properties: {publicAccess: false}}

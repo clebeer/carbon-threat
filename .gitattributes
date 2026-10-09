@@ -1,0 +1,4 @@
+# Keep LF everywhere: YAML fixtures, golden files and Go sources are compared
+# byte-for-byte in tests, and Windows checkouts would otherwise get CRLF.
+* text=auto eol=lf
+*.png binary

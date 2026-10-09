@@ -4,36 +4,84 @@
 and code, evaluates it with open, declarative rules, and tells you which threats a pull
 request introduces. It runs in CI and needs no server.
 
-> **Status: restructuring, no release yet.** The project is being rebuilt from scratch as a
-> single-binary CLI. The direction is recorded in
-> [ADR 0002](docs/adr/0002-threat-modeling-as-code.md), and the roadmap (in pt-BR) is in
-> [docs/strategy](docs/strategy/ANALISE-ADVERSARIAL-E-PLANO-2026-10.md).
+> **Status: Phase 1 in progress, no binary release yet.** The CLI works and is
+> tested; packaged releases come at v0.1. The direction is recorded in
+> [ADR 0002](docs/adr/0002-threat-modeling-as-code.md), and the roadmap (in pt-BR)
+> is in [docs/strategy](docs/strategy/ANALISE-ADVERSARIAL-E-PLANO-2026-10.md).
 
-## What it will do
+## Quick start
 
 ```bash
-ctm init                         # detect the stack and generate threatmodel.yaml from the repo
-ctm analyze                      # apply rules → threats mapped to STRIDE, CWE, CAPEC, ATT&CK
-ctm diff origin/main..HEAD       # threats introduced or removed by this change
-ctm report --format sarif        # upload to GitHub code scanning, or md / html / json / otm
-ctm view                         # local diagram + threat viewer, served by the binary
+go install github.com/clebeer/carbon-threat/cmd/ctm@latest   # Go 1.26+
+
+ctm init                          # threatmodel.yaml wired to your docker-compose / Terraform
+ctm analyze                       # threats mapped to STRIDE, CWE, CAPEC and ATT&CK
+ctm diff --base-ref origin/main   # threats this branch introduces or resolves
+ctm analyze -f sarif -o ctm.sarif # for GitHub code scanning (also: table, json, markdown)
 ```
 
-- **Generated, not drawn.** Models are extracted from Terraform, Kubernetes,
-  docker-compose, CloudFormation, and OpenAPI, then from application code.
-- **Deterministic first.** Rules are reviewable YAML. LLM suggestions are optional,
-  local-first (e.g. Ollama), and always labelled as suggestions.
-- **Open format.** The model is a versioned YAML schema that is diffable in PRs, with
-  [Open Threat Model (OTM)](https://github.com/iriusrisk/OpenThreatModel) import/export.
-- **CI-native.** It ships as a GitHub Action, a GitLab CI template, and a pre-commit hook,
-  and produces SARIF.
+Try it on an example:
+
+```console
+$ ctm analyze examples/webapp/threatmodel.yaml
+web-shop: 5 high, 1 medium (1 suppressed)
+
+SEVERITY  RULE          TARGET             TITLE
+HIGH      CTM-COMP-001  component db       Sensitive datastore not encrypted at rest
+HIGH      CTM-COMP-008  component admin    Internet-exposed process handling non-public data without authentication
+HIGH      CTM-FLOW-001  flow api-to-db     Sensitive data sent over an unencrypted channel
+HIGH      CTM-FLOW-002  flow admin-access  Unauthenticated flow into a more trusted zone
+HIGH      CTM-FLOW-005  flow admin-access  Internal component directly exposed to an untrusted zone
+MEDIUM    CTM-COMP-006  component api      No audit logging on a component handling sensitive data
+```
+
+### In a pull request (GitHub Actions)
+
+```yaml
+on: pull_request
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  threat-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: clebeer/carbon-threat@main      # pin to a release tag or SHA once v0.1 is out
+        with:
+          fail-on: high                       # fail only on NEW high/critical threats
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: ctm.sarif
+```
+
+The job summary shows a Markdown report of the threats the PR introduces and
+resolves.
+
+## How it works
+
+- **The model** is a versioned YAML format that is diffable in PRs. See the
+  [format reference](docs/model-format.md). Facts you leave out are *unknown*,
+  and rules never fire on unknown facts.
+- **Extractors** build the model from your infrastructure on every run
+  (`sources:`). Supported today: docker-compose and Terraform (AWS). Your
+  model file only adds what code cannot say, such as data classification, so
+  a PR that opens a port or drops encryption shows up in `ctm diff` without
+  anyone editing the model. See [extractors](docs/extractors.md). Next:
+  Kubernetes, CloudFormation, OpenAPI.
+- **Rules** are reviewable YAML with [CEL](https://cel.dev) expressions and
+  mandatory positive and negative tests. There are 13 built-in rules
+  (`ctm rules list`). See the [rule-writing guide](docs/writing-rules.md).
+- **Deterministic first.** LLM suggestions are planned as an optional,
+  local-first add-on, always labelled as suggestions.
 
 ## Roadmap
 
 | Phase | Goal | Status |
 |---|---|---|
 | 0 · Cleanup | Governance, licensing, security policy, freeze v1 | ✅ Done (2026-10) |
-| 1 · CLI v0.1 | Terraform/compose/k8s extractors, 40 rules, `diff`, SARIF, GitHub Action | Next |
+| 1 · CLI v0.1 | Model + schema, rule engine, `analyze`/`diff`, SARIF, GitHub Action, compose + Terraform (AWS) extractors with `sources` ✅ · Kubernetes extractor, 40 rules, signed releases ⏳ | In progress |
 | 2 · Ecosystem v0.5 | Community rules repo, OTM / Threat Dragon / Threagile import, embedded viewer, LLM assist | Planned |
 | 3 · v1.0 | Correlate scanner findings (SARIF, DefectDojo) with the architecture; optional Hub server | Planned |
 
@@ -43,9 +91,9 @@ ctm view                         # local diagram + threat viewer, served by the 
 
 The previous web platform (a fork of OWASP Threat Dragon plus a partial vulnerability
 management rewrite) is frozen at the `legacy/v1-final` tag. It has **known, unfixed
-security vulnerabilities**. Its code (`td.server/`, `ct.client/`, `stride-engine/`) is
-still in this branch for reference and will be removed when Phase 1 starts. Its docs
-live in [docs/legacy-v1](docs/legacy-v1/).
+security vulnerabilities**. Its code (`td.server/`, `ct.client/`, `stride-engine/`)
+has been removed from `main` and is only available from that tag. Its docs are
+archived [here](https://github.com/clebeer/carbon-threat/tree/5bf0b708cf5f99e786a3560e5b4e477dce370f7d/docs/legacy-v1).
 
 ## Contributing
 

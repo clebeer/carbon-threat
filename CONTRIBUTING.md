@@ -7,20 +7,39 @@ recorded in [ADR 0002](docs/adr/0002-threat-modeling-as-code.md).
 
 ## Project status
 
-We are between Phase 0 (cleanup) and Phase 1 (CLI MVP). The new code base does not exist
-yet, so the most useful contributions right now are:
+Phase 1 (CLI MVP) is in progress. Contributions that help most right now:
 
-- **Feedback on the direction.** Open a discussion or issue about the model schema, rule
-  format, or which IaC sources matter to you.
-- **Threat rules ideas.** Describe an architectural pattern that should produce a threat
-  (e.g. "internet-facing load balancer → database without TLS"), with positive and
-  negative examples.
-- **Reference architectures.** Small, realistic Terraform / Kubernetes / docker-compose
-  projects we can use as a test corpus (must be redistributable).
+- **Threat rules.** Propose one with the "Threat rule proposal" issue
+  template, or send it as a PR. See [docs/writing-rules.md](docs/writing-rules.md).
+- **Extractors.** Kubernetes and CloudFormation are next, and the Terraform
+  extractor needs more AWS resources and other providers. Open an issue
+  before starting so we can agree on the mapping
+  ([current mappings](docs/extractors.md)).
+- **Reference architectures.** Small, realistic, redistributable
+  Terraform/Kubernetes/compose projects for the test corpus.
+- **Feedback** on the [model format](docs/model-format.md).
 
-The v1 web platform (`td.server/`, `ct.client/`, `stride-engine/`) is **frozen** at the
-`legacy/v1-final` tag. We do not accept feature work on it. It will be removed from `main`
-when Phase 1 starts.
+The v1 web platform (`td.server/`, `ct.client/`, `stride-engine/`) is
+**frozen** at the `legacy/v1-final` tag and has been removed from `main`. We do
+not accept changes to it.
+
+## Development
+
+You need Go (see `go.mod` for the version) and, for linting,
+[golangci-lint](https://golangci-lint.run/) v2.
+
+```bash
+make test      # go test -race ./...
+make lint      # golangci-lint run
+make build     # ./bin/ctm
+make rules     # run the inline tests of the built-in rules through the CLI
+```
+
+Layout: `cmd/ctm` (entry point), `internal/cli` (commands), `pkg/model`
+(format, validation, derived facts), `pkg/engine` (rule loading and
+evaluation), `pkg/report` (table/JSON/Markdown/SARIF), `pkg/diff`,
+`pkg/extract/*` (extractors), `rules/` (built-in rules), `schema/`,
+`examples/` (golden-file tested example models).
 
 ## Ground rules
 

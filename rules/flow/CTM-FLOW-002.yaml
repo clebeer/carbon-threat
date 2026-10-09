@@ -1,0 +1,64 @@
+id: CTM-FLOW-002
+title: Unauthenticated flow into a more trusted zone
+description: >
+  A process accepts data from a less trusted zone without authenticating
+  the caller, so anyone who can reach it can impersonate a legitimate client.
+  Processes known to handle only public data are excluded.
+severity: high
+stride: [spoofing, elevation_of_privilege]
+cwe: [306]
+capec: [115]
+attack: [T1190]
+target: flow
+when: >
+  destination.type == 'process' && flow.trustDelta > 0 &&
+  has(flow.authenticated) && !flow.authenticated &&
+  destination.sensitivity != 0
+message: >
+  {{.destination.name}} ({{.destination.zone.name}}, trust {{.destination.zone.trust}}) accepts
+  "{{.flow.name}}" from {{.source.name}} ({{.source.zone.name}}, trust {{.source.zone.trust}})
+  without authentication.
+mitigation: >
+  Authenticate every call that crosses into a more trusted zone (OAuth 2.0 /
+  OIDC for users, mTLS or signed service tokens between services) and deny by
+  default.
+references:
+  - https://cwe.mitre.org/data/definitions/306.html
+tests:
+  - name: anonymous call from the internet into the dmz
+    expect: [call]
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      components:
+        - {id: client, type: external_entity, trustZone: internet}
+        - {id: api, type: process, trustZone: dmz}
+      dataFlows:
+        - {id: call, from: client, to: api, authenticated: false}
+  - name: authenticated call
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      components:
+        - {id: client, type: external_entity, trustZone: internet}
+        - {id: api, type: process, trustZone: dmz}
+      dataFlows:
+        - {id: call, from: client, to: api, authenticated: true}
+  - name: unauthenticated call towards a less trusted zone
+    expect: []
+    model:
+      trustZones: [{id: internal, trust: 80}, {id: dmz, trust: 40}]
+      components:
+        - {id: worker, type: process, trustZone: internal}
+        - {id: api, type: process, trustZone: dmz}
+      dataFlows:
+        - {id: callback, from: worker, to: api, authenticated: false}
+  - name: anonymous access to a site that only serves public content
+    expect: []
+    model:
+      trustZones: [{id: internet, trust: 0}, {id: dmz, trust: 40}]
+      data: [{id: pages, classification: public}]
+      components:
+        - {id: client, type: external_entity, trustZone: internet}
+        - {id: site, type: process, trustZone: dmz}
+      dataFlows:
+        - {id: get, from: client, to: site, authenticated: false, data: [pages]}

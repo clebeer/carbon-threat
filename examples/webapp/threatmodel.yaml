@@ -1,0 +1,123 @@
+# A classic three-tier web shop. Handwritten example for ctm/v1.
+apiVersion: ctm/v1
+kind: ThreatModel
+metadata:
+  name: web-shop
+  description: Storefront, API and database, plus an internal admin panel and a payment provider.
+  owner: team-shop
+
+trustZones:
+  - id: internet
+    name: Internet
+    trust: 0
+  - id: third-party
+    name: Third parties
+    trust: 10
+  - id: dmz
+    name: DMZ
+    trust: 40
+  - id: internal
+    name: Internal network
+    trust: 80
+
+data:
+  - id: credentials
+    name: Customer credentials
+    classification: restricted
+  - id: customer-pii
+    name: Customer PII
+    classification: confidential
+  - id: orders
+    name: Orders
+    classification: confidential
+  - id: card-data
+    name: Card data
+    classification: restricted
+
+components:
+  - id: customer
+    name: Customer
+    type: external_entity
+    trustZone: internet
+  - id: web
+    name: Storefront
+    type: process
+    technology: nginx
+    trustZone: dmz
+    properties:
+      authentication: oidc
+      rateLimiting: true
+      logging: true
+      image: nginx:1.27.2-alpine
+  - id: api
+    name: Shop API
+    type: process
+    technology: node
+    trustZone: dmz
+    properties:
+      authentication: oidc
+      logging: false
+  - id: db
+    name: Shop database
+    type: datastore
+    technology: postgres
+    trustZone: internal
+    stores: [credentials, customer-pii, orders]
+    properties:
+      encryptionAtRest: false
+  - id: admin
+    name: Admin panel
+    type: process
+    trustZone: internal
+    properties:
+      authentication: none
+  - id: staff
+    name: Support staff
+    type: external_entity
+    trustZone: internet
+  - id: psp
+    name: Payment provider
+    type: external_entity
+    trustZone: third-party
+
+dataFlows:
+  - id: browse
+    from: customer
+    to: web
+    protocol: https
+    authenticated: true
+    data: [credentials, customer-pii]
+  - id: web-to-api
+    from: web
+    to: api
+    protocol: https
+    authenticated: true
+    data: [customer-pii, orders]
+  - id: api-to-db
+    from: api
+    to: db
+    protocol: postgres
+    encrypted: false
+    data: [customer-pii, orders, credentials]
+  - id: charge
+    from: api
+    to: psp
+    protocol: https
+    data: [card-data]
+  - id: admin-access
+    from: staff
+    to: admin
+    protocol: https
+    authenticated: false
+    data: [customer-pii]
+  - id: admin-to-db
+    from: admin
+    to: db
+    protocol: postgres
+    encrypted: true
+    data: [customer-pii, orders]
+
+suppressions:
+  - rule: CTM-FLOW-004
+    target: charge
+    reason: Card data goes straight to the PSP's hosted fields; DPA and PCI attestation on file.
