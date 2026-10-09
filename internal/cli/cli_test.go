@@ -239,6 +239,12 @@ func TestInitSkeletonIsValid(t *testing.T) {
 	if code, _, errOut := run(t, "validate", filepath.Join(dir, "threatmodel.yaml")); code != ExitOK {
 		t.Fatalf("skeleton is invalid: %s", errOut)
 	}
+	// The example is a secure baseline: a first run must not flag the
+	// example itself.
+	code, out, _ := run(t, "analyze", filepath.Join(dir, "threatmodel.yaml"), "--fail-on", "info")
+	if code != ExitOK || !strings.Contains(out, "no threats") {
+		t.Fatalf("the init example should have no threats: code %d\n%s", code, out)
+	}
 }
 
 func TestRulesTest(t *testing.T) {
