@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os/exec"
+	pathpkg "path"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/clebeer/carbon-threat/pkg/diff"
@@ -13,6 +17,27 @@ import (
 	"github.com/clebeer/carbon-threat/pkg/report"
 	"github.com/spf13/cobra"
 )
+
+// loadModel loads a model file and prints extractor warnings to stderr.
+func loadModel(cmd *cobra.Command, path string) (*model.Model, error) {
+	m, err := model.LoadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, w := range m.Warnings {
+		fmt.Fprintln(cmd.ErrOrStderr(), "warning:", w)
+	}
+	return m, nil
+}
+
+// reportPaths rewrites threat locations relative to the working directory.
+func reportPaths(ts []engine.Threat) {
+	for i := range ts {
+		if ts[i].File != "" {
+			ts[i].File = reportPath(ts[i].File)
+		}
+	}
+}
 
 func modelArg(args []string) string {
 	if len(args) == 1 {
@@ -28,11 +53,15 @@ func newValidateCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := modelArg(args)
-			m, err := model.LoadFile(path)
+			m, err := loadModel(cmd, path)
 			if err != nil {
 				return &ExitError{Code: ExitFailure, Err: err}
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "%s: valid (%d components, %d flows)\n", path, len(m.Components), len(m.DataFlows))
+			fmt.Fprintf(cmd.OutOrStdout(), "%s: valid (%d components, %d flows", path, len(m.Components), len(m.DataFlows))
+			if len(m.Sources) > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), ", %d source(s)", len(m.Sources))
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), ")")
 			return nil
 		},
 	}
@@ -63,7 +92,7 @@ func newAnalyzeCmd(version string) *cobra.Command {
 				return err
 			}
 			path := modelArg(args)
-			m, err := model.LoadFile(path)
+			m, err := loadModel(cmd, path)
 			if err != nil {
 				return &ExitError{Code: ExitFailure, Err: err}
 			}
@@ -75,6 +104,7 @@ func newAnalyzeCmd(version string) *cobra.Command {
 			if err != nil {
 				return &ExitError{Code: ExitFailure, Err: err}
 			}
+			reportPaths(threats)
 			w, closeFn, err := openOutput(cmd, o.output)
 			if err != nil {
 				return &ExitError{Code: ExitFailure, Err: err}
@@ -120,7 +150,7 @@ If the model does not exist in the base revision, every threat is new.`,
 				return &ExitError{Code: ExitFailure, Err: errors.New("give exactly one of --base or --base-ref")}
 			}
 			path := modelArg(args)
-			head, err := model.LoadFile(path)
+			head, err := loadModel(cmd, path)
 			if err != nil {
 				return &ExitError{Code: ExitFailure, Err: err}
 			}
@@ -149,6 +179,7 @@ If the model does not exist in the base revision, every threat is new.`,
 				}
 			}
 
+			reportPaths(headThreats)
 			d := diff.Compare(baseThreats, headThreats)
 			w, closeFn, err := openOutput(cmd, o.output)
 			if err != nil {
@@ -179,22 +210,122 @@ If the model does not exist in the base revision, every threat is new.`,
 	return cmd
 }
 
-// loadFromGit reads path as it was at rev. It returns (nil, nil) when the
-// file does not exist at that revision.
+// loadFromGit reads the model at path as it was at rev, together with its
+// sources at that revision. It returns (nil, nil) when the model does not
+// exist at that revision.
 func loadFromGit(rev, path string) (*model.Model, error) {
 	if strings.HasPrefix(rev, "-") {
 		return nil, fmt.Errorf("invalid git revision %q", rev)
 	}
-	spec := rev + ":./" + strings.TrimPrefix(path, "./")
+	top, err := gitOutput("rev-parse", "--show-toplevel")
+	if err != nil {
+		return nil, err
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	// Resolve symlinks on both sides (e.g. /tmp vs /private/tmp on macOS).
+	if r, err := filepath.EvalSymlinks(filepath.Dir(abs)); err == nil {
+		abs = filepath.Join(r, filepath.Base(abs))
+	}
+	root := strings.TrimSpace(string(top))
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		root = r
+	}
+	rel, err := filepath.Rel(root, abs)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return nil, fmt.Errorf("%s is not inside the git repository", path)
+	}
+	rel = filepath.ToSlash(rel)
+	data, err := gitOutput("show", rev+":"+rel)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	dir := pathpkg.Dir(rel)
+	if dir == "." {
+		dir = ""
+	}
+	return model.Load(data, rev+":"+rel, gitFS{rev: rev, dir: dir})
+}
+
+// gitFS reads files from a git revision, rooted at dir (repository-relative,
+// slash-separated, "" for the root).
+type gitFS struct{ rev, dir string }
+
+func (g gitFS) spec(name string) string {
+	if name == "." {
+		name = ""
+	}
+	return g.rev + ":" + pathpkg.Join(g.dir, name)
+}
+
+func (g gitFS) Open(name string) (fs.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: errors.ErrUnsupported}
+}
+
+func (g gitFS) ReadFile(name string) ([]byte, error) {
+	if !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "read", Path: name, Err: fs.ErrInvalid}
+	}
+	data, err := gitOutput("show", g.spec(name))
+	if err != nil {
+		return nil, &fs.PathError{Op: "read", Path: name, Err: err}
+	}
+	return data, nil
+}
+
+func (g gitFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	if !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrInvalid}
+	}
+	out, err := gitOutput("ls-tree", "-z", g.spec(name))
+	if err != nil {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: err}
+	}
+	var entries []fs.DirEntry
+	for _, rec := range strings.Split(strings.TrimRight(string(out), "\x00"), "\x00") {
+		meta, entryName, ok := strings.Cut(rec, "\t")
+		if !ok {
+			continue
+		}
+		fields := strings.Fields(meta) // mode type object
+		entries = append(entries, gitEntry{name: entryName, dir: len(fields) > 1 && fields[1] == "tree"})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	return entries, nil
+}
+
+type gitEntry struct {
+	name string
+	dir  bool
+}
+
+func (e gitEntry) Name() string { return e.name }
+func (e gitEntry) IsDir() bool  { return e.dir }
+func (e gitEntry) Type() fs.FileMode {
+	if e.dir {
+		return fs.ModeDir
+	}
+	return 0
+}
+func (e gitEntry) Info() (fs.FileInfo, error) { return nil, errors.ErrUnsupported }
+
+// gitOutput runs git and returns stdout. A path missing at the revision is
+// reported as fs.ErrNotExist.
+func gitOutput(args ...string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
-	c := exec.Command("git", "show", spec)
+	c := exec.Command("git", args...)
 	c.Stdout, c.Stderr = &stdout, &stderr
 	if err := c.Run(); err != nil {
-		msg := stderr.String()
+		msg := strings.TrimSpace(stderr.String())
 		if strings.Contains(msg, "does not exist") || strings.Contains(msg, "exists on disk, but not in") {
-			return nil, nil
+			return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), fs.ErrNotExist)
 		}
-		return nil, fmt.Errorf("git show %s: %w: %s", spec, err, strings.TrimSpace(msg))
+		return nil, fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, msg)
 	}
-	return model.Parse(stdout.Bytes(), spec)
+	return stdout.Bytes(), nil
 }

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,15 +20,19 @@ import (
 	"golang.org/x/text/message"
 )
 
-// Problem is one schema or consistency error in a model file.
+// Problem is one schema or consistency error in a model.
 type Problem struct {
 	Path    string // JSON pointer, e.g. /components/2/trustZone
-	Line    int    // 1-based line in the source, 0 if unknown
+	File    string // file the element comes from, empty if unknown
+	Line    int    // 1-based line in File, 0 if unknown
 	Message string
 }
 
 func (p Problem) String() string {
-	if p.Line > 0 {
+	switch {
+	case p.File != "" && p.Line > 0:
+		return fmt.Sprintf("%s:%d: %s: %s", p.File, p.Line, p.Path, p.Message)
+	case p.Line > 0:
 		return fmt.Sprintf("line %d: %s: %s", p.Line, p.Path, p.Message)
 	}
 	return fmt.Sprintf("%s: %s", p.Path, p.Message)
@@ -53,18 +59,26 @@ func (e *InvalidError) Error() string {
 	return b.String()
 }
 
-// LoadFile reads and validates a model file.
+// LoadFile reads and validates a model file. Its sources, if any, are read
+// from the file's directory.
 func LoadFile(path string) (*Model, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return Parse(data, path)
+	return Load(data, path, os.DirFS(filepath.Dir(path)))
 }
 
-// Parse decodes and validates a model. source is used in error messages and
-// reports (usually the file path).
+// Parse decodes and validates a model without file access. Models with
+// sources must be loaded with Load or LoadFile.
 func Parse(data []byte, source string) (*Model, error) {
+	return Load(data, source, nil)
+}
+
+// Load decodes and validates a model. source names the model in errors and
+// reports (usually its path). Sources are read from fsys, which must be
+// rooted at the model's directory.
+func Load(data []byte, source string, fsys fs.FS) (*Model, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("%s: %w", source, err)
@@ -82,10 +96,15 @@ func Parse(data []byte, source string) (*Model, error) {
 	if err := doc.Decode(&m); err != nil {
 		return nil, fmt.Errorf("%s: %w", source, err)
 	}
+	if len(m.Sources) > 0 {
+		return resolveSources(&m, doc, source, fsys)
+	}
 	m.Source = source
-	m.lines = collectLines(doc)
-
-	if problems := m.check(doc); len(problems) > 0 {
+	for key, line := range collectLines(doc) {
+		m.setLoc(key, Location{File: source, Line: line})
+	}
+	locate := func(path string) Location { return Location{File: source, Line: lineAt(doc, path)} }
+	if problems := m.check(locate); len(problems) > 0 {
 		return nil, &InvalidError{Source: source, Problems: problems}
 	}
 	return &m, nil
@@ -264,11 +283,21 @@ func collectLines(doc *yaml.Node) map[string]int {
 	return lines
 }
 
-// check verifies cross-references and uniqueness, which JSON Schema cannot.
-func (m *Model) check(doc *yaml.Node) []Problem {
+// check verifies required fields, cross-references and uniqueness. Required
+// fields are checked here rather than in the schema because sources may
+// supply them. locate maps a JSON pointer to where it is declared.
+func (m *Model) check(locate func(path string) Location) []Problem {
 	var out []Problem
 	add := func(path, format string, args ...any) {
-		out = append(out, Problem{Path: path, Line: lineAt(doc, path), Message: fmt.Sprintf(format, args...)})
+		loc := locate(path)
+		out = append(out, Problem{Path: path, File: loc.File, Line: loc.Line, Message: fmt.Sprintf(format, args...)})
+	}
+
+	if len(m.TrustZones) == 0 {
+		add("/trustZones", "at least one trust zone is required")
+	}
+	if len(m.Components) == 0 {
+		add("/components", "at least one component is required")
 	}
 
 	zones := map[string]bool{}
@@ -293,7 +322,13 @@ func (m *Model) check(doc *yaml.Node) []Problem {
 			add(fmt.Sprintf("/components/%d/id", i), "duplicate component or flow id %q", c.ID)
 		}
 		elements[c.ID] = true
-		if !zones[c.TrustZone] {
+		if c.Type == "" {
+			add(fmt.Sprintf("/components/%d", i), "component %q: type is required", c.ID)
+		}
+		switch {
+		case c.TrustZone == "":
+			add(fmt.Sprintf("/components/%d", i), "component %q: trustZone is required", c.ID)
+		case !zones[c.TrustZone]:
 			add(fmt.Sprintf("/components/%d/trustZone", i), "unknown trust zone %q", c.TrustZone)
 		}
 		for j, s := range c.Stores {
@@ -311,13 +346,15 @@ func (m *Model) check(doc *yaml.Node) []Problem {
 			add(fmt.Sprintf("/dataFlows/%d/id", i), "duplicate component or flow id %q", f.ID)
 		}
 		elements[f.ID] = true
-		if !components[f.From] {
-			add(fmt.Sprintf("/dataFlows/%d/from", i), "unknown component %q", f.From)
+		for _, end := range []struct{ field, value string }{{"from", f.From}, {"to", f.To}} {
+			switch {
+			case end.value == "":
+				add(fmt.Sprintf("/dataFlows/%d", i), "flow %q: %s is required", f.ID, end.field)
+			case !components[end.value]:
+				add(fmt.Sprintf("/dataFlows/%d/%s", i, end.field), "unknown component %q", end.value)
+			}
 		}
-		if !components[f.To] {
-			add(fmt.Sprintf("/dataFlows/%d/to", i), "unknown component %q", f.To)
-		}
-		if f.From == f.To {
+		if f.From != "" && f.From == f.To {
 			add(fmt.Sprintf("/dataFlows/%d/to", i), "a flow cannot start and end at the same component")
 		}
 		for j, d := range f.Data {

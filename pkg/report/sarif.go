@@ -142,8 +142,12 @@ func writeSARIF(w io.Writer, in Input) error {
 
 	out := make([]sarifResult, 0, len(results))
 	for _, t := range results {
+		uri := in.ModelPath
+		if t.File != "" {
+			uri = t.File
+		}
 		loc := sarifLocation{
-			PhysicalLocation: sarifPhysical{ArtifactLocation: sarifArtifact{URI: in.ModelPath}},
+			PhysicalLocation: sarifPhysical{ArtifactLocation: sarifArtifact{URI: uri}},
 			LogicalLocations: []sarifLogical{{Name: t.TargetID, Kind: t.TargetKind}},
 		}
 		if t.Line > 0 {

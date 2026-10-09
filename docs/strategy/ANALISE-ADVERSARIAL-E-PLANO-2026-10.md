@@ -261,7 +261,8 @@ As estimativas são para 1 mantenedor em tempo parcial com apoio de IA. Cada fas
 **Status (2026-10-08):** em andamento. O núcleo está pronto e o código da v1 foi removido da `main` (preservado na tag `legacy/v1-final`). As referências `arquivo:linha` da seção 2 se referem a essa tag.
 
 - [x] Schema `ctm/v1` (JSON Schema 2020-12) e loader/validador com erros por linha e checagem de referências.
-- [ ] Extractors: **docker-compose** ✅; **Terraform (AWS primeiro)** e **Kubernetes** pendentes.
+- [ ] Extractors: **docker-compose** ✅; **Terraform (AWS)** ✅ (MVP: RDS, S3, DynamoDB, ElastiCache, SQS/SNS, Lambda, API Gateway, ALB, EC2, ECS, security groups); **Kubernetes** pendente.
+- [x] `sources:` no modelo: os extractors rodam a cada execução e o arquivo só guarda anotações, mescladas por id. Isso substitui o "merge do gerado com o anotado"; fatos obsoletos desaparecem sozinhos e o `diff --base-ref` extrai a revisão base do git.
 - [ ] Motor de regras CEL ✅, com testes positivos e negativos obrigatórios por regra. **13 de 40 regras** escritas (5 de fluxo e 8 de componente, incluindo as 7 regras da v1 portadas).
 - [x] `ctm diff` com fingerprint estável por ameaça (arquivo ou revisão git).
 - [x] Saídas SARIF, Markdown, JSON e tabela. GitHub Action composta com resumo no job e SARIF. Comentário no PR pendente.

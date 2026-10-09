@@ -11,8 +11,10 @@ Phase 1 (CLI MVP) is in progress. Contributions that help most right now:
 
 - **Threat rules.** Propose one with the "Threat rule proposal" issue
   template, or send it as a PR. See [docs/writing-rules.md](docs/writing-rules.md).
-- **Extractors.** Terraform, Kubernetes and CloudFormation are next. Open an
-  issue before starting so we can agree on the mapping.
+- **Extractors.** Kubernetes and CloudFormation are next, and the Terraform
+  extractor needs more AWS resources and other providers. Open an issue
+  before starting so we can agree on the mapping
+  ([current mappings](docs/extractors.md)).
 - **Reference architectures.** Small, realistic, redistributable
   Terraform/Kubernetes/compose projects for the test corpus.
 - **Feedback** on the [model format](docs/model-format.md).

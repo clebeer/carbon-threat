@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/clebeer/carbon-threat/pkg/engine"
+	_ "github.com/clebeer/carbon-threat/pkg/extract/compose"
+	_ "github.com/clebeer/carbon-threat/pkg/extract/terraform"
 	"github.com/clebeer/carbon-threat/pkg/model"
 	"github.com/clebeer/carbon-threat/rules"
 )

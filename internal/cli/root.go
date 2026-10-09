@@ -10,6 +10,9 @@ import (
 	"strings"
 
 	"github.com/clebeer/carbon-threat/pkg/engine"
+	// Extractors register themselves for models' "sources".
+	_ "github.com/clebeer/carbon-threat/pkg/extract/compose"
+	_ "github.com/clebeer/carbon-threat/pkg/extract/terraform"
 	"github.com/clebeer/carbon-threat/rules"
 	"github.com/spf13/cobra"
 )
@@ -76,6 +79,7 @@ declarative rules, and reports the threats a change introduces.`,
 		newDiffCmd(version),
 		newExtractCmd(),
 		newInitCmd(),
+		newRenderCmd(),
 		newRulesCmd(),
 	)
 	return root

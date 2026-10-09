@@ -43,12 +43,41 @@ type Model struct {
 	Components   []Component   `yaml:"components" json:"components"`
 	DataFlows    []DataFlow    `yaml:"dataFlows,omitempty" json:"dataFlows,omitempty"`
 	Suppressions []Suppression `yaml:"suppressions,omitempty" json:"suppressions,omitempty"`
+	// Sources lists infrastructure definitions that are extracted when the
+	// model is loaded; the rest of the document overlays the result.
+	Sources []SourceRef `yaml:"sources,omitempty" json:"sources,omitempty"`
 
 	// Source is the path or label the model was loaded from.
 	Source string `yaml:"-" json:"-"`
-	// lines maps "component:<id>", "flow:<id>", ... to the 1-based line where
-	// the element is declared in Source.
-	lines map[string]int
+	// Warnings are non-fatal messages from extractors.
+	Warnings []string `yaml:"-" json:"-"`
+	// locs maps "component:<id>", "flow:<id>", ... to where the element is
+	// declared: in Source, or in an extracted source file.
+	locs map[string]Location
+}
+
+// SourceRef points at an infrastructure definition to extract, relative to
+// the model file. Exactly one field is set.
+type SourceRef struct {
+	Compose   string `yaml:"compose,omitempty" json:"compose,omitempty"`
+	Terraform string `yaml:"terraform,omitempty" json:"terraform,omitempty"`
+}
+
+// Kind returns the extractor kind and path of the reference.
+func (s SourceRef) Kind() (kind, path string) {
+	switch {
+	case s.Compose != "":
+		return "compose", s.Compose
+	case s.Terraform != "":
+		return "terraform", s.Terraform
+	}
+	return "", ""
+}
+
+// Location is where a model element is declared.
+type Location struct {
+	File string // as given to the loader, e.g. "threatmodel.yaml" or "infra/main.tf"
+	Line int    // 1-based, 0 if unknown
 }
 
 // Metadata describes the modelled system.
@@ -126,10 +155,25 @@ type Suppression struct {
 // Line returns the line where the element of the given kind ("component",
 // "flow", "zone", "data") and id is declared, or 0 if unknown.
 func (m *Model) Line(kind, id string) int {
-	if m.lines == nil {
-		return 0
+	return m.Location(kind, id).Line
+}
+
+// Location returns where the element is declared. File is empty if unknown.
+func (m *Model) Location(kind, id string) Location {
+	return m.locs[kind+":"+id]
+}
+
+// SetLocation records where an element is declared. Extractors call it for
+// the elements they produce, with file relative to their source root.
+func (m *Model) SetLocation(kind, id, file string, line int) {
+	m.setLoc(kind+":"+id, Location{File: file, Line: line})
+}
+
+func (m *Model) setLoc(key string, loc Location) {
+	if m.locs == nil {
+		m.locs = map[string]Location{}
 	}
-	return m.lines[kind+":"+id]
+	m.locs[key] = loc
 }
 
 // Bool returns a pointer to b; handy for building models in code.

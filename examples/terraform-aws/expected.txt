@@ -1,0 +1,9 @@
+CTM-COMP-001 aws_db_instance.orders
+CTM-COMP-001 aws_elasticache_replication_group.cache
+CTM-COMP-002 aws_s3_bucket.uploads
+CTM-COMP-003 aws_db_instance.orders
+CTM-COMP-003 aws_lambda_function.api
+CTM-COMP-008 aws_apigatewayv2_api.http
+CTM-FLOW-001 aws_instance.web-to-aws_elasticache_replication_group.cache
+CTM-FLOW-002 internet-to-aws_apigatewayv2_api.http-443
+CTM-FLOW-003 internet-to-aws_db_instance.orders-5432

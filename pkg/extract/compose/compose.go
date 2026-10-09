@@ -8,6 +8,7 @@ package compose
 
 import (
 	"fmt"
+	"io/fs"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -15,9 +16,20 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/clebeer/carbon-threat/pkg/extract/internal/secrets"
 	"github.com/clebeer/carbon-threat/pkg/model"
 	"go.yaml.in/yaml/v3"
 )
+
+func init() {
+	model.RegisterExtractor("compose", func(fsys fs.FS, path string) (*model.Model, []string, error) {
+		data, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return nil, nil, err
+		}
+		return Extract(data, path)
+	})
+}
 
 // Trust levels of the zones the extractor creates.
 const (
@@ -55,9 +67,7 @@ var datastoreTech = []struct{ match, tech, protocol string }{
 }
 
 var (
-	secretKey   = regexp.MustCompile(`(?i)(PASSWORD|PASSWD|SECRET(_?KEY)?|TOKEN|API_?KEY|PRIVATE_?KEY|ACCESS_?KEY|CREDENTIALS?)$`)
 	hostKey     = regexp.MustCompile(`(?i)(HOST|HOSTNAME|SERVER|ADDR|ADDRESS)$`)
-	urlInValue  = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"']+`)
 	invalidID   = regexp.MustCompile(`[^a-z0-9._-]+`)
 	schemeAlias = map[string]string{"postgresql": "postgres", "mongodb+srv": "mongodb", "mysql2": "mysql", "redis+tls": "rediss"}
 )
@@ -83,6 +93,7 @@ func Extract(data []byte, path string) (*model.Model, []string, error) {
 	if err := yaml.Unmarshal(data, &f); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", path, err)
 	}
+	lines := serviceLines(data)
 	if len(f.Services) == 0 {
 		return nil, nil, fmt.Errorf("%s: no services found", path)
 	}
@@ -142,6 +153,7 @@ func Extract(data []byte, path string) (*model.Model, []string, error) {
 			protocolOf[n] = proto
 		}
 		c.Properties.Image = s.Image
+		m.SetLocation("component", c.ID, path, lines[n])
 		if s.Privileged != nil {
 			c.Properties.Privileged = model.Bool(*s.Privileged)
 		}
@@ -203,7 +215,7 @@ func Extract(data []byte, path string) (*model.Model, []string, error) {
 		}
 		for _, k := range sortedKeys(env) {
 			v := env[k]
-			for _, raw := range urlInValue.FindAllString(v, -1) {
+			for _, raw := range secrets.URLs(v) {
 				u, err := url.Parse(raw)
 				if err != nil {
 					continue
@@ -225,8 +237,20 @@ func Extract(data []byte, path string) (*model.Model, []string, error) {
 			}
 		}
 	}
+	serviceOf := map[string]string{}
+	for _, n := range names {
+		serviceOf[ids[n]] = n
+	}
 	for _, k := range order {
-		m.DataFlows = append(m.DataFlows, *flows[k])
+		fl := *flows[k]
+		m.DataFlows = append(m.DataFlows, fl)
+		// A flow is declared by its client service; flows from the internet
+		// by the service that publishes the port.
+		at := serviceOf[fl.From]
+		if fl.From == "internet" {
+			at = serviceOf[fl.To]
+		}
+		m.SetLocation("flow", fl.ID, path, lines[at])
 	}
 
 	// Validate what we produced, so extractor bugs surface here and not as
@@ -239,6 +263,26 @@ func Extract(data []byte, path string) (*model.Model, []string, error) {
 		return nil, nil, fmt.Errorf("internal error: extracted model is invalid: %w", err)
 	}
 	return m, warnings, nil
+}
+
+// serviceLines maps each service name to the line of its key.
+func serviceLines(data []byte) map[string]int {
+	out := map[string]int{}
+	var root yaml.Node
+	if yaml.Unmarshal(data, &root) != nil || len(root.Content) == 0 {
+		return out
+	}
+	doc := root.Content[0]
+	for i := 0; i+1 < len(doc.Content); i += 2 {
+		if doc.Content[i].Value != "services" {
+			continue
+		}
+		svcs := doc.Content[i+1]
+		for j := 0; j+1 < len(svcs.Content); j += 2 {
+			out[svcs.Content[j].Value] = svcs.Content[j].Line
+		}
+	}
+	return out
 }
 
 // Marshal renders a model as YAML with two-space indentation.
@@ -412,18 +456,8 @@ func dependsOn(n *yaml.Node, links []string) []string {
 
 func hasHardcodedSecret(env map[string]string) bool {
 	for k, v := range env {
-		if v == "" || strings.Contains(v, "${") || strings.HasPrefix(v, "$") || strings.HasPrefix(v, "/run/secrets/") {
-			continue
-		}
-		if secretKey.MatchString(k) && !strings.HasSuffix(strings.ToUpper(k), "_FILE") {
+		if secrets.Hardcoded(k, v) {
 			return true
-		}
-		for _, raw := range urlInValue.FindAllString(v, -1) {
-			if u, err := url.Parse(raw); err == nil {
-				if pw, ok := u.User.Password(); ok && pw != "" && !strings.Contains(pw, "$") {
-					return true
-				}
-			}
 		}
 	}
 	return false

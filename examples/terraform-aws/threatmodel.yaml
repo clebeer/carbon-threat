@@ -1,0 +1,40 @@
+# Terraform (AWS) example. The infrastructure is extracted from ./infra on
+# every run; this file only adds what Terraform cannot say: what the data is,
+# and which data each flow carries.
+apiVersion: ctm/v1
+kind: ThreatModel
+metadata:
+  name: shop-aws
+  description: Lambda API behind API Gateway, RDS, DynamoDB, S3, ElastiCache and an EC2 web tier.
+
+sources:
+  - terraform: infra
+
+data:
+  - id: orders
+    name: Orders
+    classification: confidential
+  - id: session-tokens
+    name: Session tokens
+    classification: restricted
+  - id: documents
+    name: Customer documents
+    classification: confidential
+
+components:
+  - id: aws_db_instance.orders
+    stores: [orders]
+  - id: aws_dynamodb_table.sessions
+    stores: [session-tokens]
+  - id: aws_s3_bucket.uploads
+    stores: [documents]
+  - id: aws_elasticache_replication_group.cache
+    stores: [session-tokens]
+
+dataFlows:
+  - id: internet-to-aws_apigatewayv2_api.http-443
+    data: [orders]
+  - id: aws_lambda_function.api-to-aws_db_instance.orders
+    data: [orders]
+  - id: aws_instance.web-to-aws_elasticache_replication_group.cache
+    data: [session-tokens]

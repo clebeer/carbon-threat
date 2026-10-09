@@ -2,44 +2,77 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/clebeer/carbon-threat/schema/ctm-v1.json",
   "title": "Carbon Threat model (ctm/v1)",
-  "description": "An architecture-level threat model: trust zones, components, data assets and data flows. Facts that are omitted are treated as unknown; rules only fire on facts that are stated.",
+  "description": "An architecture-level threat model: trust zones, components, data assets and data flows. Facts that are omitted are treated as unknown; rules only fire on facts that are stated. With 'sources', components, flows and zones are extracted from infrastructure definitions when the model is loaded, and entries in this document with the same id override or extend them; required fields (component type and trustZone, flow from and to) are checked after that merge.",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "trustZones", "components"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata"
+  ],
   "additionalProperties": false,
   "properties": {
-    "apiVersion": { "const": "ctm/v1" },
-    "kind": { "const": "ThreatModel" },
+    "apiVersion": {
+      "const": "ctm/v1"
+    },
+    "kind": {
+      "const": "ThreatModel"
+    },
     "metadata": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "description": { "type": "string" },
-        "owner": { "type": "string" }
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Infrastructure definitions to extract on load, relative to this file and inside its directory.",
+      "items": {
+        "$ref": "#/$defs/source"
       }
     },
     "trustZones": {
       "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/trustZone" }
+      "items": {
+        "$ref": "#/$defs/trustZone"
+      }
     },
     "data": {
       "type": "array",
-      "items": { "$ref": "#/$defs/dataAsset" }
+      "items": {
+        "$ref": "#/$defs/dataAsset"
+      }
     },
     "components": {
       "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/component" }
+      "items": {
+        "$ref": "#/$defs/component"
+      }
     },
     "dataFlows": {
       "type": "array",
-      "items": { "$ref": "#/$defs/dataFlow" }
+      "items": {
+        "$ref": "#/$defs/dataFlow"
+      }
     },
     "suppressions": {
       "type": "array",
-      "items": { "$ref": "#/$defs/suppression" }
+      "items": {
+        "$ref": "#/$defs/suppression"
+      }
     }
   },
   "$defs": {
@@ -50,93 +83,235 @@
     },
     "trustZone": {
       "type": "object",
-      "required": ["id", "trust"],
+      "required": [
+        "id",
+        "trust"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "name": { "type": "string" },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
         "trust": {
           "type": "integer",
           "minimum": 0,
           "maximum": 100,
           "description": "0 = untrusted (internet, third parties), 100 = fully trusted. Zones below 20 are treated as untrusted."
         },
-        "description": { "type": "string" }
+        "description": {
+          "type": "string"
+        }
       }
     },
     "dataAsset": {
       "type": "object",
-      "required": ["id", "classification"],
+      "required": [
+        "id",
+        "classification"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "name": { "type": "string" },
-        "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
-        "description": { "type": "string" }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "classification": {
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
       }
     },
     "component": {
       "type": "object",
-      "required": ["id", "type", "trustZone"],
+      "required": [
+        "id"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "name": { "type": "string" },
-        "type": { "enum": ["external_entity", "process", "datastore"] },
-        "technology": { "type": "string", "description": "Free-form technology hint, e.g. postgres, nginx, s3, lambda." },
-        "trustZone": { "$ref": "#/$defs/id" },
-        "description": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" } },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "external_entity",
+            "process",
+            "datastore"
+          ]
+        },
+        "technology": {
+          "type": "string",
+          "description": "Free-form technology hint, e.g. postgres, nginx, s3, lambda."
+        },
+        "trustZone": {
+          "$ref": "#/$defs/id"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "stores": {
           "type": "array",
           "description": "Ids of data assets held at rest by this component.",
-          "items": { "$ref": "#/$defs/id" }
+          "items": {
+            "$ref": "#/$defs/id"
+          }
         },
         "properties": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "authentication": {
-              "enum": ["none", "password", "api_key", "oauth", "oidc", "saml", "mtls", "iam", "other"],
+              "enum": [
+                "none",
+                "password",
+                "api_key",
+                "oauth",
+                "oidc",
+                "saml",
+                "mtls",
+                "iam",
+                "other"
+              ],
               "description": "How callers authenticate to this component."
             },
-            "encryptionAtRest": { "type": "boolean" },
-            "publicAccess": { "type": "boolean", "description": "The datastore can be read anonymously (e.g. a public bucket)." },
-            "logging": { "type": "boolean", "description": "Security-relevant actions are audit-logged." },
-            "rateLimiting": { "type": "boolean" },
-            "privileged": { "type": "boolean", "description": "Runs as a privileged container or with host-level privileges." },
-            "hardcodedSecrets": { "type": "boolean", "description": "Credentials are embedded in configuration or code." },
-            "image": { "type": "string", "description": "Container image reference." }
+            "encryptionAtRest": {
+              "type": "boolean"
+            },
+            "publicAccess": {
+              "type": "boolean",
+              "description": "The datastore can be read anonymously (e.g. a public bucket)."
+            },
+            "logging": {
+              "type": "boolean",
+              "description": "Security-relevant actions are audit-logged."
+            },
+            "rateLimiting": {
+              "type": "boolean"
+            },
+            "privileged": {
+              "type": "boolean",
+              "description": "Runs as a privileged container or with host-level privileges."
+            },
+            "hardcodedSecrets": {
+              "type": "boolean",
+              "description": "Credentials are embedded in configuration or code."
+            },
+            "image": {
+              "type": "string",
+              "description": "Container image reference."
+            }
           }
         }
       }
     },
     "dataFlow": {
       "type": "object",
-      "required": ["id", "from", "to"],
+      "required": [
+        "id"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "name": { "type": "string" },
-        "from": { "$ref": "#/$defs/id" },
-        "to": { "$ref": "#/$defs/id" },
-        "protocol": { "type": "string", "description": "e.g. https, http, grpc, postgres, amqp. Well-known plaintext or TLS protocols set 'encrypted' when it is omitted." },
-        "encrypted": { "type": "boolean" },
-        "authenticated": { "type": "boolean" },
-        "data": { "type": "array", "items": { "$ref": "#/$defs/id" } },
-        "description": { "type": "string" }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "from": {
+          "$ref": "#/$defs/id"
+        },
+        "to": {
+          "$ref": "#/$defs/id"
+        },
+        "protocol": {
+          "type": "string",
+          "description": "e.g. https, http, grpc, postgres, amqp. Well-known plaintext or TLS protocols set 'encrypted' when it is omitted."
+        },
+        "encrypted": {
+          "type": "boolean"
+        },
+        "authenticated": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "description": {
+          "type": "string"
+        }
       }
     },
     "suppression": {
       "type": "object",
-      "required": ["rule", "reason"],
+      "required": [
+        "rule",
+        "reason"
+      ],
       "additionalProperties": false,
       "properties": {
-        "rule": { "type": "string", "pattern": "^CTM-[A-Z]+-[0-9]{3}$" },
-        "target": { "$ref": "#/$defs/id", "description": "Component or flow id. Omit to suppress the rule for the whole model." },
-        "reason": { "type": "string", "minLength": 1 },
-        "expires": { "type": "string", "format": "date", "description": "YYYY-MM-DD. Expired suppressions are ignored." }
+        "rule": {
+          "type": "string",
+          "pattern": "^CTM-[A-Z]+-[0-9]{3}$"
+        },
+        "target": {
+          "$ref": "#/$defs/id",
+          "description": "Component or flow id. Omit to suppress the rule for the whole model."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires": {
+          "type": "string",
+          "format": "date",
+          "description": "YYYY-MM-DD. Expired suppressions are ignored."
+        }
       }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "compose": {
+          "$ref": "#/$defs/relativePath",
+          "description": "A Docker Compose file."
+        },
+        "terraform": {
+          "$ref": "#/$defs/relativePath",
+          "description": "A directory of Terraform (.tf) files."
+        }
+      }
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\\\]",
+      "description": "Path relative to the model file, using '/' separators, without '.' or '..' segments (it must stay inside the model's directory)."
     }
   }
 }

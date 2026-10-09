@@ -27,6 +27,30 @@ dataFlows:
 
 Complete examples live in [`examples/`](../examples/).
 
+## Sources: extract instead of writing
+
+Most of the architecture can come from your infrastructure code:
+
+```yaml
+apiVersion: ctm/v1
+kind: ThreatModel
+metadata: {name: shop}
+sources:
+  - terraform: infra            # re-extracted every time ctm runs
+data:
+  - {id: orders, classification: confidential}
+components:
+  - id: aws_db_instance.orders  # merged over the extracted component
+    stores: [orders]
+```
+
+With `sources`, the document holds only what the sources cannot express,
+such as data classification and authentication. Entries with the id of an
+extracted element are merged over it; new ids add elements. `type`,
+`trustZone`, `from` and `to` are then required only on the merged result.
+See [extractors.md](extractors.md) for what each extractor produces, and run
+`ctm render` to see the merged model.
+
 ## Unknown is not false
 
 Every security fact is optional. **A fact you leave out is unknown, and rules do

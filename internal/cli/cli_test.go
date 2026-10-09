@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -218,7 +219,7 @@ func TestInitFromComposeAndRefuseOverwrite(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "compose.yaml"), compose, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if code, out, errOut := run(t, "init", dir); code != ExitOK || !strings.Contains(out, "Generated") {
+	if code, out, errOut := run(t, "init", dir); code != ExitOK || !strings.Contains(out, "sources: compose compose.yaml") {
 		t.Fatalf("init: code %d\n%s\n%s", code, out, errOut)
 	}
 	model := filepath.Join(dir, "threatmodel.yaml")
@@ -244,5 +245,177 @@ func TestRulesTest(t *testing.T) {
 	code, out, _ := run(t, "rules", "test")
 	if code != ExitOK || !strings.Contains(out, "0 failed") {
 		t.Fatalf("code %d\n%s", code, out)
+	}
+}
+
+const composeV1 = `services:
+  app:
+    image: acme/app:1.0.0
+    environment:
+      DATABASE_URL: postgres://app:hunter2@db:5432/app
+  db:
+    image: postgres:16.4
+`
+
+// composeV2 removes the hardcoded password and makes app privileged.
+const composeV2 = `services:
+  app:
+    image: acme/app:1.0.0
+    privileged: true
+    environment:
+      DATABASE_URL: postgres://app:${DB_PASSWORD}@db:5432/app
+  db:
+    image: postgres:16.4
+`
+
+const overlay = `apiVersion: ctm/v1
+kind: ThreatModel
+metadata:
+  name: shop
+sources:
+  - compose: docker-compose.yml
+data:
+  - id: orders
+    classification: confidential
+components:
+  - id: db
+    stores: [orders]
+    properties:
+      encryptionAtRest: false
+`
+
+func TestSourcesAnnotationsAndLocations(t *testing.T) {
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "docker-compose.yml"), composeV1)
+	write(t, filepath.Join(dir, "threatmodel.yaml"), overlay)
+	t.Chdir(dir)
+
+	code, out, errOut := run(t, "analyze", "--format", "json")
+	if code != ExitOK {
+		t.Fatalf("code %d: %s", code, errOut)
+	}
+	var r struct {
+		Threats []struct {
+			RuleID, TargetID, File string
+			Line                   int
+		}
+	}
+	if err := json.Unmarshal([]byte(out), &r); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, th := range r.Threats {
+		got[th.RuleID+" "+th.TargetID] = fmt.Sprintf("%s:%d", th.File, th.Line)
+	}
+	// The annotation (encryptionAtRest: false on stored confidential data)
+	// combines with the extracted datastore; locations point at the compose
+	// service, where a fix would go.
+	want := map[string]string{
+		"CTM-COMP-001 db":  "docker-compose.yml:6",
+		"CTM-COMP-003 app": "docker-compose.yml:2",
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s: got %q, want %q (all: %v)", k, got[k], v, got)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("unexpected threats: %v", got)
+	}
+
+	code, out, _ = run(t, "render")
+	if code != ExitOK || !strings.Contains(out, "encryptionAtRest: false") || !strings.Contains(out, "image: postgres:16.4") || strings.Contains(out, "sources:") {
+		t.Fatalf("render: code %d\n%s", code, out)
+	}
+}
+
+func TestDiffWhenOnlyTheSourceChanges(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		c := exec.Command("git", append([]string{"-c", "user.email=t@example.com", "-c", "user.name=t", "-c", "commit.gpgsign=false"}, args...)...)
+		c.Dir = dir
+		if out, err := c.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	write(t, filepath.Join(dir, "docker-compose.yml"), composeV1)
+	write(t, filepath.Join(dir, "threatmodel.yaml"), overlay)
+	git("add", ".")
+	git("commit", "-qm", "base")
+	write(t, filepath.Join(dir, "docker-compose.yml"), composeV2)
+	t.Chdir(dir)
+
+	code, out, errOut := run(t, "diff", "--base-ref", "HEAD", "--format", "json")
+	if code != ExitOK {
+		t.Fatalf("code %d: %s", code, errOut)
+	}
+	var r struct {
+		Added, Removed []struct{ RuleID, TargetID string }
+	}
+	if err := json.Unmarshal([]byte(out), &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Added) != 1 || r.Added[0].RuleID != "CTM-COMP-004" || len(r.Removed) != 1 || r.Removed[0].RuleID != "CTM-COMP-003" {
+		t.Fatalf("want privileged added and hardcoded secret removed, got %+v", r)
+	}
+}
+
+func TestSourceErrors(t *testing.T) {
+	cases := map[string]struct{ model, want string }{
+		"escaping path":            {strings.Replace(overlay, "compose: docker-compose.yml", "compose: ../docker-compose.yml", 1), "inside the model's directory"},
+		"missing file":             {strings.Replace(overlay, "compose: docker-compose.yml", "compose: nope.yml", 1), "nope.yml"},
+		"incomplete new component": {overlay + "  - id: queue\n    type: datastore\n", `component "queue": trustZone is required`},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			write(t, filepath.Join(dir, "docker-compose.yml"), composeV1)
+			write(t, filepath.Join(dir, "threatmodel.yaml"), c.model)
+			code, _, errOut := run(t, "validate", filepath.Join(dir, "threatmodel.yaml"))
+			if code != ExitFailure || !strings.Contains(errOut, c.want) {
+				t.Fatalf("code %d, stderr %q, want %q", code, errOut, c.want)
+			}
+		})
+	}
+}
+
+func write(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInitAndAnalyzeTerraform(t *testing.T) {
+	dir := t.TempDir()
+	tfDir := filepath.Join(dir, "infra")
+	if err := os.MkdirAll(tfDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"main.tf", "variables.tf", "terraform.tfvars"} {
+		src, err := os.ReadFile(filepath.Join("../../pkg/extract/terraform/testdata/aws", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		write(t, filepath.Join(tfDir, name), string(src))
+	}
+	if code, out, errOut := run(t, "init", dir); code != ExitOK || !strings.Contains(out, "terraform infra") {
+		t.Fatalf("init: code %d\n%s\n%s", code, out, errOut)
+	}
+	t.Chdir(dir)
+	code, out, errOut := run(t, "analyze", "--format", "sarif", "--fail-on", "critical")
+	if code != ExitFindings {
+		t.Fatalf("code %d, stderr %s", code, errOut)
+	}
+	if !strings.Contains(errOut, "module \"vpc\" is not followed") {
+		t.Errorf("extractor warning not shown: %q", errOut)
+	}
+	if !strings.Contains(out, `"uri": "infra/main.tf"`) {
+		t.Errorf("SARIF results should point at the Terraform file:\n%s", out)
 	}
 }

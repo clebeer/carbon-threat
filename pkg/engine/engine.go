@@ -27,6 +27,7 @@ type Threat struct {
 	Message     string   `json:"message"`
 	Mitigation  string   `json:"mitigation"`
 	Fingerprint string   `json:"fingerprint"`
+	File        string   `json:"file,omitempty"`
 	Line        int      `json:"line,omitempty"`
 
 	Suppressed        bool   `json:"suppressed,omitempty"`
@@ -122,7 +123,7 @@ func (e *Engine) Analyze(m *model.Model) ([]Threat, error) {
 					return nil, fmt.Errorf("rule %s on component %s: %w", r.ID, id, err)
 				}
 				if hit {
-					t, err := e.threat(r.Rule, vars, TargetComponent, id, c["name"].(string), m.Line("component", id))
+					t, err := e.threat(r.Rule, vars, TargetComponent, id, c["name"].(string), m.Location("component", id))
 					if err != nil {
 						return nil, err
 					}
@@ -143,7 +144,7 @@ func (e *Engine) Analyze(m *model.Model) ([]Threat, error) {
 					return nil, fmt.Errorf("rule %s on flow %s: %w", r.ID, id, err)
 				}
 				if hit {
-					t, err := e.threat(r.Rule, vars, TargetFlow, id, f["name"].(string), m.Line("flow", id))
+					t, err := e.threat(r.Rule, vars, TargetFlow, id, f["name"].(string), m.Location("flow", id))
 					if err != nil {
 						return nil, err
 					}
@@ -169,7 +170,7 @@ func eval(r compiledRule, vars map[string]any) (bool, error) {
 	return b, nil
 }
 
-func (e *Engine) threat(r *Rule, vars map[string]any, kind, id, name string, line int) (Threat, error) {
+func (e *Engine) threat(r *Rule, vars map[string]any, kind, id, name string, loc model.Location) (Threat, error) {
 	var msg strings.Builder
 	if err := r.message.Execute(&msg, vars); err != nil {
 		return Threat{}, fmt.Errorf("rule %s: message: %w", r.ID, err)
@@ -188,7 +189,8 @@ func (e *Engine) threat(r *Rule, vars map[string]any, kind, id, name string, lin
 		Message:     strings.TrimSpace(msg.String()),
 		Mitigation:  strings.TrimSpace(r.Mitigation),
 		Fingerprint: Fingerprint(r.ID, kind, id),
-		Line:        line,
+		File:        loc.File,
+		Line:        loc.Line,
 	}, nil
 }
 
@@ -202,7 +204,8 @@ func (e *Engine) applySuppressions(m *model.Model, threats []Threat) {
 			if s.Target != "" && s.Target != threats[i].TargetID {
 				continue
 			}
-			if s.Expires != "" && s.Expires < today {
+			// Compare the date part only: YAML may hand us a full timestamp.
+			if exp := s.Expires; exp != "" && exp[:min(len(exp), 10)] < today {
 				continue
 			}
 			threats[i].Suppressed = true
