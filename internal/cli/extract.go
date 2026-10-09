@@ -143,6 +143,9 @@ func findCompose(dir string) string {
 }
 
 const skeleton = generatedHeader + `
+# This example describes a secure baseline, so "ctm analyze" reports no
+# threats. Try a change to see one appear, e.g. set "encrypted: false" on
+# app-to-db, or move "app" into the "internal" zone.
 apiVersion: ctm/v1
 kind: ThreatModel
 metadata:
@@ -151,6 +154,9 @@ trustZones:
   - id: internet
     name: Internet
     trust: 0
+  - id: dmz
+    name: DMZ
+    trust: 40
   - id: internal
     name: Internal network
     trust: 80
@@ -166,14 +172,18 @@ components:
   - id: app
     name: Application
     type: process
-    trustZone: internal
+    trustZone: dmz
     properties:
       authentication: oidc
+      rateLimiting: true
+      logging: true
   - id: db
     name: Database
     type: datastore
     trustZone: internal
     stores: [user-data]
+    properties:
+      encryptionAtRest: true
 dataFlows:
   - id: user-to-app
     from: user
@@ -185,6 +195,8 @@ dataFlows:
     from: app
     to: db
     protocol: postgres
+    encrypted: true
+    authenticated: true
     data: [user-data]
 `
 
