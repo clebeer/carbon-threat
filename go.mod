@@ -1,13 +1,15 @@
 module github.com/clebeer/carbon-threat
 
-go 1.24
+go 1.26.0
+
+toolchain go1.27.2
 
 require (
 	cel.dev/cel-go v0.32.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/text v0.22.0
+	golang.org/x/text v0.42.0
 )
 
 require (

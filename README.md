@@ -12,7 +12,7 @@ request introduces. It runs in CI and needs no server.
 ## Quick start
 
 ```bash
-go install github.com/clebeer/carbon-threat/cmd/ctm@latest   # Go 1.24+
+go install github.com/clebeer/carbon-threat/cmd/ctm@latest   # Go 1.26+
 
 ctm init                          # generate threatmodel.yaml (from docker-compose if present)
 ctm analyze                       # threats mapped to STRIDE, CWE, CAPEC and ATT&CK

@@ -112,7 +112,9 @@ func fixedWebapp(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := strings.Replace(string(src), "    protocol: postgres\n    encrypted: false\n", "    protocol: postgres\n    encrypted: true\n", 1)
+	// Normalize line endings so the edits below also apply to CRLF checkouts.
+	orig := strings.ReplaceAll(string(src), "\r\n", "\n")
+	s := strings.Replace(orig, "    protocol: postgres\n    encrypted: false\n", "    protocol: postgres\n    encrypted: true\n", 1)
 	s = strings.Replace(s, "\nsuppressions:", `  - id: export
     from: api
     to: staff
@@ -120,8 +122,8 @@ func fixedWebapp(t *testing.T) string {
     data: [orders]
 
 suppressions:`, 1)
-	if s == string(src) {
-		t.Fatal("fixture edit did not apply")
+	if strings.Count(s, "encrypted: true") != strings.Count(orig, "encrypted: true")+1 || !strings.Contains(s, "id: export") {
+		t.Fatal("fixture edits did not apply")
 	}
 	return s
 }
