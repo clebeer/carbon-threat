@@ -419,3 +419,14 @@ func TestInitAndAnalyzeTerraform(t *testing.T) {
 		t.Errorf("SARIF results should point at the Terraform file:\n%s", out)
 	}
 }
+
+func TestVersionIncludesBuildMetadata(t *testing.T) {
+	if _, out, _ := run(t, "version"); out != "ctm test\n" {
+		t.Errorf("dev build: got %q", out)
+	}
+	Commit, Date = "abc1234", "2026-10-09T12:00:00Z"
+	defer func() { Commit, Date = "", "" }()
+	if _, out, _ := run(t, "version"); out != "ctm test (commit abc1234, built 2026-10-09T12:00:00Z)\n" {
+		t.Errorf("release build: got %q", out)
+	}
+}

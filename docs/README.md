@@ -7,6 +7,7 @@ Carbon Threat is a **threat-modeling-as-code** CLI (`ctm`). See the
 
 | Document | Description |
 |---|---|
+| [install.md](install.md) | Install ctm (Homebrew, binaries, container, source) and verify downloads |
 | [model-format.md](model-format.md) | The ctm/v1 model format, field by field |
 | [extractors.md](extractors.md) | What the compose and Terraform extractors produce, and their assumptions |
 | [writing-rules.md](writing-rules.md) | How to write and test threat rules |

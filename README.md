@@ -4,15 +4,15 @@
 and code, evaluates it with open, declarative rules, and tells you which threats a pull
 request introduces. It runs in CI and needs no server.
 
-> **Status: Phase 1 in progress, no binary release yet.** The CLI works and is
-> tested; packaged releases come at v0.1. The direction is recorded in
+> **Status: Phase 1, approaching v0.1.** The CLI works and is tested; signed
+> releases are built from `v*` tags. The direction is recorded in
 > [ADR 0002](docs/adr/0002-threat-modeling-as-code.md), and the roadmap (in pt-BR)
 > is in [docs/strategy](docs/strategy/ANALISE-ADVERSARIAL-E-PLANO-2026-10.md).
 
 ## Quick start
 
 ```bash
-go install github.com/clebeer/carbon-threat/cmd/ctm@latest   # Go 1.26+
+brew install --cask clebeer/tap/ctm     # or a release binary, the container image, or go install (see docs/install.md)
 
 ctm init                          # threatmodel.yaml wired to your docker-compose / Terraform
 ctm analyze                       # threats mapped to STRIDE, CWE, CAPEC and ATT&CK
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: clebeer/carbon-threat@main      # pin to a release tag or SHA once v0.1 is out
+      - uses: clebeer/carbon-threat@v0.1.0    # a release tag downloads a checksum-verified binary
         with:
           fail-on: high                       # fail only on NEW high/critical threats
       - uses: github/codeql-action/upload-sarif@v4
@@ -81,7 +81,7 @@ resolves.
 | Phase | Goal | Status |
 |---|---|---|
 | 0 · Cleanup | Governance, licensing, security policy, freeze v1 | ✅ Done (2026-10) |
-| 1 · CLI v0.1 | Model + schema, rule engine, `analyze`/`diff`, SARIF, GitHub Action, compose + Terraform (AWS) extractors with `sources` ✅ · Kubernetes extractor, 40 rules, signed releases ⏳ | In progress |
+| 1 · CLI v0.1 | Model + schema, rule engine, `analyze`/`diff`, SARIF, GitHub Action, compose + Terraform (AWS) extractors with `sources`, signed releases ✅ · Kubernetes extractor, 40 rules ⏳ | In progress |
 | 2 · Ecosystem v0.5 | Community rules repo, OTM / Threat Dragon / Threagile import, embedded viewer, LLM assist | Planned |
 | 3 · v1.0 | Correlate scanner findings (SARIF, DefectDojo) with the architecture; optional Hub server | Planned |
 

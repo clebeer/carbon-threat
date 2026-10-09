@@ -267,7 +267,7 @@ As estimativas são para 1 mantenedor em tempo parcial com apoio de IA. Cada fas
 - [x] `ctm diff` com fingerprint estável por ameaça (arquivo ou revisão git).
 - [x] Saídas SARIF, Markdown, JSON e tabela. GitHub Action composta com resumo no job e SARIF. Comentário no PR pendente.
 - [ ] Corpus: 3 modelos de exemplo com golden files ✅ (meta: 10 repos de referência). CI ✅ com `go test -race` (Linux/macOS/Windows), `golangci-lint` e CodeQL; gitleaks e Trivy pendentes.
-- [ ] Release com GoReleaser: binários multi-OS, Homebrew tap, imagem OCI, **cosign + SLSA provenance + SBOM**.
+- [x] Release com GoReleaser: binários multi-OS, imagem OCI multi-arch no GHCR, **cosign keyless + atestado de proveniência do GitHub + SBOM SPDX**, changelog agrupado e dry-run em todo PR. O Homebrew tap fica pronto e só ativa quando o secret existir. A Action baixa o binário da release e confere o checksum.
 
 **Saída:** `brew install` → `ctm init && ctm analyze` num repo Terraform real gera um modelo e ≥5 ameaças corretas em menos de 60 s. Precisão ≥ 90% no corpus, medida e publicada.
 
